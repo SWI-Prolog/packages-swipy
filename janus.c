@@ -389,7 +389,10 @@ py_add_to_dict(term_t key, term_t value, void *closure)
     rc = PyDict_SetItem(py_dict, py_key, py_value);
   }
 
-  assert(rc==0);
+  if ( rc != 0 )
+  { check_error(py_value);
+    return 1;
+  }
 
   return 0;
 }
