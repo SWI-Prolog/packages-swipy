@@ -1,0 +1,176 @@
+/*  Part of SWI-Prolog
+
+    Author:        Jan Wielemaker
+    E-mail:        jan@swi-prolog.org
+    WWW:           http://www.swi-prolog.org
+    Copyright (c)  2023, SWI-Prolog Solutions b.v.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    1. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+    FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+    COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+    ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+*/
+
+:- module(janus,
+          [ py_call/2,                  % +Call, -Return
+            py_str/2,                   % +Obj, -String
+            py_initialize/2,            % +Program, +Argv
+            py_lib_dirs/1,              % -Dirs
+            add_py_lib_dir/1,           % +Dir
+            add_py_lib_dir/2,           % +Dir,+Where
+            py_shell/0
+          ]).
+:- use_foreign_library(foreign(janus)).
+
+:- public
+    py_initialize/0,
+    py_call_string/3.
+
+/** <module> Call Python from Prolog
+
+This library implements calling Prolog from Python.
+*/
+
+%!  py_call(+Call, -Return) is det.
+%
+%   Call Python and return the result of   the called function. Call has
+%   the shape `[Target:]Action1[:Action2]*`, where `Target`  is either a
+%   Python module name or a Python object  reference. If `Target` is not
+%   given, `Action1` is called as a builtin function. `Action` is either
+%   an atom to get the denoted attribute from   the  `Target` or it is a
+%   compound term where the first  argument   is  the function or method
+%   name  and  the  arguments  provide  the  parameters  to  the  Python
+%   function. On success, the returned Python   object  is translated to
+%   Prolog.
+%
+%   For example, to add a directory to   Pythons  module search path, we
+%   can use this:
+%
+%	?- py_call(print("Hello World!\n"), R).
+%	Hello World!
+%	R = 'None'
+%       ?- py_call(sys:path:append("/home/bob/janus"), R).
+%       R = 'None'
+
+
+		 /*******************************
+		 *            INIT		*
+		 *******************************/
+
+%!  py_initialize is det.
+%!  py_initialize(+Program, +Argv) is det.
+%
+%   Initialize the embedded Python system.
+
+py_initialize :-
+    current_prolog_flag(os_argv, [Program|Argv]),
+    py_initialize(Program, Argv),
+    absolute_file_name(library('python/janus.py'), Janus,
+                       [ access(read) ]),
+    file_directory_name(Janus, PythonDir),
+    add_py_lib_dir(PythonDir, first).
+
+
+		 /*******************************
+		 *           CALLBACK		*
+		 *******************************/
+
+:- meta_predicate py_call_string(:, +, -).
+
+py_call_string(M:String, Input, Dict) :-
+    term_string(Goal, String, [variable_names(Map)]),
+    exclude(not_in_projection(Input), Map, Map1),
+    dict_create(Dict, bindings, Map1),
+    call(M:Goal).
+
+not_in_projection(Input, Name=Value) :-
+    (   get_dict(Name, Input, Value)
+    ->  true
+    ;   sub_atom(Name, 0, _, _, '_')
+    ).
+
+
+		 /*******************************
+		 *            PATHS		*
+		 *******************************/
+
+%!  py_lib_dirs(-Dirs) is det.
+%
+%   True when Dirs is a list of directories searched for Python modules.
+%   The elements of Dirs are in Prolog canonical notation.
+
+py_lib_dirs(Dirs) :-
+    py_call(sys:path, Dirs0),
+    maplist(prolog_to_os_filename, Dirs, Dirs0).
+
+%!  add_py_lib_dir(+Dir) is det.
+%!  add_py_lib_dir(+Dir, +Where) is det.
+%
+%   Add a directory to the Python  module   search  path.  In the second
+%   form, Where is one of `first`   or `last`. add_py_lib_dir/1 adds the
+%   directory as last.
+%
+%   Dir is in Prolog notation. The added   directory  is converted to an
+%   absolute path using the OS notation.
+
+add_py_lib_dir(Dir) :-
+    add_py_lib_dir(Dir, last).
+
+add_py_lib_dir(Dir, Where) :-
+    absolute_file_name(Dir, AbsDir),
+    prolog_to_os_filename(AbsDir, OSDir),
+    (   Where == last
+    ->  py_call(sys:path:append(OSDir), _)
+    ;   Where == first
+    ->  py_call(sys:path:insert(0, OSDir), _)
+    ;   must_be(oneof([first,last]), Where)
+    ).
+
+
+		 /*******************************
+		 *             SHELL		*
+		 *******************************/
+
+%!  py_shell
+%
+%   Start an interactive Python REPL  loop   using  the  embedded Python
+%   interpreter.
+
+py_shell :-
+    py_call(janus:interact(), _).
+
+
+		 /*******************************
+		 *           MESSAGES		*
+		 *******************************/
+
+:- multifile prolog:error_message//1.
+
+prolog:error_message(python_error(Type, Value, _Stack)) -->
+    { py_str(Type, PType),
+      py_str(Value, PValue)
+    },
+    [ 'Python error ~w:'-[PType], nl,
+      '  ~w'-[PValue]
+    ].

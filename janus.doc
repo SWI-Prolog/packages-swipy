@@ -1,0 +1,89 @@
+\documentclass[11pt]{article}
+\usepackage{times}
+\usepackage{pl}
+\usepackage{html}
+\sloppy
+\makeindex
+
+\onefile
+\htmloutput{.}					% Output directory
+\htmlmainfile{janus}				% Main document file
+\bodycolor{white}				% Page colour
+
+\begin{document}
+
+\title{SWI-Prolog Python interface}
+\author{Jan Wielemaker \\
+	SWI-Prolog Solutions b.v. \\
+	E-mail: \email{jan@swi-prolog.org}}
+
+\maketitle
+
+\begin{abstract}
+This package implements a bi-directional interface between Prolog and
+Python using portable low-level primitives.
+\end{abstract}
+
+\pagebreak
+\tableofcontents
+
+\vfill
+\vfill
+
+\newpage
+
+\section{Introduction}
+\label{sec:janus-intro}
+
+The Python interface is modelled after the recent JavaScript interface
+developed for the WASM (Web Assembly) version.  That is
+
+\begin{itemize}
+    \item A di-directional data conversion is defines.  For SWI-Prolog,
+    suporting dicts and strings, that is rather straightforward.
+    Currently, where the JavaScript interface supports any Prolog
+    term, the Python interface does not.  This may change.
+
+    \item A Prolog predicate to call Python functions and object
+    methods.
+
+    \item A Python class \const{Prolog} that provides a Prolog
+    query as an \jargon{iterator}.
+\end{itemize}
+
+
+\section{Data conversion}
+\label{sec:janus-data}
+
+\begin{tabular}{|l|lp{2in}|}
+\hline
+\textbf{Prolog} & \textbf{Python} & \textbf{Notes} \\
+\hline
+Integer & Integer  & Only 64 bit range \\
+'None'  & None     & \\
+true    & True     & \\
+false   & False    & \\
+Atom    & String   & \\
+String  & String   & \\
+List    & Sequence & \\
+Dict    & Dict     & \\
+\hline
+\end{tabular}
+
+\input{libjanus.tex}
+
+\section{Calling Prolog from Python}
+\label{sec:janus-call-prolog}
+
+\begin{code}
+import Prolog from janus
+
+def printRange(from, to):
+    for d in Prolog("between(From,To,X)", {From:from, To:to})
+        print(d["X"])
+\end{code}
+
+\printindex
+
+\end{document}
+
