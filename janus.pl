@@ -100,7 +100,9 @@ This library implements calling Python from Prolog.
 %           self.tricks.append(trick)
 %   ```
 %
-%   We can interact with this class using e.g.
+%   We can interact with this class as   below. Now that ``$Doc`` in the
+%   SWI-Prolog toplevel refers to the  last   toplevel  binding  for the
+%   variable `Dog`.
 %
 %       ?- py_call(dog:'Dog'("Fido"), Dog).
 %       Dog = <py_obj>(0x7f095c9d02e0)
