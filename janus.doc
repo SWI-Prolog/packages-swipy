@@ -21,7 +21,10 @@
 
 \begin{abstract}
 This package implements a bi-directional interface between Prolog and
-Python using portable low-level primitives.
+Python using portable low-level primitives. The aim is to make Python
+available to Prolog and visa versa with minimal installation effort
+while providing a high level bi-directional interface with good
+performance.
 \end{abstract}
 
 \pagebreak
@@ -35,11 +38,25 @@ Python using portable low-level primitives.
 \section{Introduction}
 \label{sec:janus-intro}
 
-The Python interface is modelled after the recent JavaScript interface
+Unlike Prolog, Python has a huge set of resources, notably interfaces to
+just about anything one can imagine. Making such interfaces available to
+Prolog can surely be done. It typically requires programming in C or
+C++, a skill that is not widely available everywhere. Being able to
+access Python effortlessly from Prolog resolves that. This solution was
+proposed in \cite{janus}, initially developed for XSB.
+
+Janus provides a bi-directional interface between Prolog and Python
+using the embedding interface. Currently we only implement using Python
+embedded into SWI-Prolog. This makes using Python from Prolog as simple
+as taking the standard SWI-Prolog distribution and loading
+\pllib{janus}. Both being dynamically typed languages, we can define an
+efficient and easy to use interface.
+
+The Python interface is modeled after the recent JavaScript interface
 developed for the WASM (Web Assembly) version.  That is
 
 \begin{itemize}
-    \item A di-directional data conversion is defines.  For SWI-Prolog,
+    \item A di-directional data conversion is defined.  For SWI-Prolog,
     suporting dicts and strings, that is rather straightforward.
     Currently, where the JavaScript interface supports any Prolog
     term, the Python interface does not.  This may change.
@@ -55,34 +72,157 @@ developed for the WASM (Web Assembly) version.  That is
 \section{Data conversion}
 \label{sec:janus-data}
 
-\begin{tabular}{|l|lp{2in}|}
+The bi-directional conversion between Prolog and Python terms is
+summarized in the table below.
+
+\begin{center}
+\begin{tabular}{|l|c|l|p{2in}|}
 \hline
-\textbf{Prolog} & \textbf{Python} & \textbf{Notes} \\
+\textbf{Prolog} & & \textbf{Python} & \textbf{Notes} \\
 \hline
-Integer & Integer  & Only 64 bit range \\
-'None'  & None     & \\
-true    & True     & \\
-false   & False    & \\
-Atom    & String   & \\
-String  & String   & \\
-List    & Sequence & \\
-Dict    & Dict     & \\
-\hline
+Integer & $\Leftrightarrow$ & Integer  & Only 64 bit range \\
+'None'  & $\Leftrightarrow$ & None     & \\
+true    & $\Leftrightarrow$ & True     & \\
+false   & $\Leftrightarrow$ & False    & \\
+Atom    & $\rightarrow$     & String   & \\
+String  & $\Leftrightarrow$ & String   & \\
+\#(Term) & $\rightarrow$    & String   & Use write_canonical/1 if not atomic \\
+List    & $\Leftrightarrow$ & Sequence & \\
+Dict    & $\Leftrightarrow$ & Dict     & \\
+\const{py_obj} blob & $\Leftrightarrow$ & Object & Used for any Python object not above \\ \hline
 \end{tabular}
+\end{center}
 
 \input{libjanus.tex}
 
 \section{Calling Prolog from Python}
 \label{sec:janus-call-prolog}
 
+The binding can also call Prolog from Python. This may be used to deal
+with \jargon{call backs}. Future versions will allow this to be used
+from Python using an embedded version of SWI-Prolog.
+
+The Python module \const{janus} provides some utility functions and
+defines the class \const{Prolog}. The class \const{Prolog} implements
+the Python \jargon{iterator} protocol.  Below we iterate over the
+solutions of between/3.  It is allowed to use \const{break} the
+Python loop.
+
+A Prolog goal is constructed from a string and \jargon{input bindings}
+and returns \jargon{output bindings}.  For example
+
+\begin{code}
+>>> import janus
+>>> janus.once("Y is X+1", {"X":1})
+{'Y': 2}
+\end{code}
+
+Note that the input argument may also be added literally. Below we give
+two examples. It is strongly adviced \textbf{not to use string
+interpolation} due to the risk for \jargon{injection attacks}. Also,
+serializing and deserializing the data is generally slower then using
+the input dictionary, especially if the data is large.
+
+\begin{code}
+>>> janus.once("Y is 1+1", {})
+{'Y': 2}
+>>> x = 1
+>>> janus.once(f"Y is {x}+1", {})
+{'Y': 2}
+\end{code}
+
+Using a dict for input and output together with a (short) string to
+denote the goal is easy to use and fast.
+
+The \jargon{output dict} contains all named Prolog variables that (1)
+are not in the input dict and (2) do not start with an underscore. For
+example, to get the grandparents of a person given parent/2 relations we
+can use the code below, where the \arg{_GP} and \arg{_P} do not appear
+in the output dict. This both saves time and avoids the need to convert
+Prolog data structures that cannot be represented in Python such as
+variables or arbitrary compound terms.
+
+\begin{code}
+>>> janus.once("findall(_GP, parent(Me, _P), parent(_P, _GP), GPs)", {'Me':'Jan'})["GPs"]
+[ 'Kees', 'Klaas' ]
+\end{code}
+
+
+
+
 \begin{code}
 import Prolog from janus
 
 def printRange(from, to):
-    for d in Prolog("between(From,To,X)", {From:from, To:to})
+    for d in Prolog("between(From,To,X)", {"From":from, "To":to})
         print(d["X"])
 \end{code}
 
+\begin{description}
+    \cfunction{dict|False}{janus.once}{query, bindings}
+Call \arg{query} using \arg{bindings} as once/1, returning either
+a dict with resulting bindings or \const{False}.
+
+    \cfunction{None}{janus.consult}{file}
+Consult the given \arg{file}.  Implemented as
+\exam{janus.once("consult(File)", {"File":file})}.
+
+\end{description}
+
+\section{Janus performance evaluation}
+\label{sec:janus-performance}
+
+Below is a table to give some feeling on the overhead of making calls
+between Prolog and Python. These figures are roughly the same as the
+figures for the XSB/Python interface. All benchmarks have been executed
+on AMD3950X running Ubuntu 22.04, SWI-Prolog 9.1.11 and Python 3.10.6.
+
+\begin{center}
+\begin{tabular}{|p{3in}|c|}
+\hline
+\textbf{Action} & \textbf{Time (seconds)} \\
+\hline
+Echo list with 1,000,000 elements & 0.142 \\
+Call Pyton \exam{sumlist3:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.732 \\
+Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 3.791 \\
+Iterate from Python over Prolog goal \exam{between(1, 1 000 000, X)} & 0.821 \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Python or C/C++ for accessing resources?}
+\label{sec:janus-vs-c}
+
+Using Python as an intermediate to access external resources allows
+writing such interfaces with less effort by a much wider community. The
+resulting interface is often also more robust due to well defined data
+conversion and sound memory management that you get for free.
+
+Nevertheless, Python often accesses resources with a C or C++ API. We
+can also create this bridge directly, bypassing Python. That avoids one
+layer of data conversion and preserves the excellent multi-threading
+capabilities of SWI-Prolog. As is, Python operations are synchronised
+using the Python \jargon{GIL}, a global lock that allows for only a
+single thread to use Python at the same time.\footnote{There are rumours
+that Python's multi threading will be able to use multiple cores.}
+
+Writing an interface for SWI-Prolog is typically easier that for
+Python/C because memory management is easier. Where we need to manage
+reference counts to Python objects through all possibly paths of the C
+functions, SWI-Prolog \ctype{term_t} merely has to be allocated once in
+the function. All failure parts will discard the Prolog data
+automatically through backtracking and all success paths will do so
+through the Prolog garbage collector.\footnote{Using a Python C++
+interface such as \href{https://github.com/pybind/pybind11}{pybind11}
+simplifies memory management for a Python interface.}
+
+Summarizing, the presented interface is ideal to get started quickly.
+Applications that need to access C/C++ resources and need either exploit
+all cores of your hardware or get the best performance on calls or
+exchanging data should consider using the C or C++ interfaces of
+SWI-Prolog.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \printindex
 
 \end{document}

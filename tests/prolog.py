@@ -17,4 +17,10 @@ def abort_iter(n):
             break;
     return sum;
 
-    
+def bench_call(n):
+    for i in range(1,n):
+        swipl.call("Y is X+1", {"X":i})
+
+
+def echo(d):
+    return d

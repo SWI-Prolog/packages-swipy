@@ -33,7 +33,8 @@
 */
 
 :- module(janus,
-          [ py_call/2,                  % +Call, -Return
+          [ py_call/1,                  % +Call
+            py_call/2,                  % +Call, -Return
             py_str/2,                   % +Obj, -String
             py_initialize/2,            % +Program, +Argv
             py_lib_dirs/1,              % -Dirs
@@ -49,9 +50,10 @@
 
 /** <module> Call Python from Prolog
 
-This library implements calling Prolog from Python.
+This library implements calling Python from Prolog.
 */
 
+%!  py_call(+Call) is det.
 %!  py_call(+Call, -Return) is det.
 %
 %   Call Python and return the result of   the called function. Call has
@@ -64,14 +66,48 @@ This library implements calling Prolog from Python.
 %   function. On success, the returned Python   object  is translated to
 %   Prolog.
 %
-%   For example, to add a directory to   Pythons  module search path, we
-%   can use this:
+%   Arguments to Python  functions  use   the  Python  conventions. Both
+%   _positional_  and  _keyword_  arguments    are   supported.  Keyword
+%   arguments are written as `Name = Value`   and  must appear after the
+%   positional arguments.
 %
-%	?- py_call(print("Hello World!\n"), R).
-%	Hello World!
-%	R = 'None'
-%       ?- py_call(sys:path:append("/home/bob/janus"), R).
-%       R = 'None'
+%   Below are some examples.
+%
+%       % call a built-in
+%	?- py_call(print("Hello World!\n")).
+%	true.
+%	% call function in a module
+%	?- py_call(sys:getsizeof([1,2,3]), Size).
+%	Size = 80.
+%	% call function on an attribute of a module
+%       ?- py_call(sys:path:append("/home/bob/janus")).
+%       true
+%       % get attribute from a module
+%       ?- py_call(sys:path, Path)
+%       Path = ["dir1", "dir2", ...]
+%
+%   Given a class in a file `doc.py`  such as the following example from
+%   the Python documentation
+%
+%   ```
+%   class Dog:
+%       tricks = []
+%
+%       def __init__(self, name):
+%           self.name = name
+%
+%       def add_trick(self, trick):
+%           self.tricks.append(trick)
+%   ```
+%
+%   We can interact with this class using e.g.
+%
+%       ?- py_call(dog:'Dog'("Fido"), Dog).
+%       Dog = <py_obj>(0x7f095c9d02e0)
+%       ?- py_call($Dog:add_trick("roll_over")).
+%       true.
+%       ?- py_call($Dog:tricks, Tricks).
+%       Tricks = ["roll_over"]
 
 
 		 /*******************************
