@@ -41,6 +41,7 @@ static atom_t ATOM_None;
 static atom_t ATOM_false;
 static atom_t ATOM_true;
 static atom_t ATOM_pydict;
+static atom_t ATOM_;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
@@ -278,6 +279,21 @@ py_unify_int(term_t t, PyObject *obj)
     PyMem_Free(s);
     return rc;
   }
+  if ( PyTuple_Check(obj) )
+  { Py_ssize_t arity = PyTuple_GET_SIZE(obj);
+    if ( PL_unify_functor(t, PL_new_functor(ATOM_, arity)) )
+    { term_t a = PL_new_term_ref();
+      for(Py_ssize_t i=0; i<arity; i++)
+      { PyObject *py_a = PyTuple_GetItem(obj, i);
+	_PL_get_arg(i+1, t, a);
+	if ( !py_unify_int(a, py_a) )
+	  return FALSE;
+      }
+      PL_reset_term_refs(a);
+      return TRUE;
+    }
+    return FALSE;
+  }
   if ( PySequence_Check(obj) )
   { ssize_t len = PySequence_Size(obj);
     term_t tail = PL_copy_term_ref(t);
@@ -289,7 +305,7 @@ py_unify_int(term_t t, PyObject *obj)
       if ( !el )
 	return FALSE;
       int rc = ( PL_unify_list(tail, head,tail) &&
-		 py_unify(head, el) );
+		 py_unify_int(head, el) );
       Py_DECREF(el);
       if ( !rc )
 	return FALSE;
@@ -484,6 +500,29 @@ py_from_prolog(term_t t, PyObject **obj)
       return TRUE;
     }
   }
+  /* ''(a,b,...) --> Python tuple  */
+  if ( PL_get_name_arity(t, &a, &len) && a == ATOM_ )
+  { PyObject *tp = check_error(PyTuple_New(len));
+
+    if ( tp )
+    { term_t arg = PL_new_term_ref();
+
+      for(Py_ssize_t i=0; i<len; i++)
+      { PyObject *py_arg;
+
+	_PL_get_arg(i+1, t, arg);
+	if ( !py_from_prolog(arg, &py_arg) )
+	{ Py_DECREF(tp);
+	  return FALSE;
+	}
+	Py_INCREF(py_arg);
+	PyTuple_SetItem(tp, i, py_arg);
+      }
+      PL_reset_term_refs(arg);
+      *obj = tp;
+      return TRUE;
+    }
+  }
 
   return PL_domain_error("py_data", t),FALSE;
 }
@@ -672,6 +711,7 @@ install_janus(void)
 { MKATOM(None);
   MKATOM(false);
   MKATOM(true);
+  ATOM_ = PL_new_atom("");
   ATOM_pydict = PL_new_atom("py");
 
   MKFUNCTOR(python_error, 3);
