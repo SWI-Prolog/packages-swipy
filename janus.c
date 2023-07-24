@@ -46,6 +46,7 @@ static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
 static functor_t FUNCTOR_module2;
 static functor_t FUNCTOR_eq2;
+static functor_t FUNCTOR_hash1;
 
 static int py_initialize_done = FALSE;
 
@@ -473,6 +474,16 @@ py_from_prolog(term_t t, PyObject **obj)
   }
   if ( get_py_obj(t, obj, FALSE) )
     return TRUE;
+  if ( PL_is_functor(t, FUNCTOR_hash1) )
+  { term_t arg = PL_new_term_ref();
+    _PL_get_arg(1, t, arg);
+
+    if ( PL_get_wchars(arg, &len, &s, CVT_ALL|CVT_WRITE_CANONICAL) )
+    { PL_reset_term_refs(arg);
+      *obj = PyUnicode_FromWideChar(s, len);
+      return TRUE;
+    }
+  }
 
   return PL_domain_error("py_data", t),FALSE;
 }
@@ -619,7 +630,15 @@ py_call(term_t Call, term_t result)
   if ( !(py_target = py_eval(py_target, call)) )
     return FALSE;
 
-  return py_unify_decref(result, py_target);
+  if ( result )
+    return py_unify_decref(result, py_target);
+  else
+    return TRUE;
+}
+
+static foreign_t
+py_call1(term_t Call)
+{ return py_call(Call, 0);
 }
 
 
@@ -659,9 +678,11 @@ install_janus(void)
   MKFUNCTOR(error, 2);
   FUNCTOR_module2 = PL_new_functor(PL_new_atom(":"), 2);
   FUNCTOR_eq2 = PL_new_functor(PL_new_atom("="), 2);
+  FUNCTOR_hash1 = PL_new_functor(PL_new_atom("#"), 1);
 
   PL_register_foreign("py_initialize", 2, py_initialize, 0);
   PL_register_foreign("py_call",       2, py_call,       0);
+  PL_register_foreign("py_call",       1, py_call1,      0);
   PL_register_foreign("py_str",        2, py_str,        0);
 
   if ( PyImport_AppendInittab("swipl", PyInit_swipl) == -1 )
