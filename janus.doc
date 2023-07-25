@@ -113,8 +113,8 @@ A Prolog goal is constructed from a string and \jargon{input bindings}
 and returns \jargon{output bindings}.  For example
 
 \begin{code}
->>> import janus
->>> janus.once("Y is X+1", {"X":1})
+>>> from janus import *
+>>> once("Y is X+1", {"X":1})
 {'Y': 2}
 \end{code}
 
@@ -148,11 +148,15 @@ variables or arbitrary compound terms.
 [ 'Kees', 'Klaas' ]
 \end{code}
 
+The class \ctype{janus.Query} implements a Python \jargon{iterator} that
+iterates over the solutions of a Prolog goal. The iterator may be
+aborted using the Python \exam{break} statement.
+
 \begin{code}
-import Prolog from janus
+from janus import *
 
 def printRange(from, to):
-    for d in Prolog("between(From,To,X)", {"From":from, "To":to})
+    for d in Query("between(From,To,X)", {"From":from, "To":to})
         print(d["X"])
 \end{code}
 

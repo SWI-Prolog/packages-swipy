@@ -1,8 +1,8 @@
 import swipl
 
-class Prolog:
-    def __init__(self, query, inp):
-        self.state = swipl.open_query(query, inp)
+class Query:
+    def __init__(self, query, inputs={}):
+        self.state = swipl.open_query(query, inputs)
     def __iter__(self):
         return self
     def __next__(self):
