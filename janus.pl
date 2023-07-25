@@ -88,7 +88,7 @@ This library implements calling Python from Prolog.
 %       ?- py_call(sys:path, Path)
 %       Path = ["dir1", "dir2", ...]
 %
-%   Given a class in a file `doc.py`  such as the following example from
+%   Given a class in a file `dog.py`  such as the following example from
 %   the Python documentation
 %
 %   ```
@@ -112,6 +112,15 @@ This library implements calling Python from Prolog.
 %       true.
 %       ?- py_call($Dog:tricks, Tricks).
 %       Tricks = ["roll_over"]
+%
+%   py_call/1 can also be used to set an attribute on a module or object
+%   using the syntax py_call(Obj:Attr = Value). For example:
+%
+%       ?- py_call(dog:'Dog'("Fido"), Dog),
+%          py_call(Dog:owner = "Bob"),
+%          py_call(Doc:owner, Owner).
+%       Dog = <py_obj>(0x7ffff7112170),
+%       Owner = "Bob".
 
 %!  py_with_gil(:Goal) is semidet.
 %
@@ -119,7 +128,7 @@ This library implements calling Python from Prolog.
 %   Interpreter Lock). Note that py_call/1,2 also   locks  the GIL. This
 %   predicate is only required if we  wish   to  make  multiple calls to
 %   Python while keeping the GIL. The GIL is a _recursive_ lock and thus
-%   calling py_call/1,2 while hilding the GIL does not _deadlock_.
+%   calling py_call/1,2 while holding the GIL does not _deadlock_.
 
 
 		 /*******************************

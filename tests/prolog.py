@@ -23,9 +23,17 @@ def bench_call(n):
 def echo(d):
     return d
 
-
 class Counter:
     def __init__(self):
         self.count = 0
     def increment(self):
         self.count += 1
+
+gced = 0
+
+class GCAble:
+    def __init__(self):
+        self.created = True;
+    def __del__(self):
+        global gced
+        gced += 1

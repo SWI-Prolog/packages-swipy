@@ -43,6 +43,7 @@
 
 test_janus :-
     run_tests([ janus,
+                janus_gc,
 		python_call_prolog
               ]).
 
@@ -73,6 +74,9 @@ test(bool, Z == true) :-
     py_call(demo:trivial(true), Z).
 test(bool, Z == false) :-
     py_call(demo:trivial(false), Z).
+test(attr, Val = 42) :-
+    py_call(demo:test_attr = 42),
+    py_call(demo:test_attr, Val).
 test(dog, Tricks == ["roll over"]) :-
     py_call(dog:'Dog'('Fido'), Dog),
     py_call(Dog:add_trick("roll over"), _),
@@ -91,6 +95,18 @@ test(dict, error(representation_error(py_dict_key))) :-
     py_call(demo:dict2(), _).
 
 :- end_tests(janus).
+
+:- begin_tests(janus_gc).
+
+test(gc) :-
+    py_call(prolog:gced = 0),
+    forall(between(1, 10 000, _),
+           py_call(prolog:'GCAble'(), _)),
+    garbage_collect_atoms,
+    py_call(prolog:gced, GCed),
+    assertion(GCed > 1 000).
+
+:- end_tests(janus_gc).
 
 :- begin_tests(python_call_prolog).
 

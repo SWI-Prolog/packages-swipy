@@ -670,6 +670,7 @@ py_call(term_t Call, term_t result)
 { PyObject *py_target = NULL;
   term_t call = PL_copy_term_ref(Call);
   term_t on = PL_new_term_ref();
+  term_t val = 0;
   int rc = TRUE;
 
   if ( !py_init() )
@@ -678,6 +679,13 @@ py_call(term_t Call, term_t result)
   PyGILState_STATE state = PyGILState_Ensure();
   if ( delayed )
     delayed_decref(NULL);
+
+  if ( PL_is_functor(call, FUNCTOR_eq2) )
+  { val = PL_new_term_ref();
+    _PL_get_arg(2, call, val);
+    _PL_get_arg(1, call, call);
+  }
+
   while ( PL_is_functor(call, FUNCTOR_module2) )
   { _PL_get_arg(1, call, on);
     _PL_get_arg(2, call, call);
@@ -697,10 +705,29 @@ py_call(term_t Call, term_t result)
     }
   }
 
-  rc = rc && !!(py_target = py_eval(py_target, call));
+  if ( rc )
+  { if ( val )
+    { char *attr;
+      if ( py_target )
+      { if ( (rc=PL_get_chars(call, &attr, CVT_ATOM|CVT_EXCEPTION)) )
+	{ PyObject *py_val;
 
-  if ( rc && result )
-    rc = py_unify_decref(result, py_target);
+	  if ( (rc=py_from_prolog(val, &py_val)) )
+	  { if ( PyObject_SetAttrString(py_target, attr, py_val) == -1 )
+	      rc = !!check_error(NULL);
+	    Py_DECREF(py_val);
+	    if ( rc && result )
+	      rc = PL_unify_atom(result, ATOM_None);
+	  }
+	}
+      } else
+	rc = PL_domain_error("py_attribute", call);
+    } else
+    { rc = !!(py_target = py_eval(py_target, call));
+      if ( rc && result )
+	rc = py_unify_decref(result, py_target);
+    }
+  }
 
   PyGILState_Release(state);
 
