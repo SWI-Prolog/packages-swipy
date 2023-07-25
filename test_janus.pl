@@ -69,11 +69,11 @@ test(concat, Z == "aapno\u0000ot") :-
 test(concat, Z == [1,2,3]) :-
     py_call(demo:concat([1], [2,3]), Z).
 test(dict, Z == py{name:"bob", age:42}) :-
-    py_call(demo:trivial(py{name:"bob", age:42}), Z).
+    py_call(demo:echo(py{name:"bob", age:42}), Z).
 test(bool, Z == true) :-
-    py_call(demo:trivial(true), Z).
+    py_call(demo:echo(true), Z).
 test(bool, Z == false) :-
-    py_call(demo:trivial(false), Z).
+    py_call(demo:echo(false), Z).
 test(attr, Val = 42) :-
     py_call(demo:test_attr = 42),
     py_call(demo:test_attr, Val).
@@ -99,11 +99,11 @@ test(dict, error(representation_error(py_dict_key))) :-
 :- begin_tests(janus_gc).
 
 test(gc) :-
-    py_call(prolog:gced = 0),
+    py_call(demo:gced = 0),
     forall(between(1, 10 000, _),
-           py_call(prolog:'GCAble'(), _)),
+           py_call(demo:'GCAble'(), _)),
     garbage_collect_atoms,
-    py_call(prolog:gced, GCed),
+    py_call(demo:gced, GCed),
     assertion(GCed > 1 000).
 
 :- end_tests(janus_gc).
@@ -111,11 +111,11 @@ test(gc) :-
 :- begin_tests(python_call_prolog).
 
 test(iter, Sum == 500500) :-
-    py_call(prolog:bench_iter(1000), Sum).
+    py_call(demo:bench_iter(1000), Sum).
 test(iter, Sum == 10011) :-
-    py_call(prolog:abort_iter(1000), Sum).
+    py_call(demo:abort_iter(1000), Sum).
 test(iter, Sum == 10011) :-             % Check we didn't mess up the Prolog stack
-    py_call(prolog:abort_iter(1000), Sum).
+    py_call(demo:abort_iter(1000), Sum).
 
 :- end_tests(python_call_prolog).
 

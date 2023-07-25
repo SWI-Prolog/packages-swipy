@@ -202,7 +202,7 @@ on AMD3950X running Ubuntu 22.04, SWI-Prolog 9.1.11 and Python 3.10.6.
 \textbf{Action} & \textbf{Time (seconds)} \\
 \hline
 Echo list with 1,000,000 elements & 0.142 \\
-Call Pyton \exam{sumlist3:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.732 \\
+Call Pyton \exam{demo:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.732 \\
 Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 3.791 \\
 Iterate from Python over Prolog goal \exam{between(1, 1 000 000, X)} & 0.821 \\
 \hline
