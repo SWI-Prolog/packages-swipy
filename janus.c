@@ -116,7 +116,8 @@ static int
 release_python_object(atom_t symbol)
 { PyObject *obj = PL_blob_data(symbol, NULL, NULL );
 
-  MyPy_DECREF(obj);
+  if ( obj )
+    MyPy_DECREF(obj);
   return TRUE;
 }
 
@@ -163,8 +164,11 @@ get_py_obj(term_t t, PyObject **obj, int error)
   PL_blob_t *type;
 
   if ( PL_get_blob(t, &data, &size, &type) && type == &PY_OBJECT )
-  { *(void**)obj = data;
-    return TRUE;
+  { if ( size != 0 )
+    { *(void**)obj = data;
+      return TRUE;
+    } else
+      return PL_existence_error("PyObject", t);
   }
 
   if ( error )
@@ -765,6 +769,28 @@ py_str(term_t t, term_t str)
 }
 
 
+static foreign_t
+py_free(term_t t)
+{ atom_t blob;
+
+  if ( PL_get_atom(t, &blob) )
+  { void *data;
+    size_t size;
+    PL_blob_t *type;
+
+    data = PL_blob_data(blob, &size, &type);
+    (void)data;
+    if ( type == &PY_OBJECT )
+    { if ( size == 0 )
+	return PL_existence_error("PyObject", t);
+      return PL_free_blob(blob);
+    }
+  }
+
+  return PL_type_error("py_obj", t);
+}
+
+
 
 		 /*******************************
 		 *	      REGISTER		*
@@ -792,6 +818,7 @@ install_janus(void)
   PL_register_foreign("py_initialize", 2, py_initialize, 0);
   PL_register_foreign("py_call",       2, py_call,       0);
   PL_register_foreign("py_call",       1, py_call1,      0);
+  PL_register_foreign("py_free",       1, py_free,       0);
   PL_register_foreign("py_with_gil",   1, py_with_gil,   PL_FA_TRANSPARENT);
   PL_register_foreign("py_str",        2, py_str,        0);
 

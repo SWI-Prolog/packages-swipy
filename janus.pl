@@ -35,6 +35,7 @@
 :- module(janus,
           [ py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
+	    py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
             py_str/2,                   % +Obj, -String
             py_initialize/2,            % +Program, +Argv
@@ -121,6 +122,18 @@ This library implements calling Python from Prolog.
 %          py_call(Doc:owner, Owner).
 %       Dog = <py_obj>(0x7ffff7112170),
 %       Owner = "Bob".
+
+%!  py_free(+Obj) is det.
+%
+%   Immediately free (decrement  the  reference   count)  for  th Python
+%   object Obj. Further reference to Obj  using py_call/1,2 or py_free/1
+%   raises an `existence_error`. Note that by decrementing the reference
+%   count, we make the  reference  invalid   from  Prolog.  This may not
+%   actually delete the object because the   object  may have references
+%   inside Python.
+%
+%   Prolog references to Python objects  are   subject  to  atom garbage
+%   collection and thus normally do not need to be freed explicitly.
 
 %!  py_with_gil(:Goal) is semidet.
 %

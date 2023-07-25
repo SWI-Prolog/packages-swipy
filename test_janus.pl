@@ -115,6 +115,31 @@ test(gc) :-
     set_prolog_gc_thread(Old),
     py_call(demo:gced, GCed),
     assertion(GCed > 1 000).
+test(gc, [GCed0,GCed] == [10 000, 10 000]) :-
+    current_prolog_flag(gc_thread, Old),
+    set_prolog_gc_thread(false),
+    garbage_collect_atoms,
+    py_call(demo:gced = 0),
+    forall(between(1, 10 000, _),
+           ( py_call(demo:'GCAble'(), Obj),
+	     py_free(Obj) )),
+    py_call(demo:gced, GCed0),
+    garbage_collect_atoms,
+    set_prolog_gc_thread(Old),
+    py_call(demo:gced, GCed).
+test(free, GCed == 1) :-
+    py_call(demo:gced = 0),
+    py_call(demo:'GCAble'(), Obj),
+    py_free(Obj),
+    py_call(demo:gced, GCed).
+test(free, error(existence_error('PyObject', Obj))) :-
+    py_call(demo:'GCAble'(), Obj),
+    py_free(Obj),
+    py_free(Obj).
+test(free, error(existence_error('PyObject', Obj))) :-
+    py_call(demo:'GCAble'(), Obj),
+    py_free(Obj),
+    py_call(Obj:test = 1).
 
 :- end_tests(janus_gc).
 
