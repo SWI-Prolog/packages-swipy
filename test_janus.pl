@@ -40,6 +40,9 @@
 :- use_module(library(plunit)).
 :- use_module(library(debug)).
 :- use_module(library(apply_macros), []).
+:- use_module(library(filesex), [directory_file_path/3]).
+:- use_module(library(lists), [numlist/3]).
+:- use_module(library(statistics), [time/1]).
 
 test_janus :-
     run_tests([ janus,
@@ -51,8 +54,7 @@ test_janus :-
     source_file(test_janus, File),
     file_directory_name(File, Dir0),
     directory_file_path(Dir0, tests, Dir),
-    writeln(Dir),
-    setenv('PYTHONPATH', Dir).
+    add_py_lib_dir(Dir, first).
 
 :- begin_tests(janus).
 
@@ -98,11 +100,19 @@ test(dict, error(representation_error(py_dict_key))) :-
 
 :- begin_tests(janus_gc).
 
+% This is rather tricky.  If we do not stop the GC thread AGC may
+% already be running and our garbage_collect_atoms/0 call is a dummy.
+% Therefore we stop this thread and restore the old mode after the
+% test.
+
 test(gc) :-
+    current_prolog_flag(gc_thread, Old),
+    set_prolog_gc_thread(false),
     py_call(demo:gced = 0),
     forall(between(1, 10 000, _),
            py_call(demo:'GCAble'(), _)),
     garbage_collect_atoms,
+    set_prolog_gc_thread(Old),
     py_call(demo:gced, GCed),
     assertion(GCed > 1 000).
 

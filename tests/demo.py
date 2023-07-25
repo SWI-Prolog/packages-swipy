@@ -73,4 +73,7 @@ class GCAble:
         self.created = True;
     def __del__(self):
         global gced
+#       if ( gced == 0 ):
+#           print(self)
         gced += 1
+
