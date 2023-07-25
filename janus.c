@@ -595,7 +595,7 @@ py_eval(PyObject *obj, term_t func)
   PyObject *py_res = NULL;
 
   if ( PL_get_chars(func, &attr, CVT_ATOM) )
-  { return PyObject_GetAttrString(obj, attr);
+  { return check_error(PyObject_GetAttrString(obj, attr));
   } else if ( PL_get_name_arity(func, &fname, &arity) )
   { PyObject *py_func = NULL;
     PyObject *py_argv = NULL;
