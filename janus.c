@@ -71,14 +71,11 @@ typedef struct py_delayed
   struct py_delayed *next;
 } py_delayed;
 
-static int scheduled = 0;
 static py_delayed *delayed;
 
 static int
 delayed_decref(void *ptr)
 { py_delayed *d = delayed;
-
-  scheduled = 0;
 
   if ( __sync_bool_compare_and_swap(&delayed, d, NULL) )
   { py_delayed *n;
@@ -93,7 +90,7 @@ delayed_decref(void *ptr)
   return 0;
 }
 
-void
+static void
 MyPy_DECREF(PyObject *o)
 { if ( PyGILState_Check() )
   { Py_DECREF(o);
@@ -101,14 +98,13 @@ MyPy_DECREF(PyObject *o)
   { py_delayed *d = malloc(sizeof(*d));
     py_delayed *old;
 
-    d->obj = o;
-    do
-    { old = delayed;
-      d->next = old;
-    } while ( !__sync_bool_compare_and_swap(&delayed, old, d) );
-
-    if ( __sync_bool_compare_and_swap(&scheduled, 0, 1) )
-      Py_AddPendingCall(delayed_decref, NULL);
+    if ( d )
+    { d->obj = o;
+      do
+      { old = delayed;
+	d->next = old;
+      } while ( !__sync_bool_compare_and_swap(&delayed, old, d) );
+    }
   }
 }
 
@@ -680,6 +676,8 @@ py_call(term_t Call, term_t result)
     return FALSE;
 
   PyGILState_STATE state = PyGILState_Ensure();
+  if ( delayed )
+    delayed_decref(NULL);
   while ( PL_is_functor(call, FUNCTOR_module2) )
   { _PL_get_arg(1, call, on);
     _PL_get_arg(2, call, call);
