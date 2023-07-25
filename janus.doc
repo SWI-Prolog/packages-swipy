@@ -258,6 +258,9 @@ ways.  We summarize the differences below
          \arg{Obj}:\arg{Func1}:\arg{Func2}:...  It also allows calling
          \jargon{built-in} functions such as print() by omiting the
          module or object.
+
+	 Finally, it allow setting attributes using py_call(Obj:Attr =
+	 Value)
    \item Data translation differs:
    \begin{itemize}
        \item Numbers are handled the same
@@ -284,6 +287,7 @@ ways.  We summarize the differences below
          px_cmd() and px_comp(), where px_comp() returns multiple
          solutions as a list.  We provide once() and a Python
          \jargon{iterator} by means of the class Prolog().
+   \item py_free/1 is identical to free_python_object/1 in XSB.
 \end{itemize}
 
 
