@@ -35,6 +35,7 @@
 :- module(janus,
           [ py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
+	    py_with_gil/1,		% :Goal
             py_str/2,                   % +Obj, -String
             py_initialize/2,            % +Program, +Argv
             py_lib_dirs/1,              % -Dirs
@@ -43,6 +44,7 @@
             py_shell/0
           ]).
 :- use_foreign_library(foreign(janus)).
+:- meta_predicate py_with_gil(0).
 
 :- public
     py_initialize/0,
@@ -110,6 +112,14 @@ This library implements calling Python from Prolog.
 %       true.
 %       ?- py_call($Dog:tricks, Tricks).
 %       Tricks = ["roll_over"]
+
+%!  py_with_gil(:Goal) is semidet.
+%
+%   Run Goal as  once(Goal)  while  holding   the  Phyton  GIL  (_Global
+%   Interpreter Lock). Note that py_call/1,2 also   locks  the GIL. This
+%   predicate is only required if we  wish   to  make  multiple calls to
+%   Python while keeping the GIL. The GIL is a _recursive_ lock and thus
+%   calling py_call/1,2 while hilding the GIL does not _deadlock_.
 
 
 		 /*******************************

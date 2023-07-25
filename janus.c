@@ -674,10 +674,12 @@ py_call(term_t Call, term_t result)
 { PyObject *py_target = NULL;
   term_t call = PL_copy_term_ref(Call);
   term_t on = PL_new_term_ref();
+  int rc = TRUE;
 
   if ( !py_init() )
     return FALSE;
 
+  PyGILState_STATE state = PyGILState_Ensure();
   while ( PL_is_functor(call, FUNCTOR_module2) )
   { _PL_get_arg(1, call, on);
     _PL_get_arg(2, call, call);
@@ -685,26 +687,41 @@ py_call(term_t Call, term_t result)
     if ( !py_target )
     { if ( !get_py_obj(on, &py_target, FALSE) &&
 	   !get_py_module(on, &py_target) )
-	return PL_type_error("py_target", on);
+      { rc = PL_type_error("py_target", on);
+	break;
+      }
       Py_INCREF(py_target);
     } else
     { if ( !(py_target = py_eval(py_target, on)) )
-	return FALSE;
+      { rc = FALSE;
+	break;
+      }
     }
   }
 
-  if ( !(py_target = py_eval(py_target, call)) )
-    return FALSE;
+  rc = rc && !!(py_target = py_eval(py_target, call));
 
-  if ( result )
-    return py_unify_decref(result, py_target);
-  else
-    return TRUE;
+  if ( rc && result )
+    rc = py_unify_decref(result, py_target);
+
+  PyGILState_Release(state);
+
+  return rc;
 }
 
 static foreign_t
 py_call1(term_t Call)
 { return py_call(Call, 0);
+}
+
+
+static foreign_t
+py_with_gil(term_t goal)
+{ PyGILState_STATE state = PyGILState_Ensure();
+  int rc = PL_call(goal, NULL);
+  PyGILState_Release(state);
+
+  return rc;
 }
 
 
@@ -750,6 +767,7 @@ install_janus(void)
   PL_register_foreign("py_initialize", 2, py_initialize, 0);
   PL_register_foreign("py_call",       2, py_call,       0);
   PL_register_foreign("py_call",       1, py_call1,      0);
+  PL_register_foreign("py_with_gil",   1, py_with_gil,   PL_FA_TRANSPARENT);
   PL_register_foreign("py_str",        2, py_str,        0);
 
   if ( PyImport_AppendInittab("swipl", PyInit_swipl) == -1 )
