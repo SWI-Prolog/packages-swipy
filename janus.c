@@ -551,9 +551,36 @@ py_initialize(term_t prog, term_t argv)
 
   if ( !PL_get_wchars(prog, NULL, &pname, CVT_TEXT_EX) )
     return FALSE;
+
+#if PY_VERSION_HEX < 0x03080000
   Py_SetProgramName(pname);
   Py_Initialize();
+#else
+  PyStatus status;
+  PyConfig config;
 
+  PyConfig_InitPythonConfig(&config);
+  status = PyConfig_SetString(&config, &config.program_name, pname);
+  if ( PyStatus_Exception(status) )
+  { Sdprintf("python exception in PyConfig_SetString(.. program_name ..): %s%s%s",
+	     (status.func?status.func:""), (status.func?": ":""),
+	     (status.err_msg?status.err_msg:""));
+    PyConfig_Clear(&config);
+    check_error(NULL);
+    return FALSE;
+  }
+  config.site_import = 0;
+  status = Py_InitializeFromConfig(&config);
+  if ( PyStatus_Exception(status) )
+  { Sdprintf("python exception in Py_InitializeFromConfig: %s%s%s",
+	     (status.func?status.func:""), (status.func?": ":""),
+	     (status.err_msg?status.err_msg:""));
+    PyConfig_Clear(&config);
+    check_error(NULL);
+    return FALSE;
+  }
+  PyConfig_Clear(&config);
+#endif
   py_initialize_done = TRUE;
 
   return TRUE;
