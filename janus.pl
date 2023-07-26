@@ -174,6 +174,15 @@ py_initialize :-
     add_py_lib_dir(PythonDir, first).
 
 
+%!  py_version is det.
+%
+%   Print version info on the available Python installation
+
+py_version :-
+    py_call(sys:version, X),
+    print_message(information, py_version(X)).
+
+
 		 /*******************************
 		 *           CALLBACK		*
 		 *******************************/
@@ -247,7 +256,9 @@ py_shell :-
 		 *           MESSAGES		*
 		 *******************************/
 
-:- multifile prolog:error_message//1.
+:- multifile
+    prolog:error_message//1,
+    prolog:message//1.
 
 prolog:error_message(python_error(Type, Value, _Stack)) -->
     { py_str(Type, PType),
@@ -256,3 +267,6 @@ prolog:error_message(python_error(Type, Value, _Stack)) -->
     [ 'Python error ~w:'-[PType], nl,
       '  ~w'-[PValue]
     ].
+
+prolog:message(py_version(V)) -->
+    [ 'Janus embeds Python ~w'-[V] ].
