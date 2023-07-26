@@ -39,11 +39,23 @@
 	    py_with_gil/1,		% :Goal
             py_str/2,                   % +Obj, -String
             py_initialize/2,            % +Program, +Argv
+            py_version/0,
             py_lib_dirs/1,              % -Dirs
             add_py_lib_dir/1,           % +Dir
             add_py_lib_dir/2,           % +Dir,+Where
             py_shell/0
           ]).
+:- if(current_prolog_flag(windows, true)).
+% just having the Python dir in PATH seems insufficient.  Note that
+% this probably does not yet deal with the requirement to have the
+% same version of Python installed than was used to build janus.
+add_python_dll_dir :-
+    absolute_file_name(path('python3.dll'), DLL, [access(read)]),
+    file_directory_name(DLL, Dir),
+    win_add_dll_directory(Dir).
+:- initialization(add_python_dll_dir, now).
+:- endif.
+
 :- use_foreign_library(foreign(janus)).
 :- meta_predicate py_with_gil(0).
 
