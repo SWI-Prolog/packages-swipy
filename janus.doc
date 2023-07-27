@@ -164,18 +164,30 @@ def printRange(from, to):
 \end{code}
 
 \begin{description}
-    \cfunction{dict}{janus.once}{query, bindings}
+    \cfunction{dict}{janus.once}{query, bindings={}, keep=False}
 Call \arg{query} using \arg{bindings} as once/1, returning a dict with
-the resulting bindings.  If \arg{query} fails, the variables of the
-query are bound to the Python constant \const{None}.  The \arg{bindings}
-object includes a key \const{status}\footnote{As this name is not a
-valid Prolog variable name, this cannot be ambiguous.} that has the
-value \const{False} (query failed, all bindings are \const{None}),
-\const{True} (query succeeded, variables are bound to the result
-converting Prolog data to Python) or \verb$'Undefined'$, a Python
-string that indicates the answer is undefined according to the
-\jargon{Well Founded Semantics}.  See e.g., undefined/0.  For
-example
+the resulting bindings. If \arg{bindings} is omitted, no variables are
+bound. The \arg{keep} parameter determines whether or not Prolog
+discards all backtrackable changes.  By default, such changes are
+discarded and as a result, changes to backtrackable global variables
+are lost.  Using \const{True}, such changes are preserved.
+
+\begin{code}
+>>> once("b_setval(a, 1)", keep=True)
+{'status': 'True'}
+>>> once("b_getval(a, X)")
+{'status': 'True', 'X': 1}
+\end{code}
+
+If \arg{query} fails, the variables of the query are bound to the Python
+constant \const{None}. The \arg{bindings} object includes a key
+\const{status}\footnote{As this name is not a valid Prolog variable
+name, this cannot be ambiguous.} that has the value \const{False} (query
+failed, all bindings are \const{None}), \const{True} (query succeeded,
+variables are bound to the result converting Prolog data to Python) or
+\verb$'Undefined'$, a Python string that indicates the answer is
+undefined according to the \jargon{Well Founded Semantics}. See e.g.,
+undefined/0. For example
 
 \begin{code}
 >>> from janus import *
