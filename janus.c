@@ -546,44 +546,64 @@ py_init(void)
 }
 
 static foreign_t
-py_initialize(term_t prog, term_t argv)
+py_initialize(term_t prog, term_t Argv)
 { wchar_t *pname;
+  size_t argc;
+  wchar_t **argv = NULL;
+  term_t tail = PL_copy_term_ref(Argv);
+  term_t head = PL_new_term_ref();
+  int rc = FALSE;
 
+  PL_STRINGS_MARK();
   if ( !PL_get_wchars(prog, NULL, &pname, CVT_TEXT_EX) )
-    return FALSE;
+    goto failed;
+  if ( PL_skip_list(Argv, 0, &argc) != PL_LIST )
+  { PL_type_error("list", Argv);
+    goto failed;
+  }
+  if ( !(argv = malloc((argc+1)*sizeof(*argv))) )
+  { PL_resource_error("memory");
+    goto failed;
+  }
+  for(size_t i=0; i<argc; i++)
+  { if ( !PL_get_list_ex(tail, head, tail) ||
+	 !PL_get_wchars(head, NULL, &argv[i], CVT_TEXT_EX) )
+      goto failed;
+  }
 
 #if PY_VERSION_HEX < 0x03080000
   Py_SetProgramName(pname);
   Py_Initialize();
 #else
-  PyStatus status;
   PyConfig config;
 
+#define PYTRY(g) if ( PyStatus_Exception(g) ) goto py_error;
+
   PyConfig_InitPythonConfig(&config);
-  status = PyConfig_SetString(&config, &config.program_name, pname);
-  if ( PyStatus_Exception(status) )
-  { Sdprintf("python exception in PyConfig_SetString(.. program_name ..): %s%s%s",
-	     (status.func?status.func:""), (status.func?": ":""),
-	     (status.err_msg?status.err_msg:""));
-    PyConfig_Clear(&config);
-    check_error(NULL);
-    return FALSE;
-  }
-  config.site_import = 0;
-  status = Py_InitializeFromConfig(&config);
-  if ( PyStatus_Exception(status) )
-  { Sdprintf("python exception in Py_InitializeFromConfig: %s%s%s",
-	     (status.func?status.func:""), (status.func?": ":""),
-	     (status.err_msg?status.err_msg:""));
-    PyConfig_Clear(&config);
-    check_error(NULL);
-    return FALSE;
-  }
+  PYTRY(PyConfig_SetString(&config, &config.program_name, pname));
+  PYTRY(PyConfig_SetArgv(&config, argc, argv));
+  PYTRY(Py_InitializeFromConfig(&config));
+
   PyConfig_Clear(&config);
 #endif
   py_initialize_done = TRUE;
+  rc = TRUE;
+  goto succeeded;
 
-  return TRUE;
+py_error:
+  check_error(NULL);
+  PL_warning("Python initialization failed");
+  PyConfig_Clear(&config);
+
+failed:
+  rc = FALSE;
+
+succeeded:
+  if ( argv )
+    free(argv);
+  PL_STRINGS_RELEASE();
+
+  return rc;
 }
 
 
