@@ -7,16 +7,22 @@ here.
     add_py_lib_dir(Dir, first).
 
 bench(N) :-
-    bench_py_call(N),
+    bench_py_call_int(N),
+    bench_py_call_sumlist(N),
     bench_iter(N, _),
     bench_call_prolog(N),
     bench_echo_list(N),
     bench_pass_list(N).
 
-bench_py_call(N) :-
-    ansi_format(bold, 'Calling python function ~D times~n', [N]),
+bench_py_call_int(N) :-
+    ansi_format(bold, 'Calling python int() ~D times~n', [N]),
     time(forall(between(1,N,_I),
                 py_call(demo:int(), _L))).
+
+bench_py_call_sumlist(N) :-
+    ansi_format(bold, 'Calling python sumlist3(5,[1,2,3]) ~D times~n', [N]),
+    time(forall(between(1,N,_I),
+                py_call(demo:sumlist3(5,[1,2,3]), _L))).
 
 bench_iter(N, Sum) :-
     ansi_format(bold, 'Iterate over Prolog goal with ~D answers~n', [N]),

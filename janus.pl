@@ -38,7 +38,7 @@
 	    py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
             py_str/2,                   % +Obj, -String
-            py_initialize/2,            % +Program, +Argv
+            py_initialize/3,            % +Program, +Argv, +Options
             py_version/0,
             py_lib_dirs/1,              % -Dirs
             add_py_lib_dir/1,           % +Dir
@@ -161,17 +161,37 @@ This library implements calling Python from Prolog.
 		 *******************************/
 
 %!  py_initialize is det.
-%!  py_initialize(+Program, +Argv) is det.
 %
-%   Initialize the embedded Python system.
+%   Used as a callback from C for lazy initialization of Python.
 
 py_initialize :-
-    current_prolog_flag(os_argv, [Program|Argv]),
-    py_initialize(Program, Argv),
-    absolute_file_name(library('python/janus.py'), Janus,
-                       [ access(read) ]),
-    file_directory_name(Janus, PythonDir),
-    add_py_lib_dir(PythonDir, first).
+    current_prolog_flag(executable, Program),
+    current_prolog_flag(argv, Argv),
+    py_initialize(Program, Argv, []).
+
+%!  py_initialize(+Program, +Argv, +Options) is det.
+%
+%   Initialize  and configure  the  embedded Python  system.  If  this
+%   predicate is  not called before any  other call to Python  such as
+%   py_call/2, it is called _lazily_, passing the Prolog executable as
+%   Program, the  non-Prolog arguments  as Argv  and an  empty Options
+%   list.
+%
+%   Calling this predicate while the  Python is already initialized is
+%   a no-op.   This predicate is  thread-safe, where the  first thread
+%   initializes Python.
+%
+%   @arg Options is currently ignored.  It will be used to provide
+%   additional configuration options.
+
+py_initialize(Program, Argv, Options) :-
+    (   py_initialize_(Program, Argv, Options)
+    ->  absolute_file_name(library('python/janus.py'), Janus,
+			   [ access(read) ]),
+	file_directory_name(Janus, PythonDir),
+	add_py_lib_dir(PythonDir, first)
+    ;   true
+    ).
 
 
 %!  py_version is det.

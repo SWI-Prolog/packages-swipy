@@ -32,6 +32,7 @@
     POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <config.h>
 #include <SWI-Prolog.h>
 #include <SWI-Stream.h>
 #include <Python.h>
@@ -62,6 +63,17 @@ static void py_resume(void);
 
 #include "hash.c"
 #include "pymod.c"
+
+#ifdef _REENTRANT
+#include <pthread.h>
+
+static pthread_mutex_t crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define LOCK() pthread_mutex_lock(&crypt_mutex)
+#define UNLOCK() pthread_mutex_unlock(&crypt_mutex)
+#else
+#define LOCK()
+#define UNLOCK()
+#endif
 
 		 /*******************************
 		 *          DEBUGGING           *
@@ -562,13 +574,19 @@ py_init(void)
 }
 
 static foreign_t
-py_initialize(term_t prog, term_t Argv)
+py_initialize_(term_t prog, term_t Argv, term_t options)
 { wchar_t *pname;
   size_t argc;
   wchar_t **argv = NULL;
   term_t tail = PL_copy_term_ref(Argv);
   term_t head = PL_new_term_ref();
   int rc = FALSE;
+
+  LOCK();
+  if ( py_initialize_done )
+  { UNLOCK();
+    return FALSE;
+  }
 
   PL_STRINGS_MARK();
   if ( !PL_get_wchars(prog, NULL, &pname, CVT_TEXT_EX) )
@@ -618,6 +636,7 @@ succeeded:
   if ( argv )
     free(argv);
   PL_STRINGS_RELEASE();
+  UNLOCK();
 
   return rc;
 }
@@ -771,8 +790,7 @@ py_call(term_t Call, term_t result)
   }
 
   PyGILState_Release(state);
-  if ( PyGILState_GetThisThreadState() )
-    py_yield();
+  py_yield();
 
   return rc;
 }
@@ -786,10 +804,10 @@ py_call1(term_t Call)
 static foreign_t
 py_with_gil(term_t goal)
 { py_resume();
-
   PyGILState_STATE state = PyGILState_Ensure();
   int rc = PL_call(goal, NULL);
   PyGILState_Release(state);
+  py_yield();
 
   return rc;
 }
@@ -808,6 +826,7 @@ py_str(term_t t, term_t str)
     rc = py_unify_decref(str, s);
   }
   PyGILState_Release(state);
+  py_yield();
 
   return rc;
 }
@@ -844,7 +863,7 @@ static __thread py_state_t py_state;
 
 static void
 py_yield(void)
-{ if ( !py_state.yielded )
+{ if ( !py_state.yielded && PyGILState_GetThisThreadState() )
   { DEBUG(1, Sdprintf("Yielding ..."));
     py_state.state = PyEval_SaveThread();
     DEBUG(1, Sdprintf("ok\n"));
@@ -886,13 +905,13 @@ install_janus(void)
   FUNCTOR_eq2 = PL_new_functor(PL_new_atom("="), 2);
   FUNCTOR_hash1 = PL_new_functor(PL_new_atom("#"), 1);
 
-  PL_register_foreign("py_initialize", 2, py_initialize, 0);
-  PL_register_foreign("py_call",       2, py_call,       0);
-  PL_register_foreign("py_call",       1, py_call1,      0);
-  PL_register_foreign("py_free",       1, py_free,       0);
-  PL_register_foreign("py_with_gil",   1, py_with_gil,   PL_FA_TRANSPARENT);
-  PL_register_foreign("py_str",        2, py_str,        0);
-  PL_register_foreign("py_debug",      1, py_debug,      0);
+  PL_register_foreign("py_initialize_", 3, py_initialize_, 0);
+  PL_register_foreign("py_call",        2, py_call,        0);
+  PL_register_foreign("py_call",        1, py_call1,       0);
+  PL_register_foreign("py_free",        1, py_free,        0);
+  PL_register_foreign("py_with_gil",    1, py_with_gil,    PL_FA_TRANSPARENT);
+  PL_register_foreign("py_str",         2, py_str,         0);
+  PL_register_foreign("py_debug",       1, py_debug,       0);
 
   if ( PyImport_AppendInittab("swipl", PyInit_swipl) == -1 )
     Sdprintf("Failed to add module swipl to Python");

@@ -171,6 +171,44 @@ Consult the given \arg{file}.  Implemented as
 
 \end{description}
 
+\section{Janus and threads}
+\label{sec:janus-threads}
+
+Where SWI-Prolog support native premptively scheduled threads that
+exploit multiple cores, Python has a single interpreter that can switch
+between native threads.\footnote{Actually, you can create multiple
+Python interpreters. It is not yet clear to us whether that can help
+improving on concurrency.} Initially the Python interpreter is
+associated with the thread that created it which, for janus, is the
+first thread calling Python. Janus uses PyGILState_Ensure() and
+PyGILState_Release() around calls to e.g. py_call/2. In addition, the
+thread that created Python releases its interpreter after every call
+from Prolog on Python. As a result:
+
+\begin{itemize}
+    \item Multiple Prolog threads can make calls to Python.  The
+    access to Python is \jargon{serialized}.  If a Prolog thread
+    does not want other threads to use Python it can use
+    py_with_gil/1.  When multiple Prolog threads make many
+    calls to Python performance tends to drop significantly.
+
+    \item Multiple Python threads can make calls to Prolog.  As
+    Python uses only one core at the same time, Prolog working
+    on behalve of Python \jargon{synchronously} only uses one
+    core.  Prolog threads not related to Python can proceed
+    on other cores.
+
+    \item Python threading is \jargon{cooperative}.  At the
+    moment, a thread Python thread running Prolog will not
+    allow other Python threads to make progress.  Possibly that
+    can be improved in the future.
+
+    \item It appears to be possible to initialize Python in a
+    thread.   Python remains accessible from other threads after
+    the initializing thread has terminated.
+\end{itemize}
+
+
 \section{Janus error handling}
 \label{sec:janus-errors}
 
@@ -201,10 +239,11 @@ on AMD3950X running Ubuntu 22.04, SWI-Prolog 9.1.11 and Python 3.10.6.
 \hline
 \textbf{Action} & \textbf{Time (seconds)} \\
 \hline
-Echo list with 1,000,000 elements & 0.142 \\
-Call Pyton \exam{demo:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.732 \\
-Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 3.791 \\
-Iterate from Python over Prolog goal \exam{between(1, 1 000 000, X)} & 0.821 \\
+Echo list with 1,000,000 elements & 0.121 \\
+Call Pyton \exam{demo:int()} from Prolog 1,000,000 times & 0.551 \\
+Call Pyton \exam{demo:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.555 \\
+Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 3.388 \\
+Iterate from Python over Prolog goal \exam{between(1, 1 000 000, X)} & 0.752 \\
 \hline
 \end{tabular}
 \end{center}

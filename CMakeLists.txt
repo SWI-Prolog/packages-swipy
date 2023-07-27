@@ -24,6 +24,8 @@ swipl_plugin(
     PL_LIB_SUBDIR python
         PL_LIBS ${PYTHON_FILES})
 
+configure_file(config.h.cmake config.h)
+
 test_libs(
     janus
     PACKAGES plunit
