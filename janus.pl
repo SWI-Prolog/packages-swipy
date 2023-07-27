@@ -33,7 +33,8 @@
 */
 
 :- module(janus,
-          [ py_call/1,                  % +Call
+          [ py_run/4,                   % +String, +Globals, +Locals, -Return
+	    py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
 	    py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal

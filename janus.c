@@ -661,6 +661,14 @@ py_eval(PyObject *obj, term_t func)
     } else
     { PyObject *builtins = PyEval_GetBuiltins();
       py_func = PyDict_GetItemString(builtins , PL_atom_chars(fname));
+      if ( !py_func )
+      { term_t fn;
+
+	if ( (fn=PL_new_term_ref()) &&
+	     PL_put_atom(fn, fname) )
+	  PL_existence_error("python_builtin", fn);
+      }
+
       Py_DECREF(builtins);
     }
     if ( !py_func )
@@ -803,13 +811,53 @@ py_call1(term_t Call)
 
 static foreign_t
 py_with_gil(term_t goal)
-{ py_resume();
+{ if ( !py_init() )
+    return FALSE;
+
+  py_resume();
   PyGILState_STATE state = PyGILState_Ensure();
   int rc = PL_call(goal, NULL);
   PyGILState_Release(state);
   py_yield();
 
   return rc;
+}
+
+
+static foreign_t
+py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
+{ char *cmd;
+
+  if ( PL_get_chars(Cmd, &cmd, CVT_ATOM|CVT_STRING|CVT_LIST|CVT_EXCEPTION) )
+  { PyObject *locals=NULL, *globals=NULL;
+    PyObject *result;
+    int rc;
+
+    if ( !py_init() )
+      return FALSE;
+
+    py_resume();
+    PyGILState_STATE state = PyGILState_Ensure();
+
+    if ( (rc = (py_from_prolog(Globals, &globals) &&
+		py_from_prolog(Locals, &locals))) )
+    { result = PyRun_StringFlags(cmd, Py_file_input, globals, locals, NULL);
+
+      if ( result )
+	rc = py_unify_decref(Result, result);
+      else
+	rc = !!check_error(result);
+    }
+
+    Py_CLEAR(locals);
+    Py_CLEAR(globals);
+    PyGILState_Release(state);
+    py_yield();
+
+    return rc;
+  }
+
+  return FALSE;
 }
 
 
@@ -908,6 +956,7 @@ install_janus(void)
   PL_register_foreign("py_initialize_", 3, py_initialize_, 0);
   PL_register_foreign("py_call",        2, py_call,        0);
   PL_register_foreign("py_call",        1, py_call1,       0);
+  PL_register_foreign("py_run",         4, py_run,         0);
   PL_register_foreign("py_free",        1, py_free,        0);
   PL_register_foreign("py_with_gil",    1, py_with_gil,    PL_FA_TRANSPARENT);
   PL_register_foreign("py_str",         2, py_str,         0);
