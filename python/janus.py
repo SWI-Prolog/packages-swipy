@@ -22,6 +22,15 @@ def consult(file):
 
 def interact():
     import code
-    code.InteractiveConsole(locals=globals()).interact();
+    try:
+        import readline
+        import rlcompleter
+        readline.set_completer(rlcompleter.Completer(vars).complete)
+        readline.parse_and_bind("tab: complete")
+    except:
+        pass
+    vars = globals()
+    vars.update(locals())
+    code.InteractiveConsole(vars).interact();
 
     
