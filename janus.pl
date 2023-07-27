@@ -33,10 +33,10 @@
 */
 
 :- module(janus,
-          [ py_run/4,                   % +String, +Globals, +Locals, -Return
-	    py_call/1,                  % +Call
+          [ py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
-	    py_free/1,			% +Obj
+            py_run/4,                   % +String, +Globals, +Locals, -Return
+            py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
             py_str/2,                   % +Obj, -String
             py_initialize/3,            % +Program, +Argv, +Options
@@ -135,6 +135,11 @@ This library implements calling Python from Prolog.
 %          py_call(Doc:owner, Owner).
 %       Dog = <py_obj>(0x7ffff7112170),
 %       Owner = "Bob".
+
+%!  py_run(+String, +Globals, +Locals, -Result) is det.
+%
+%   Interface to PyRun_String(). Currently   using \const{Py_file_input}
+%   as _first token_. Unclear what we can do with this.
 
 %!  py_free(+Obj) is det.
 %
@@ -279,9 +284,20 @@ add_py_lib_dir(Dir, Where) :-
 %!  py_shell
 %
 %   Start an interactive Python REPL  loop   using  the  embedded Python
-%   interpreter.
+%   interpreter. The interpreter first imports `janus` as below.
+%
+%       from janus import *
+%
+%   So, we can do
+%
+%       ?- py_shell.
+%       ...
+%       >>> once("writeln(X)", {"X":"Hello world"})
+%       Hello world
+%       {'status': 'True'}
 
 py_shell :-
+    py_run("from janus import *", _{}, _{}, _),
     py_call(janus:interact(), _).
 
 

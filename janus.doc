@@ -115,7 +115,7 @@ and returns \jargon{output bindings}.  For example
 \begin{code}
 >>> from janus import *
 >>> once("Y is X+1", {"X":1})
-{'Y': 2}
+{'Y': 2, 'status': True}
 \end{code}
 
 Note that the input argument may also be added literally. Below we give
@@ -126,10 +126,10 @@ the input dictionary, especially if the data is large.
 
 \begin{code}
 >>> janus.once("Y is 1+1", {})
-{'Y': 2}
+{'Y': 2, 'status': True}
 >>> x = 1
 >>> janus.once(f"Y is {x}+1", {})
-{'Y': 2}
+{'Y': 2, 'status': True}
 \end{code}
 
 Using a dict for input and output together with a (short) string to
@@ -150,7 +150,10 @@ variables or arbitrary compound terms.
 
 The class \ctype{janus.Query} implements a Python \jargon{iterator} that
 iterates over the solutions of a Prolog goal. The iterator may be
-aborted using the Python \exam{break} statement.
+aborted using the Python \exam{break} statement.  As with janus.once(),
+the returned dict contains a \const{status} field.  This field cannot
+be \const{False} though and thus is either \const{True} or the string
+\verb$'Undefined'$.
 
 \begin{code}
 from janus import *
@@ -161,14 +164,28 @@ def printRange(from, to):
 \end{code}
 
 \begin{description}
-    \cfunction{dict|False}{janus.once}{query, bindings}
-Call \arg{query} using \arg{bindings} as once/1, returning either
-a dict with resulting bindings or \const{False}.
+    \cfunction{dict}{janus.once}{query, bindings}
+Call \arg{query} using \arg{bindings} as once/1, returning a dict with
+the resulting bindings.  If \arg{query} fails, the variables of the
+query are bound to the Python constant \const{None}.  The \arg{bindings}
+object includes a key \const{status}\footnote{As this name is not a
+valid Prolog variable name, this cannot be ambiguous.} that has the
+value \const{False} (query failed, all bindings are \const{None}),
+\const{True} (query succeeded, variables are bound to the result
+converting Prolog data to Python) or \verb$'Undefined'$, a Python
+string that indicates the answer is undefined according to the
+\jargon{Well Founded Semantics}.  See e.g., undefined/0.  For
+example
+
+\begin{code}
+>>> from janus import *
+>>> once("undefined")
+{'status': 'Undefined'}
+\end{code}
 
     \cfunction{None}{janus.consult}{file}
 Consult the given \arg{file}.  Implemented as
 \exam{janus.once("consult(File)", {"File":file})}.
-
 \end{description}
 
 \section{Janus and threads}
