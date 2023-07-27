@@ -101,7 +101,8 @@ swipl_call(PyObject *self, PyObject *args)
 
     if ( py_unify(av+0, PyTuple_GetItem(args, 0)) &&
 	 unify_input(av+1, arity, args) )
-    { qid_t qid = PL_open_query(user, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS, pred, av);
+    { qid_t qid = PL_open_query(user, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS,
+				pred, av);
       int rc = PL_next_solution(qid);
       switch(rc)
       { case PL_S_TRUE:

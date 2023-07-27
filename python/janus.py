@@ -7,7 +7,7 @@ class Query:
         return self
     def __next__(self):
         rc = swipl.next_solution(self.state)
-        if rc == False:
+        if rc == False or rc["status"] == False:
             raise StopIteration()
         else:
             return rc

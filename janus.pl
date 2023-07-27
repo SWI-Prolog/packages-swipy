@@ -212,13 +212,25 @@ py_version :-
 py_call_string(M:String, Input, Dict) :-
     term_string(Goal, String, [variable_names(Map)]),
     exclude(not_in_projection(Input), Map, Map1),
-    dict_create(Dict, bindings, Map1),
-    call(M:Goal).
+    dict_create(Dict, bindings, [status:Status|Map1]),
+    (   call(M:Goal)
+    *-> bind_status(Status)
+    ;   Status = 'False',
+	maplist(bind_none, Map1)
+    ).
 
 not_in_projection(Input, Name=Value) :-
     (   get_dict(Name, Input, Value)
     ->  true
     ;   sub_atom(Name, 0, _, _, '_')
+    ).
+
+bind_none(_='None').
+
+bind_status(Status) :-
+    (   '$tbl_delay_list'([])
+    ->  Status = 'True'
+    ;   Status = "Undefined"
     ).
 
 
