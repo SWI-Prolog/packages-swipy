@@ -82,6 +82,7 @@ static PyObject *
 swipl_call(PyObject *self, PyObject *args)
 { PyObject *out = NULL;
   static predicate_t pred = NULL;
+  static module_t user = 0;
   fid_t fid;
   Py_ssize_t arity = PyTuple_GET_SIZE(args);
 
@@ -91,14 +92,16 @@ swipl_call(PyObject *self, PyObject *args)
   }
 
   if ( !pred )
-    pred = PL_predicate("py_call_string", 3, "janus");
+  { pred = PL_predicate("py_call_string", 3, "janus");
+    user = PL_new_module(PL_new_atom("user"));
+  }
 
   if ( (fid=PL_open_foreign_frame()) )
   { term_t av = PL_new_term_refs(3);
 
     if ( py_unify(av+0, PyTuple_GetItem(args, 0)) &&
 	 unify_input(av+1, arity, args) )
-    { qid_t qid = PL_open_query(NULL, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS, pred, av);
+    { qid_t qid = PL_open_query(user, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS, pred, av);
       int rc = PL_next_solution(qid);
       switch(rc)
       { case PL_S_TRUE:
