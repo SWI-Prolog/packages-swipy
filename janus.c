@@ -54,6 +54,7 @@ static int py_initialize_done = FALSE;
 static PyObject *check_error(PyObject *obj);
 static int py_unify(term_t t, PyObject *obj);
 static int py_from_prolog(term_t t, PyObject **obj);
+static void py_yield(void);
 static void py_resume(void);
 
 #define U_AS_TERM	0x1
@@ -770,6 +771,8 @@ py_call(term_t Call, term_t result)
   }
 
   PyGILState_Release(state);
+  if ( PyGILState_GetThisThreadState() )
+    py_yield();
 
   return rc;
 }
@@ -839,7 +842,7 @@ typedef struct
 
 static __thread py_state_t py_state;
 
-static foreign_t
+static void
 py_yield(void)
 { if ( !py_state.yielded )
   { DEBUG(1, Sdprintf("Yielding ..."));
@@ -847,8 +850,6 @@ py_yield(void)
     DEBUG(1, Sdprintf("ok\n"));
     py_state.yielded = TRUE;
   }
-
-  return TRUE;
 }
 
 static void
@@ -889,7 +890,6 @@ install_janus(void)
   PL_register_foreign("py_call",       2, py_call,       0);
   PL_register_foreign("py_call",       1, py_call1,      0);
   PL_register_foreign("py_free",       1, py_free,       0);
-  PL_register_foreign("py_yield",      0, py_yield,      0);
   PL_register_foreign("py_with_gil",   1, py_with_gil,   PL_FA_TRANSPARENT);
   PL_register_foreign("py_str",        2, py_str,        0);
   PL_register_foreign("py_debug",      1, py_debug,      0);

@@ -36,7 +36,6 @@
           [ py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
 	    py_free/1,			% +Obj
-	    py_yield/0,
 	    py_with_gil/1,		% :Goal
             py_str/2,                   % +Obj, -String
             py_initialize/2,            % +Program, +Argv
