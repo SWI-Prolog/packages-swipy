@@ -3,6 +3,11 @@ project(swipl-janus)
 
 include("../cmake/PrologPackage.cmake")
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  message("Trying to find debug version of Python")
+  set(Python_FIND_ABI "ON" "ANY" "ANY")
+endif()
+
 find_package(Python COMPONENTS Interpreter Development)
 if(Python_Development.Embed_FOUND)
 
