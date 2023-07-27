@@ -36,3 +36,9 @@ bench_echo_list(N) :-
     numlist(1, N, L),
     time(py_call(demo:echo(L), _)).
 
+py_thread(Id) :-
+    thread_self(Self),
+    (   atom(Self)
+    ->  Id = Self
+    ;   thread_property(Self, id(Id))
+    ).

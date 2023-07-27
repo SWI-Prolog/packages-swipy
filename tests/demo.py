@@ -52,6 +52,10 @@ def bench_call(n):
     for i in range(1,n):
         once("Y is X+1", {"X":i})
 
+def bench_call_v(n):
+    for i in range(1,n):
+        print((i, once("py_thread(T)", {})["T"]))
+
 def echo(d):
     return d
 
