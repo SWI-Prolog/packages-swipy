@@ -14,8 +14,8 @@ class Query:
     def __del__(self):
         swipl.close_query(self.state)
 
-def once(query, inputs={}):
-    return swipl.call(query, inputs)
+def once(query, inputs={}, keep=False):
+    return swipl.call(query, inputs, keep)
 
 def consult(file):
     once("consult(File)", {"File":file})

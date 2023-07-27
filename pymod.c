@@ -78,6 +78,16 @@ unify_input(term_t t, int arity, PyObject *args)
     return py_unify(t, PyTuple_GetItem(args, 1));
 }
 
+static int
+keep_bindings(PyObject *args)
+{ PyObject *kp;
+
+  return ( PyTuple_GET_SIZE(args) == 3 &&
+	   (kp=PyTuple_GetItem(args, 2))&&
+	   PyBool_Check(kp) &&
+	   PyLong_AsLongLong(kp) );
+}
+
 static PyObject *
 swipl_call(PyObject *self, PyObject *args)
 { PyObject *out = NULL;
@@ -86,8 +96,8 @@ swipl_call(PyObject *self, PyObject *args)
   fid_t fid;
   Py_ssize_t arity = PyTuple_GET_SIZE(args);
 
-  if ( arity == 0 || arity > 2 )
-  { PyErr_SetString(PyExc_TypeError, "swipl.call(query,bindings) takes 1 or 2 arguments");
+  if ( arity == 0 || arity > 3 )
+  { PyErr_SetString(PyExc_TypeError, "swipl.call(query,bindings,keep) takes 1..3 arguments");
     return NULL;
   }
 
@@ -126,7 +136,10 @@ swipl_call(PyObject *self, PyObject *args)
       PL_cut_query(qid);
     }
 
-    PL_close_foreign_frame(fid);
+    if ( keep_bindings(args) )
+      PL_close_foreign_frame(fid);
+    else
+      PL_discard_foreign_frame(fid);
   }
 
   return out;
@@ -139,6 +152,8 @@ tuple_set_int(int i, PyObject *tuple, int64_t val)
   PyList_SetItem(tuple, i, v);
 }
 
+#define STATE_LIST_LENGTH 4	/* fid,qid,av,keep */
+
 static PyObject *
 swipl_open_query(PyObject *self, PyObject *args)
 { PyObject *out = NULL;
@@ -146,8 +161,8 @@ swipl_open_query(PyObject *self, PyObject *args)
   fid_t fid;
   Py_ssize_t arity = PyTuple_GET_SIZE(args);
 
-  if ( arity == 0 || arity > 2 )
-  { PyErr_SetString(PyExc_TypeError, "swipl.call(query,bindings) takes 1 or 2 arguments");
+  if ( arity == 0 || arity > 3 )
+  { PyErr_SetString(PyExc_TypeError, "swipl.call(query,bindings,keep) takes 1..3 arguments");
     return NULL;
   }
 
@@ -161,10 +176,11 @@ swipl_open_query(PyObject *self, PyObject *args)
 	 unify_input(av+1, arity, args) )
     { qid_t qid = PL_open_query(NULL, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS, pred, av);
 
-      out = PyList_New(3);
+      out = PyList_New(STATE_LIST_LENGTH);
       tuple_set_int(0, out, fid);
       tuple_set_int(1, out, (int64_t)qid);
       tuple_set_int(2, out, av);
+      tuple_set_int(3, out, keep_bindings(args));
 
       return out;
     }
@@ -187,27 +203,29 @@ Py_GetInt64Arg(int i, PyObject *tp, int64_t *vp)
 }
 
 static int
-query_parms(PyObject *args, PyObject **tpp, fid_t *fid, qid_t *qid, term_t *av)
+query_parms(PyObject *args, PyObject **tpp, fid_t *fid, qid_t *qid, term_t *av, int *keep)
 { if ( PyTuple_GET_SIZE(args) != 1 )
-  { PyErr_SetString(PyExc_TypeError, "Method expects a list [fid,qid,av]");
+  { PyErr_SetString(PyExc_TypeError, "Method expects a list [fid,qid,av,keep]");
     return FALSE;
   }
 
   PyObject *tp = PyTuple_GetItem(args, 0);
-  if ( !PyList_Check(tp) || PyList_GET_SIZE(tp) != 3 )
-  { PyErr_SetString(PyExc_TypeError, "Method expects a list [fid,qid,av]");
+  if ( !PyList_Check(tp) || PyList_GET_SIZE(tp) != STATE_LIST_LENGTH )
+  { PyErr_SetString(PyExc_TypeError, "Method expects a list [fid,qid,av,keep]");
     return FALSE;
   }
 
-  int64_t tav[3];
+  int64_t tav[STATE_LIST_LENGTH];
   *tpp = tp;
   if ( !Py_GetInt64Arg(0, tp, &tav[0]) ||
        !Py_GetInt64Arg(1, tp, &tav[1]) ||
-       !Py_GetInt64Arg(2, tp, &tav[2]) )
+       !Py_GetInt64Arg(2, tp, &tav[2]) ||
+       !Py_GetInt64Arg(3, tp, &tav[3]) )
     return FALSE;
-  *fid = tav[0];
-  *qid = (qid_t)tav[1];
-  *av  = tav[2];
+  *fid  = tav[0];
+  *qid  = (qid_t)tav[1];
+  *av   = tav[2];
+  *keep = (int)tav[3];
 
   return TRUE;
 }
@@ -219,8 +237,9 @@ swipl_next_solution(PyObject *self, PyObject *args)
   term_t av;
   int done = FALSE;
   PyObject *tp;
+  int keep;
 
-  if ( !query_parms(args, &tp, &fid, &qid, &av) )
+  if ( !query_parms(args, &tp, &fid, &qid, &av, &keep) )
     return NULL;
   if ( !qid )
     return PyBool_FromLong(0);
@@ -248,7 +267,10 @@ swipl_next_solution(PyObject *self, PyObject *args)
       break;
   }
   if ( done )
-  { PL_close_foreign_frame(fid);
+  { if ( keep )
+      PL_close_foreign_frame(fid);
+    else
+      PL_discard_foreign_frame(fid);
     tuple_set_int(1, tp, 0);   /* set qid to 0 */
   }
 
@@ -261,13 +283,17 @@ swipl_close_query(PyObject *self, PyObject *args)
   qid_t qid;
   term_t av;
   PyObject *tp;
+  int keep;
 
-  if ( !query_parms(args, &tp, &fid, &qid, &av) )
+  if ( !query_parms(args, &tp, &fid, &qid, &av, &keep) )
     return NULL;
 
   if ( qid )
   { PL_cut_query(qid);
-    PL_close_foreign_frame(fid);
+    if ( keep )
+      PL_close_foreign_frame(fid);
+    else
+      PL_discard_foreign_frame(fid);
     tuple_set_int(1, tp, 0);   /* set qid to 0 */
   }
 
