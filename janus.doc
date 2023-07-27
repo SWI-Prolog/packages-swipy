@@ -164,7 +164,7 @@ def printRange(from, to):
 \end{code}
 
 \begin{description}
-    \cfunction{dict}{janus.once}{query, bindings={}, keep=False}
+    \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False}
 Call \arg{query} using \arg{bindings} as once/1, returning a dict with
 the resulting bindings. If \arg{bindings} is omitted, no variables are
 bound. The \arg{keep} parameter determines whether or not Prolog
