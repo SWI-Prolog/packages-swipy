@@ -797,11 +797,14 @@ py_str(term_t t, term_t str)
 { PyObject *obj;
   int rc;
 
+  py_resume();
+  PyGILState_STATE state = PyGILState_Ensure();
   if ( (rc=py_from_prolog(t, &obj)) )
   { PyObject *s = PyObject_Str(obj);
 
     rc = py_unify_decref(str, s);
   }
+  PyGILState_Release(state);
 
   return rc;
 }
