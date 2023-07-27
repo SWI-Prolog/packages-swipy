@@ -54,12 +54,27 @@ static int py_initialize_done = FALSE;
 static PyObject *check_error(PyObject *obj);
 static int py_unify(term_t t, PyObject *obj);
 static int py_from_prolog(term_t t, PyObject **obj);
+static void py_resume(void);
 
 #define U_AS_TERM	0x1
 #define U_AS_OBJECT	0x2
 
 #include "hash.c"
 #include "pymod.c"
+
+		 /*******************************
+		 *          DEBUGGING           *
+		 *******************************/
+
+static int debuglevel = 0;
+
+static foreign_t
+py_debug(term_t level)
+{ return PL_get_integer_ex(level, &debuglevel);
+}
+
+#define DEBUG(l, g) \
+	if ( (l) <= debuglevel ) do { g; } while(0)
 
 
 		 /*******************************
@@ -700,6 +715,7 @@ py_call(term_t Call, term_t result)
   if ( !py_init() )
     return FALSE;
 
+  py_resume();
   PyGILState_STATE state = PyGILState_Ensure();
   if ( delayed )
     delayed_decref(NULL);
@@ -766,7 +782,9 @@ py_call1(term_t Call)
 
 static foreign_t
 py_with_gil(term_t goal)
-{ PyGILState_STATE state = PyGILState_Ensure();
+{ py_resume();
+
+  PyGILState_STATE state = PyGILState_Ensure();
   int rc = PL_call(goal, NULL);
   PyGILState_Release(state);
 
@@ -811,6 +829,35 @@ py_free(term_t t)
 }
 
 
+typedef struct
+{ PyThreadState *state;
+  int		 yielded;
+} py_state_t;
+
+static __thread py_state_t py_state;
+
+static foreign_t
+py_yield(void)
+{ if ( !py_state.yielded )
+  { DEBUG(1, Sdprintf("Yielding ..."));
+    py_state.state = PyEval_SaveThread();
+    DEBUG(1, Sdprintf("ok\n"));
+    py_state.yielded = TRUE;
+  }
+
+  return TRUE;
+}
+
+static void
+py_resume(void)
+{ if ( py_state.yielded )
+  { DEBUG(1, Sdprintf("Un yielding ..."));
+    PyEval_RestoreThread(py_state.state);
+    DEBUG(1, Sdprintf("ok\n"));
+    py_state.yielded = FALSE;
+  }
+}
+
 
 		 /*******************************
 		 *	      REGISTER		*
@@ -839,8 +886,10 @@ install_janus(void)
   PL_register_foreign("py_call",       2, py_call,       0);
   PL_register_foreign("py_call",       1, py_call1,      0);
   PL_register_foreign("py_free",       1, py_free,       0);
+  PL_register_foreign("py_yield",      0, py_yield,      0);
   PL_register_foreign("py_with_gil",   1, py_with_gil,   PL_FA_TRANSPARENT);
   PL_register_foreign("py_str",        2, py_str,        0);
+  PL_register_foreign("py_debug",      1, py_debug,      0);
 
   if ( PyImport_AppendInittab("swipl", PyInit_swipl) == -1 )
     Sdprintf("Failed to add module swipl to Python");
