@@ -732,11 +732,46 @@ py_eval(PyObject *obj, term_t func)
 }
 
 
+/* _unchain_ a sequence of a:b:c():..., returning a PyObject to
+ * operate on and the final function call or attribute in `call`
+ * As `call` is written to, it must be a copy of an argument
+ * term.
+ */
+
+static int
+unchain(term_t call, PyObject **py_target)
+{ term_t on = PL_new_term_ref();
+  int rc = TRUE;
+
+  while ( PL_is_functor(call, FUNCTOR_module2) )
+  { _PL_get_arg(1, call, on);
+    _PL_get_arg(2, call, call);
+
+    if ( !*py_target )
+    { if ( !get_py_obj(on, py_target, FALSE) &&
+	   !get_py_module(on, py_target) )
+      { rc = PL_type_error("py_target", on);
+	break;
+      }
+      Py_INCREF(*py_target);
+    } else
+    { if ( !(*py_target = py_eval(*py_target, on)) )
+      { rc = FALSE;
+	break;
+      }
+    }
+  }
+
+  PL_reset_term_refs(on);
+
+  return rc;
+}
+
+
 static foreign_t
 py_call(term_t Call, term_t result)
 { PyObject *py_target = NULL;
   term_t call = PL_copy_term_ref(Call);
-  term_t on = PL_new_term_ref();
   term_t val = 0;
   int rc = TRUE;
 
@@ -754,27 +789,10 @@ py_call(term_t Call, term_t result)
     _PL_get_arg(1, call, call);
   }
 
-  while ( PL_is_functor(call, FUNCTOR_module2) )
-  { _PL_get_arg(1, call, on);
-    _PL_get_arg(2, call, call);
-
-    if ( !py_target )
-    { if ( !get_py_obj(on, &py_target, FALSE) &&
-	   !get_py_module(on, &py_target) )
-      { rc = PL_type_error("py_target", on);
-	break;
-      }
-      Py_INCREF(py_target);
-    } else
-    { if ( !(py_target = py_eval(py_target, on)) )
-      { rc = FALSE;
-	break;
-      }
-    }
-  }
+  rc = unchain(call, &py_target);
 
   if ( rc )
-  { if ( val )
+  { if ( val )			/* py_target:attr = val */
     { char *attr;
       if ( py_target )
       { if ( (rc=PL_get_chars(call, &attr, CVT_ATOM|CVT_EXCEPTION)) )
@@ -806,6 +824,19 @@ py_call(term_t Call, term_t result)
 static foreign_t
 py_call1(term_t Call)
 { return py_call(Call, 0);
+}
+
+
+static foreign_t
+py_iter(term_t Iterator, term_t Result, control_t handle)
+{ switch( PL_foreign_control(handle) )
+  { case PL_FIRST_CALL:
+    case PL_REDO:
+    case PL_PRUNED:
+    default:
+      assert(0);
+      return FALSE;
+  }
 }
 
 
@@ -956,6 +987,7 @@ install_janus(void)
   PL_register_foreign("py_initialize_", 3, py_initialize_, 0);
   PL_register_foreign("py_call",        2, py_call,        0);
   PL_register_foreign("py_call",        1, py_call1,       0);
+  PL_register_foreign("py_iter",        2, py_iter,        PL_FA_NONDETERMINISTIC);
   PL_register_foreign("py_run",         4, py_run,         0);
   PL_register_foreign("py_free",        1, py_free,        0);
   PL_register_foreign("py_with_gil",    1, py_with_gil,    PL_FA_TRANSPARENT);
