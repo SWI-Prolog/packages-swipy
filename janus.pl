@@ -57,7 +57,7 @@ add_python_dll_dir :-
 :- initialization(add_python_dll_dir, now).
 :- endif.
 
-:- use_foreign_library(foreign(janus)).
+:- use_foreign_library(foreign(janus), [visibility(global)]).
 :- meta_predicate py_with_gil(0).
 
 :- public

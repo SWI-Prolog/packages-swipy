@@ -22,6 +22,8 @@ def consult(file):
 
 def interact():
     import code
+    vars = globals()
+    vars.update(locals())
     try:
         import readline
         import rlcompleter
@@ -29,8 +31,6 @@ def interact():
         readline.parse_and_bind("tab: complete")
     except:
         pass
-    vars = globals()
-    vars.update(locals())
     code.InteractiveConsole(vars).interact();
 
     
