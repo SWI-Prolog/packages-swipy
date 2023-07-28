@@ -43,6 +43,7 @@
 :- use_module(library(filesex), [directory_file_path/3]).
 :- use_module(library(lists), [numlist/3]).
 :- use_module(library(statistics), [time/1]).
+:- use_module('tests/russel').
 
 test_janus :-
     run_tests([ janus,
@@ -151,6 +152,12 @@ test(iter, Sum == 10011) :-
     py_call(demo:abort_iter(1000), Sum).
 test(iter, Sum == 10011) :-             % Check we didn't mess up the Prolog stack
     py_call(demo:abort_iter(1000), Sum).
+test(undef, Result == py{status:"Undefined"}) :-
+    py_call(janus:once("undefined"), Result).
+test(russel, List == [py{'X':"barber",'Y':"barber",status:"Undefined"},
+		      py{'X':"barber",'Y':"mayor",status:true}]) :-
+    py_call(demo:shaves(), List0),
+    sort('Y', @=<, List0, List).
 
 :- end_tests(python_call_prolog).
 
