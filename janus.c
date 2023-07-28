@@ -53,6 +53,7 @@ static functor_t FUNCTOR_hash1;
 static functor_t FUNCTOR_comma2;
 static functor_t FUNCTOR_curl1;
 static functor_t FUNCTOR_tuple2;
+static functor_t FUNCTOR_py1;
 
 static int py_initialize_done = FALSE;
 
@@ -570,6 +571,16 @@ py_from_prolog(term_t t, PyObject **obj)
       return TRUE;
     }
   }
+  if ( PL_is_functor(t, FUNCTOR_py1) )
+  { term_t a = PL_new_term_ref();
+    _PL_get_arg(1, t, a);
+    if ( PL_is_functor(a, FUNCTOR_curl1) )
+    { if ( !PL_put_term(t, a) )
+	return FALSE;
+      PL_reset_term_refs(a);
+    } else
+      goto error;
+  }
   if ( PL_is_functor(t, FUNCTOR_curl1) )
   { term_t iter  = PL_new_term_ref();
     term_t head  = PL_new_term_ref();
@@ -588,6 +599,7 @@ py_from_prolog(term_t t, PyObject **obj)
     if ( !add_prolog_key_value_to_dict(py_dict, iter, key, value) )
       return FALSE;
 
+    PL_reset_term_refs(iter);
     *obj = py_dict;
     return TRUE;
   }
@@ -615,6 +627,7 @@ py_from_prolog(term_t t, PyObject **obj)
     }
   }
 
+error:
   return PL_domain_error("py_data", t),FALSE;
 }
 
@@ -1146,6 +1159,7 @@ install_janus(void)
 
   MKFUNCTOR(python_error, 3);
   MKFUNCTOR(error, 2);
+  MKFUNCTOR(py, 1);
   FUNCTOR_module2 = PL_new_functor(PL_new_atom(":"), 2);
   FUNCTOR_eq2     = PL_new_functor(PL_new_atom("="), 2);
   FUNCTOR_hash1   = PL_new_functor(PL_new_atom("#"), 1);
