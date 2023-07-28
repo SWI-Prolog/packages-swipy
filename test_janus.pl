@@ -166,6 +166,8 @@ test(russel, List == [py{'X':"barber",'Y':"barber",status:"Undefined"},
 
 test(range, all(X = [0,1,2,3,4,5])) :-
     py_iter(range(0, 6), X).
+test(square, all(X = [1,4,9,16])) :-
+    py_iter(demo:squares(1,5), X).
 
 :- end_tests(janus_iter).
 

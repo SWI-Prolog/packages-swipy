@@ -163,6 +163,16 @@ This library implements calling Python from Prolog.
 %   Prolog predicate succeeds deterministically. On   success,  the next
 %   candidate is stored.
 %
+%   Note that a Python _generator_  is   a  Python _iterator. Therefore,
+%   given  the  Python  generator   expression    below,   we   can  use
+%   py_iter(squares(1,5),X) to generate the squares on backtracking.
+%
+%   ```
+%   def squares(start, stop):
+%        for i in range(start, stop):
+%            yield i * i
+%   ```
+%
 %   @bug Iterator may not depend on janus.Query()
 
 %!  py_run(+String, +Globals, +Locals, -Result) is det.

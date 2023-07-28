@@ -61,6 +61,13 @@ def abort_iter(n):
             break;
     return sum;
 
+
+# Test using generators as custom iterators.
+
+def squares(start, stop):
+    for i in range(start, stop):
+        yield i * i
+
 # Test for WFS
 
 def shaves():
@@ -94,4 +101,3 @@ class GCAble:
     def __del__(self):
         global gced
         gced += 1
-
