@@ -43,12 +43,13 @@
 :- use_module(library(filesex), [directory_file_path/3]).
 :- use_module(library(lists), [numlist/3]).
 :- use_module(library(statistics), [time/1]).
-:- use_module('tests/russel').
+:- use_module('tests/russel', []).
 
 test_janus :-
     run_tests([ janus,
                 janus_gc,
-		python_call_prolog
+		python_call_prolog,
+		janus_iter
               ]).
 
 :- initialization
@@ -160,6 +161,13 @@ test(russel, List == [py{'X':"barber",'Y':"barber",status:"Undefined"},
     sort('Y', @=<, List0, List).
 
 :- end_tests(python_call_prolog).
+
+:- begin_tests(janus_iter).
+
+test(range, all(X = [0,1,2,3,4,5])) :-
+    py_iter(range(0, 6), X).
+
+:- end_tests(janus_iter).
 
 
 bench_janus :-
