@@ -35,6 +35,7 @@
 :- module(janus,
           [ py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
+	    py_iter/2,			% +Call, -Return
             py_run/4,                   % +String, +Globals, +Locals, -Return
             py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
@@ -135,6 +136,32 @@ This library implements calling Python from Prolog.
 %          py_call(Doc:owner, Owner).
 %       Dog = <py_obj>(0x7ffff7112170),
 %       Owner = "Bob".
+
+%!  py_iter(+Iterator, -Value) is nondet.
+%
+%   True when Value is returned by the Python Iterator. Python iterators
+%   may be used to implement   non-deterministic foreign predicates. The
+%   implementation uses these steps:
+%
+%     1. Evaluate Iterator as py_call/2 evaluates its first argument,
+%        except the ``Obj:Attr = Value`` construct is not accepted.
+%     2. Call ``__iter__`` on the result to get the iterator itself.
+%     3. Get the ``__next__`` function of the iterator.
+%     4. Loop over the return values of the _next_ function.  If
+%        the Python return value unifies with Value, succeed with
+%        a choicepoint.  Abort on Python or unification exceptions.
+%     5. Re-satisfaction continues at (4).
+%
+%   The example below uses the built-in iterator range():
+%
+%       ?- py_iter(range(1,3), X).
+%       X = 1 ;
+%       X = 2.
+%
+%   Note that the implementation performs a   _look  ahead_, i.e., after
+%   successful unification it calls `__next__()`   again. On failure the
+%   Prolog predicate succeeds deterministically. On   success,  the next
+%   candidate is stored.
 
 %!  py_run(+String, +Globals, +Locals, -Result) is det.
 %

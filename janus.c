@@ -844,16 +844,106 @@ py_call1(term_t Call)
 }
 
 
+typedef struct
+{ PyObject *iterator;
+  PyObject *nextf;
+  PyObject *next;
+  int allocated;
+} iter_state;
+
+static iter_state *
+alloc_iter_state(iter_state *state)
+{ if ( !state->allocated )
+  { iter_state *copy = malloc(sizeof(*state));
+    if ( copy )
+      *copy = *state;
+    state = copy;
+  }
+
+  return state;
+}
+
+static void
+free_iter_state(iter_state *state)
+{ Py_CLEAR(state->iterator);
+  Py_CLEAR(state->nextf);
+  Py_CLEAR(state->next);
+  if ( state->allocated )
+    free(state);
+}
+
 static foreign_t
 py_iter(term_t Iterator, term_t Result, control_t handle)
-{ switch( PL_foreign_control(handle) )
+{ iter_state iter_buf;
+  iter_state *state;
+
+  switch( PL_foreign_control(handle) )
   { case PL_FIRST_CALL:
+    { term_t call = PL_copy_term_ref(Iterator);
+      PyObject *iter = NULL;
+
+      state = &iter_buf;
+      memset(state, 0, sizeof(*state));
+      if ( !unchain(call, &iter) )
+	return FALSE;
+      if ( !(iter = py_eval(iter, call)) )
+	return FALSE;
+
+      PyObject *iterf = check_error(PyObject_GetAttrString(iter, "__iter__"));
+      if ( !iterf )
+      { Py_DECREF(iter);
+	return FALSE;
+      }
+      state->iterator = check_error(PyObject_CallObject(iterf, NULL));
+      Py_DECREF(iterf);
+      Py_DECREF(iter);
+      state->nextf = check_error(PyObject_GetAttrString(state->iterator, "__next__"));
+      if ( !state->nextf ) goto failure;
+      state->next = check_error(PyObject_CallObject(state->nextf, NULL));
+      if ( !state->next ) goto failure;
+      break;
+    }
     case PL_REDO:
+      state = PL_foreign_context_address(handle);
+      break;
     case PL_PRUNED:
+      state = PL_foreign_context_address(handle);
+      free_iter_state(state);
+      return TRUE;
     default:
       assert(0);
       return FALSE;
   }
+
+  fid_t fid = PL_open_foreign_frame();
+  if ( fid )
+  { while ( state->next )
+    { int rc = py_unify(Result, state->next);
+
+      Py_CLEAR(state->next);
+      state->next = check_error(PyObject_CallObject(state->nextf, NULL));
+
+      if ( rc )
+      { PL_close_foreign_frame(fid);
+
+	if ( state->next )
+	  PL_retry_address(alloc_iter_state(state));
+	free_iter_state(state);
+	return !PL_exception(0);
+      }
+
+      if ( PL_exception(0) )
+      { PL_close_foreign_frame(fid);
+	free_iter_state(state);
+	return FALSE;
+      }
+      PL_rewind_foreign_frame(fid);
+    }
+  }
+
+failure:
+  free_iter_state(state);
+  return FALSE;
 }
 
 
