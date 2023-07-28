@@ -250,7 +250,7 @@ py_call_string(M:String, Input, Dict) :-
     dict_create(Dict, bindings, [status:Status|Map1]),
     (   call(M:Goal)
     *-> bind_status(Status)
-    ;   Status = 'False',
+    ;   Status = false,
 	maplist(bind_none, Map1)
     ).
 
