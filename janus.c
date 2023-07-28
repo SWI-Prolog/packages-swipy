@@ -767,6 +767,28 @@ unchain(term_t call, PyObject **py_target)
   return rc;
 }
 
+static int
+py_gil_ensure(PyGILState_STATE *state)
+{ if ( !py_init() )
+    return FALSE;
+
+  py_resume();
+  *state = PyGILState_Ensure();
+  if ( delayed )
+    delayed_decref(NULL);
+
+  return TRUE;
+}
+
+
+static void
+py_gil_release(PyGILState_STATE state)
+{ if ( state )
+  { PyGILState_Release(state);
+    py_yield();
+  }
+}
+
 
 static foreign_t
 py_call(term_t Call, term_t result)
@@ -774,14 +796,10 @@ py_call(term_t Call, term_t result)
   term_t call = PL_copy_term_ref(Call);
   term_t val = 0;
   int rc = TRUE;
+  PyGILState_STATE state;
 
-  if ( !py_init() )
+  if ( !py_gil_ensure(&state) )
     return FALSE;
-
-  py_resume();
-  PyGILState_STATE state = PyGILState_Ensure();
-  if ( delayed )
-    delayed_decref(NULL);
 
   if ( PL_is_functor(call, FUNCTOR_eq2) )
   { val = PL_new_term_ref();
@@ -815,8 +833,7 @@ py_call(term_t Call, term_t result)
     }
   }
 
-  PyGILState_Release(state);
-  py_yield();
+  py_gil_release(state);
 
   return rc;
 }
@@ -842,14 +859,12 @@ py_iter(term_t Iterator, term_t Result, control_t handle)
 
 static foreign_t
 py_with_gil(term_t goal)
-{ if ( !py_init() )
-    return FALSE;
+{ PyGILState_STATE state;
 
-  py_resume();
-  PyGILState_STATE state = PyGILState_Ensure();
+  if ( !py_gil_ensure(&state) )
+    return FALSE;
   int rc = PL_call(goal, NULL);
-  PyGILState_Release(state);
-  py_yield();
+  py_gil_release(state);
 
   return rc;
 }
@@ -862,13 +877,11 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
   if ( PL_get_chars(Cmd, &cmd, CVT_ATOM|CVT_STRING|CVT_LIST|CVT_EXCEPTION) )
   { PyObject *locals=NULL, *globals=NULL;
     PyObject *result;
+    PyGILState_STATE state;
     int rc;
 
-    if ( !py_init() )
+    if ( !py_gil_ensure(&state) )
       return FALSE;
-
-    py_resume();
-    PyGILState_STATE state = PyGILState_Ensure();
 
     if ( (rc = (py_from_prolog(Globals, &globals) &&
 		py_from_prolog(Locals, &locals))) )
@@ -882,8 +895,7 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
 
     Py_CLEAR(locals);
     Py_CLEAR(globals);
-    PyGILState_Release(state);
-    py_yield();
+    py_gil_release(state);
 
     return rc;
   }
@@ -896,16 +908,16 @@ static foreign_t
 py_str(term_t t, term_t str)
 { PyObject *obj;
   int rc;
+  PyGILState_STATE state;
 
-  py_resume();
-  PyGILState_STATE state = PyGILState_Ensure();
+  if ( !py_gil_ensure(&state) )
+    return FALSE;
   if ( (rc=py_from_prolog(t, &obj)) )
   { PyObject *s = PyObject_Str(obj);
 
     rc = py_unify_decref(str, s);
   }
-  PyGILState_Release(state);
-  py_yield();
+  py_gil_release(state);
 
   return rc;
 }
