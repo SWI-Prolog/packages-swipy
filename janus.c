@@ -42,13 +42,17 @@ static atom_t ATOM_None;
 static atom_t ATOM_false;
 static atom_t ATOM_true;
 static atom_t ATOM_pydict;
-static atom_t ATOM_;
+static atom_t ATOM_tuple;
+static atom_t ATOM_curl;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
 static functor_t FUNCTOR_module2;
 static functor_t FUNCTOR_eq2;
 static functor_t FUNCTOR_hash1;
+static functor_t FUNCTOR_comma2;
+static functor_t FUNCTOR_curl1;
+static functor_t FUNCTOR_tuple2;
 
 static int py_initialize_done = FALSE;
 
@@ -309,7 +313,7 @@ py_unify_int(term_t t, PyObject *obj)
   }
   if ( PyTuple_Check(obj) )
   { Py_ssize_t arity = PyTuple_GET_SIZE(obj);
-    if ( PL_unify_functor(t, PL_new_functor(ATOM_, arity)) )
+    if ( PL_unify_functor(t, PL_new_functor(ATOM_tuple, arity)) )
     { term_t a = PL_new_term_ref();
       for(Py_ssize_t i=0; i<arity; i++)
       { PyObject *py_a = PyTuple_GetItem(obj, i);
@@ -442,6 +446,34 @@ py_add_to_dict(term_t key, term_t value, void *closure)
   return 0;
 }
 
+
+static int
+add_prolog_key_value_to_dict(PyObject *py_dict, term_t tuple,
+			     term_t key, term_t value)
+{ if ( PL_is_functor(tuple, FUNCTOR_tuple2) )
+  { _PL_get_arg(1, tuple, key);
+    _PL_get_arg(2, tuple, value);
+    PyObject *py_key = NULL, *py_value = NULL;
+    int rc=0;
+
+    if ( !py_from_prolog(key, &py_key) ||
+	 !py_from_prolog(value, &py_value) ||
+	 (rc=PyDict_SetItem(py_dict, py_key, py_value)) != 0 )
+    { if ( rc == -1 )
+	check_error(NULL);
+      Py_CLEAR(py_dict);
+      Py_CLEAR(py_key);
+      Py_CLEAR(py_value);
+      return FALSE;
+    } else
+      return TRUE;
+  } else
+  { Py_CLEAR(py_dict);
+    return PL_type_error("py_key_value", tuple);
+  }
+}
+
+
 static int
 py_from_prolog(term_t t, PyObject **obj)
 { wchar_t *s;
@@ -486,6 +518,16 @@ py_from_prolog(term_t t, PyObject **obj)
       *obj = Py_None;
       return TRUE;
     }
+
+    if ( a == ATOM_curl )
+    { PyObject *py_dict = check_error(PyDict_New());
+
+      if ( py_dict )
+      { *obj = py_dict;
+	return TRUE;
+      } else
+	return FALSE;
+    }
   }
   if ( PL_get_wchars(t, &len, &s, CVT_ATOM|CVT_STRING) )
   { *obj = PyUnicode_FromWideChar(s, len);
@@ -528,8 +570,29 @@ py_from_prolog(term_t t, PyObject **obj)
       return TRUE;
     }
   }
-  /* ''(a,b,...) --> Python tuple  */
-  if ( PL_get_name_arity(t, &a, &len) && a == ATOM_ )
+  if ( PL_is_functor(t, FUNCTOR_curl1) )
+  { term_t iter  = PL_new_term_ref();
+    term_t head  = PL_new_term_ref();
+    term_t key   = PL_new_term_ref();
+    term_t value = head;
+    PyObject *py_dict = PyDict_New();
+
+    _PL_get_arg(1, t, iter);
+    while( PL_is_functor(iter, FUNCTOR_comma2) )
+    { _PL_get_arg(1, iter, head);
+      _PL_get_arg(2, iter, iter);
+
+      if ( !add_prolog_key_value_to_dict(py_dict, head, key, value) )
+	return FALSE;
+    }
+    if ( !add_prolog_key_value_to_dict(py_dict, iter, key, value) )
+      return FALSE;
+
+    *obj = py_dict;
+    return TRUE;
+  }
+  /* :(a,b,...) --> Python tuple  */
+  if ( PL_get_name_arity(t, &a, &len) && a == ATOM_tuple )
   { PyObject *tp = check_error(PyTuple_New(len));
 
     if ( tp )
@@ -1077,14 +1140,18 @@ install_janus(void)
 { MKATOM(None);
   MKATOM(false);
   MKATOM(true);
-  ATOM_ = PL_new_atom("");
+  ATOM_tuple  = PL_new_atom(":");
   ATOM_pydict = PL_new_atom("py");
+  ATOM_curl   = PL_new_atom("{}");
 
   MKFUNCTOR(python_error, 3);
   MKFUNCTOR(error, 2);
   FUNCTOR_module2 = PL_new_functor(PL_new_atom(":"), 2);
-  FUNCTOR_eq2 = PL_new_functor(PL_new_atom("="), 2);
-  FUNCTOR_hash1 = PL_new_functor(PL_new_atom("#"), 1);
+  FUNCTOR_eq2     = PL_new_functor(PL_new_atom("="), 2);
+  FUNCTOR_hash1   = PL_new_functor(PL_new_atom("#"), 1);
+  FUNCTOR_comma2  = PL_new_functor(PL_new_atom(","), 2);
+  FUNCTOR_curl1   = PL_new_functor(PL_new_atom("{}"), 1);
+  FUNCTOR_tuple2  = PL_new_functor(ATOM_tuple, 2);
 
   PL_register_foreign("py_initialize_", 3, py_initialize_, 0);
   PL_register_foreign("py_call",        2, py_call,        0);

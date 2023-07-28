@@ -94,7 +94,7 @@ Atom    & $\rightarrow$     & String   & \\
 String  & $\Leftrightarrow$ & String   & \\
 \#(Term) & $\rightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
 List    & $\Leftrightarrow$ & Sequence & \\
-\exam{''}(a,b,\ldots) & $\Leftrightarrow$ & (a,b,\ldots) & Python Tuples \\
+:(a,b,\ldots) & $\Leftrightarrow$ & (a,b,\ldots) & Python Tuples \\
 Dict    & $\Leftrightarrow$ & Dict     & \\
 \const{py_obj} blob & $\Leftrightarrow$ & Object & Used for any Python object not above \\ \hline
 \end{tabular}
