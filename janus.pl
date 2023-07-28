@@ -235,7 +235,7 @@ bind_none(_='None').
 
 bind_status(Status) :-
     (   '$tbl_delay_list'([])
-    ->  Status = 'True'
+    ->  Status = true
     ;   Status = "Undefined"
     ).
 
