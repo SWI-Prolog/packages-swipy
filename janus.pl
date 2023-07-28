@@ -117,7 +117,7 @@ This library implements calling Python from Prolog.
 %           self.tricks.append(trick)
 %   ```
 %
-%   We can interact with this class as   below. Now that ``$Doc`` in the
+%   We can interact with this class as  below. Note that ``$Doc`` in the
 %   SWI-Prolog toplevel refers to the  last   toplevel  binding  for the
 %   variable `Dog`.
 %
@@ -162,6 +162,8 @@ This library implements calling Python from Prolog.
 %   successful unification it calls `__next__()`   again. On failure the
 %   Prolog predicate succeeds deterministically. On   success,  the next
 %   candidate is stored.
+%
+%   @bug Iterator may not depend on janus.Query()
 
 %!  py_run(+String, +Globals, +Locals, -Result) is det.
 %

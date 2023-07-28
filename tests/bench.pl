@@ -9,7 +9,8 @@ here.
 bench(N) :-
     bench_py_call_int(N),
     bench_py_call_sumlist(N),
-    bench_iter(N, _),
+    bench_iter_py(N),
+    bench_iter_prolog(N, _),
     bench_call_prolog(N),
     bench_echo_list(N),
     bench_pass_list(N).
@@ -24,7 +25,7 @@ bench_py_call_sumlist(N) :-
     time(forall(between(1,N,_I),
                 py_call(demo:sumlist3(5,[1,2,3]), _L))).
 
-bench_iter(N, Sum) :-
+bench_iter_prolog(N, Sum) :-
     ansi_format(bold, 'Iterate over Prolog goal with ~D answers~n', [N]),
     time(py_call(demo:bench_iter(N), Sum)).
 
@@ -41,6 +42,10 @@ bench_echo_list(N) :-
     ansi_format(bold, 'Echo list with ~D integers to Python~n', [N]),
     numlist(1, N, L),
     time(py_call(demo:echo(L), _)).
+
+bench_iter_py(N) :-
+    ansi_format(bold, 'Iterating over Python range(0,~d) from Prolog~n', [N]),
+    time(forall(py_iter(range(0,N), _), true)).
 
 py_thread(Id) :-
     thread_self(Self),

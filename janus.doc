@@ -57,15 +57,21 @@ developed for the WASM (Web Assembly) version.  That is
 
 \begin{itemize}
     \item A di-directional data conversion is defined.  For SWI-Prolog,
-    suporting dicts and strings, that is rather straightforward.
+    supporting dicts and strings, that is rather straightforward.
     Currently, where the JavaScript interface supports any Prolog
     term, the Python interface does not.  This may change.
 
-    \item A Prolog predicate to call Python functions and object
-    methods.
+    \item A Prolog predicate to call Python functions, access and set
+    object attributes.
 
-    \item A Python class \const{Prolog} that provides a Prolog
-    query as an \jargon{iterator}.
+    \item A non-deterministic Prolog predicate enumerate a Python
+    \jargon{iterator}.
+
+    \item A Python function once() to call a Prolog predicate as
+    once/1 and return a dict with the bindings.
+
+    \item A Python iterator class \const{Query} that provides
+    access to non-deterministic Prolog predicates.
 \end{itemize}
 
 
@@ -104,7 +110,7 @@ with \jargon{call backs}. Future versions will allow this to be used
 from Python using an embedded version of SWI-Prolog.
 
 The Python module \const{janus} provides some utility functions and
-defines the class \const{Prolog}. The class \const{Prolog} implements
+defines the class \const{Prolog}. The class \const{Query} implements
 the Python \jargon{iterator} protocol.  Below we iterate over the
 solutions of between/3.  It is allowed to use \const{break} the
 Python loop.
@@ -119,7 +125,7 @@ and returns \jargon{output bindings}.  For example
 \end{code}
 
 Note that the input argument may also be added literally. Below we give
-two examples. It is strongly adviced \textbf{not to use string
+two examples. It is strongly advised \textbf{not to use string
 interpolation} due to the risk for \jargon{injection attacks}. Also,
 serializing and deserializing the data is generally slower then using
 the input dictionary, especially if the data is large.
@@ -148,7 +154,7 @@ variables or arbitrary compound terms.
 [ 'Kees', 'Klaas' ]
 \end{code}
 
-The class \ctype{janus.Query} implements a Python \jargon{iterator} that
+The class janus.Query() implements a Python \jargon{iterator} that
 iterates over the solutions of a Prolog goal. The iterator may be
 aborted using the Python \exam{break} statement.  As with janus.once(),
 the returned dict contains a \const{status} field.  This field cannot
@@ -203,7 +209,7 @@ Consult the given \arg{file}.  Implemented as
 \section{Janus and threads}
 \label{sec:janus-threads}
 
-Where SWI-Prolog support native premptively scheduled threads that
+Where SWI-Prolog support native preemptively scheduled threads that
 exploit multiple cores, Python has a single interpreter that can switch
 between native threads.\footnote{Actually, you can create multiple
 Python interpreters. It is not yet clear to us whether that can help
@@ -268,11 +274,12 @@ on AMD3950X running Ubuntu 22.04, SWI-Prolog 9.1.11 and Python 3.10.6.
 \hline
 \textbf{Action} & \textbf{Time (seconds)} \\
 \hline
-Echo list with 1,000,000 elements & 0.121 \\
-Call Pyton \exam{demo:int()} from Prolog 1,000,000 times & 0.551 \\
-Call Pyton \exam{demo:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.555 \\
-Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 3.388 \\
-Iterate from Python over Prolog goal \exam{between(1, 1 000 000, X)} & 0.752 \\
+Echo list with 1,000,000 elements & 0.12 \\
+Call Pyton \exam{demo:int()} from Prolog 1,000,000 times & 0.44 \\
+Call Pyton \exam{demo:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.4 \\
+Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 3.7 \\
+Iterate from Python over Prolog goal \exam{between(1, 1 000 000, X)} & 1.1 \\
+Iterate over Python iterator \exam{range(1,1000000)} from Prolog & 0.17 \\
 \hline
 \end{tabular}
 \end{center}
@@ -288,9 +295,9 @@ conversion and sound memory management that you get for free.
 Nevertheless, Python often accesses resources with a C or C++ API. We
 can also create this bridge directly, bypassing Python. That avoids one
 layer of data conversion and preserves the excellent multi-threading
-capabilities of SWI-Prolog. As is, Python operations are synchronised
+capabilities of SWI-Prolog. As is, Python operations are synchronized
 using the Python \jargon{GIL}, a global lock that allows for only a
-single thread to use Python at the same time.\footnote{There are rumours
+single thread to use Python at the same time.\footnote{There are rumors
 that Python's multi threading will be able to use multiple cores.}
 
 Writing an interface for SWI-Prolog is typically easier that for
@@ -324,11 +331,13 @@ ways.  We summarize the differences below
 
          The SWI-Prolog version allows for chaining function calls using
          \arg{Obj}:\arg{Func1}:\arg{Func2}:...  It also allows calling
-         \jargon{built-in} functions such as print() by omiting the
+         \jargon{built-in} functions such as print() by omitting the
          module or object.
 
 	 Finally, it allow setting attributes using py_call(Obj:Attr =
 	 Value)
+   \item py_iter/2 Allows accessing Python iteractors as non-deterministic
+         Prolog predicates.
    \item Data translation differs:
    \begin{itemize}
        \item Numbers are handled the same
@@ -355,7 +364,24 @@ ways.  We summarize the differences below
          px_cmd() and px_comp(), where px_comp() returns multiple
          solutions as a list.  We provide once() and a Python
          \jargon{iterator} by means of the class Prolog().
-   \item py_free/1 is identical to free_python_object/1 in XSB.
+   \item py_free/1 is identical to free_python_object/1 in XSB.  Where
+         free_python_object/1 is obligatory to avoid memory leaks,
+	 py_free/1 is optional as garbage collection will eventually
+	 deal with the object.
+\end{itemize}
+
+\section{Status of Janus}
+\label{sec:janus-status}
+
+The current version of this Janus library is experimental.
+
+\begin{itemize}
+    \item The design is stable
+    \item Naming of predicates and Python functions may change
+    \item Prolog representation of Python data may change
+    \item Testing is minimal.  Crashes are not impossible.
+    \item The module must become loadable from Python, embedding
+          Prolog.
 \end{itemize}
 
 
