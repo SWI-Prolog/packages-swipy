@@ -167,8 +167,8 @@ This library implements calling Python from Prolog.
 
 %!  py_run(+String, +Globals, +Locals, -Result) is det.
 %
-%   Interface to PyRun_String(). Currently   using \const{Py_file_input}
-%   as _first token_. Unclear what we can do with this.
+%   Interface to PyRun_String(). Currently   using  ``Py_file_input`` as
+%   _first token_. Unclear what we can do with this.
 
 %!  py_free(+Obj) is det.
 %
