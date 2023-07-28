@@ -70,6 +70,14 @@ Py_SetPrologError(term_t ex)
   Py_DECREF(msg);
 }
 
+static void
+Py_SetPrologErrorFromString(const char *s)
+{ PyObject *msg = PyUnicode_FromString(s);
+  PyErr_SetObject(PyExcProlog(), msg);
+  Py_DECREF(msg);
+}
+
+
 static int
 unify_input(term_t t, int arity, PyObject *args)
 { if ( arity == 1 )
@@ -266,6 +274,9 @@ swipl_next_solution(PyObject *self, PyObject *args)
       Py_SetPrologError(PL_exception(qid));
       PL_cut_query(qid);
       done = TRUE;
+    case PL_S_NOT_INNER:
+      Py_SetPrologErrorFromString("swipl.next_solution(): not inner query");
+      return NULL;
       break;
   }
   if ( done )
@@ -291,7 +302,10 @@ swipl_close_query(PyObject *self, PyObject *args)
     return NULL;
 
   if ( qid )
-  { PL_cut_query(qid);
+  { if ( PL_cut_query(qid) == PL_S_NOT_INNER )
+    { Py_SetPrologErrorFromString("swipl.next_solution(): not inner query");
+      return NULL;
+    }
     if ( keep )
       PL_close_foreign_frame(fid);
     else
