@@ -113,6 +113,8 @@ hline
 
 \input{libjanus.tex}
 
+\input{jnsutils.tex}
+
 \section{Calling Prolog from Python}
 \label{sec:janus-call-prolog}
 

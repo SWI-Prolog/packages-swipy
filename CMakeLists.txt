@@ -20,7 +20,7 @@ swipl_plugin(
     C_SOURCES janus.c
     C_LIBS ${Python_LIBRARIES}
     C_INCLUDE_DIR ${Python_INCLUDE_DIRS}
-    PL_LIBS janus.pl
+    PL_LIBS janus.pl jns_utils.pl
     PL_LIB_SUBDIR python
         PL_LIBS ${PYTHON_FILES})
 
@@ -33,6 +33,7 @@ test_libs(
 
 pkg_doc(janus
 	SECTION
-        SOURCE janus.pl libjanus.tex)
+	    jns_utils.pl
+	SOURCE janus.pl libjanus.tex)
 
 endif(Python_Development.Embed_FOUND)

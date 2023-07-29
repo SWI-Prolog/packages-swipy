@@ -47,6 +47,13 @@
             add_py_lib_dir/2,           % +Dir,+Where
             py_shell/0,
 
+            pyfunc/3,                   % +Module, +Function, -Return
+            pyfunc/4,                   % +Module, +Function, +Kwargs, -Return
+            pyfunc/5,                   % +Module, +Function, +Kwargs, +Options, -Return
+            pydot/4,                    % +Module, +ObjRef, +MethAttr, ?Ret
+            pydot/5,                    % +Module, +ObjRef, +MethAttr, +Options, -Ret
+            free_python_object/1,       % +ObjRef
+
             op(50,  fx,  #)             % #Value
           ]).
 :- if(current_prolog_flag(windows, true)).
@@ -340,6 +347,56 @@ add_py_lib_dir(Dir, Where) :-
 py_shell :-
     py_run("from janus import *", _{}, _{}, _),
     py_call(janus:interact(), _).
+
+
+		 /*******************************
+		 *         COMPATIBILIY		*
+		 *******************************/
+
+%!  pyfunc(+Module, +Function, -Return) is det.
+%!  pyfunc(+Module, +Function, +Kwargs, -Return) is det.
+%!  pyfunc(+Module, +Function, +Kwargs, +Prolog_Opts, -Return) is det.
+%
+%   XSB  compatible  wrappers  for  py_call/2.  Note  that  the  wrapper
+%   supports more call patterns.
+%
+%   @arg Prolog_Opts is ignored. We may   add that to provide compatible
+%   return data.
+
+pyfunc(Module, Function, Return) :-
+    py_call(Module:Function, Return).
+pyfunc(Module, Function, Kwargs, Return) :-
+    pyfunc(Module, Function, Kwargs, _Prolog_Opts, Return).
+
+pyfunc(Module, Function, [], _Prolog_Opts, Return) =>
+    py_call(Module:Function, Return).
+pyfunc(Module, Function, Kwargs, _Prolog_Opts, Return) =>
+    compound_name_arguments(Function, Name, PosArgs),
+    append(PosArgs, Kwargs, AllArgs),
+    compound_name_arguments(Final, Name, AllArgs),
+    py_call(Module:Final, Return).
+
+%!  pydot(+Module, +ObjRef, +MethAttr, -Ret) is det.
+%!  pydot(+Module, +ObjRef, +MethAttr, +Prolog_Opts, -Ret) is det.
+%
+%   XSB compatible wrappers for py_call/2.
+%
+%   @arg Module is ignored (why do we need that if we have ObjRef?)
+%   @arg Prolog_Opts is ignored.  See pyfunc/5.
+
+pydot(_Module, ObjRef, MethAttr, Ret) :-
+    py_call(ObjRef:MethAttr, Ret).
+pydot(_Module, ObjRef, MethAttr, _Prolog_Opts, Ret) :-
+    py_call(ObjRef:MethAttr, Ret).
+
+%!  free_python_object(+ObjRef) is det.
+%
+%   XSB compatible wrapper for py_free/1. Note that ObjRef is subject to
+%   (atom) garbage collection.  Explicitly  freeing   an  object  can be
+%   desirable if it is large.
+
+free_python_object(ObjRef) :-
+    py_free(ObjRef).
 
 
 		 /*******************************
