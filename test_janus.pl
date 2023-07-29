@@ -46,7 +46,9 @@
 :- use_module('tests/russel', []).
 
 test_janus :-
-    run_tests([ janus,
+    run_tests([ janus_data,
+                janus_obj,
+                janus_params,
                 janus_gc,
 		python_call_prolog,
 		janus_iter
@@ -58,7 +60,7 @@ test_janus :-
     directory_file_path(Dir0, tests, Dir),
     add_py_lib_dir(Dir, first).
 
-:- begin_tests(janus).
+:- begin_tests(janus_data).
 
 test(noarg, Z == 42) :-
     py_call(demo:int(), Z).
@@ -78,13 +80,45 @@ test(bool, Z == true) :-
     py_call(demo:echo(true), Z).
 test(bool, Z == false) :-
     py_call(demo:echo(false), Z).
+test(none, Z == 'None') :-
+    py_call(demo:echo('None'), Z).
 test(attr, Val = 42) :-
     py_call(demo:test_attr = 42),
     py_call(demo:test_attr, Val).
+test(stringify, R == "6") :-
+    py_call(demo:echo(#6), R).
+test(stringify, R == "3.14") :-
+    py_call(demo:echo(#3.14), R).
+test(stringify, R == "false") :-
+    py_call(demo:echo(#false), R).
+test(stringify, R == "None") :-
+    py_call(demo:echo(#'None'), R).
+test(stringify, R == "aap noot") :-        % does _not_ quote
+    py_call(demo:echo(#'aap noot'), R).
+test(stringify_wc, R == "+(1,2)") :-       % write_canonical/1
+    py_call(demo:echo(#(1 + 2)), R).
+test(stringify_wc, R == "f(A,_,A)") :-     % numbervars
+    py_call(demo:echo(#f(X,_,X)), R).
+test(dict, R=py{a:1, 2:2}) :-
+    py_call(demo:dict1(), R).
+test(dict, error(representation_error(py_dict_key))) :-
+    py_call(demo:dict2(), _).
+test(iterator, L == [1,2,3,4]) :-          % An iterator checks as a sequence
+    py_call(range(1,5), L).
+
+:- end_tests(janus_data).
+
+:- begin_tests(janus_obj).
+
 test(dog, Tricks == ["roll over"]) :-
     py_call(dog:'Dog'('Fido'), Dog),
     py_call(Dog:add_trick("roll over"), _),
     py_call(Dog:tricks, Tricks).
+
+:- end_tests(janus_obj).
+
+:- begin_tests(janus_params).
+
 test(arg, R == py{a:1,b:2,c:3}) :-
     py_call(demo:kwd(1,2), R).
 test(arg, R == py{a:1,b:2,c:4}) :-
@@ -93,12 +127,8 @@ test(arg, R == py{a:1,b:"a",c:3}) :-
     py_call(demo:kwd(1,b="a"), R).
 test(arg, R == py{a:1,b:"a",c:"x"}) :-
     py_call(demo:kwd(1,c="x",b="a"), R).
-test(dict, R=py{a:1, 2:2}) :-
-    py_call(demo:dict1(), R).
-test(dict, error(representation_error(py_dict_key))) :-
-    py_call(demo:dict2(), _).
 
-:- end_tests(janus).
+:- end_tests(janus_params).
 
 :- begin_tests(janus_gc).
 

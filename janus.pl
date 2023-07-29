@@ -45,7 +45,9 @@
             py_lib_dirs/1,              % -Dirs
             add_py_lib_dir/1,           % +Dir
             add_py_lib_dir/2,           % +Dir,+Where
-            py_shell/0
+            py_shell/0,
+
+            op(50,  fx,  #)             % #Value
           ]).
 :- if(current_prolog_flag(windows, true)).
 % just having the Python dir in PATH seems insufficient.  Note that

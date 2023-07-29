@@ -481,6 +481,18 @@ py_from_prolog(term_t t, PyObject **obj)
   size_t len;
   atom_t a;
 
+  // #(Term) --> stringify
+  if ( PL_is_functor(t, FUNCTOR_hash1) )
+  { term_t arg = PL_new_term_ref();
+    _PL_get_arg(1, t, arg);
+
+    if ( PL_get_wchars(arg, &len, &s, CVT_ALL|CVT_WRITE_CANONICAL) )
+    { PL_reset_term_refs(arg);
+      *obj = PyUnicode_FromWideChar(s, len);
+      return TRUE;
+    }
+  }
+
   if ( PL_is_integer(t) )
   { int64_t i;
 
@@ -501,6 +513,8 @@ py_from_prolog(term_t t, PyObject **obj)
 
     return FALSE;
   }
+
+  // Special atoms
   if ( PL_get_atom(t, &a) )
   { int v = -1;
 
@@ -530,10 +544,14 @@ py_from_prolog(term_t t, PyObject **obj)
 	return FALSE;
     }
   }
+
+  // Normal text representations.  Note that [] does not qualify
+  // in SWI-Prolog as an atom
   if ( PL_get_wchars(t, &len, &s, CVT_ATOM|CVT_STRING) )
   { *obj = PyUnicode_FromWideChar(s, len);
     return TRUE;
   }
+
   if ( PL_skip_list(t, 0, &len) == PL_LIST )
   { term_t tail = PL_copy_term_ref(t);
     term_t head = PL_new_term_ref();
@@ -551,6 +569,7 @@ py_from_prolog(term_t t, PyObject **obj)
     *obj = list;
     return TRUE;
   }
+
   if ( PL_is_dict(t) )
   { PyObject *py_dict = PyDict_New();
 
@@ -558,18 +577,6 @@ py_from_prolog(term_t t, PyObject **obj)
       return FALSE;
     *obj = py_dict;
     return TRUE;
-  }
-  if ( get_py_obj(t, obj, FALSE) )
-    return TRUE;
-  if ( PL_is_functor(t, FUNCTOR_hash1) )
-  { term_t arg = PL_new_term_ref();
-    _PL_get_arg(1, t, arg);
-
-    if ( PL_get_wchars(arg, &len, &s, CVT_ALL|CVT_WRITE_CANONICAL) )
-    { PL_reset_term_refs(arg);
-      *obj = PyUnicode_FromWideChar(s, len);
-      return TRUE;
-    }
   }
   if ( PL_is_functor(t, FUNCTOR_py1) )
   { term_t a = PL_new_term_ref();
@@ -626,6 +633,8 @@ py_from_prolog(term_t t, PyObject **obj)
       return TRUE;
     }
   }
+  if ( get_py_obj(t, obj, FALSE) )
+    return TRUE;
 
 error:
   return PL_domain_error("py_data", t),FALSE;

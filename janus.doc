@@ -79,7 +79,15 @@ developed for the WASM (Web Assembly) version.  That is
 \label{sec:janus-data}
 
 The bi-directional conversion between Prolog and Python terms is
-summarized in the table below.
+summarized in the table below.  For compatibility with Prolog
+implementation we support converting the curly-bracket and
+\arg{k}:\arg{v} to dicts.  Note that \verb${k1:v1, k2:v2}$ is
+syntactic sugar for \verb${}(','(:(k1,v1), :(k2,v2)))$.  We allow for
+embedding this in a \term{py}{Term} such that, with \const{py} defined
+as \jargon{prefix operator}, \verb$py{k1:v1, k2:v2}$ is both valid
+syntax as SWI-Prolog dict as as ISO Prolog compliant term and both are
+translated into the same Python dict.
+
 
 \begin{center}
 \begin{tabular}{|l|c|l|p{2in}|}
@@ -96,7 +104,10 @@ String  & $\Leftrightarrow$ & String   & \\
 List    & $\Leftrightarrow$ & Sequence & \\
 :(a,b,\ldots) & $\Leftrightarrow$ & (a,b,\ldots) & Python Tuples \\
 Dict    & $\Leftrightarrow$ & Dict     & \\
-\const{py_obj} blob & $\Leftrightarrow$ & Object & Used for any Python object not above \\ \hline
+\{k:v,\ldots\} & $\rightarrow$ & Dict    & Compatibility (see above) \\
+py(\{k:v,\ldots\}) & $\rightarrow$ & Dict & Compatibility (see above) \\
+\const{py_obj} blob & $\Leftrightarrow$ & Object & Used for any Python object not above \\
+hline
 \end{tabular}
 \end{center}
 
