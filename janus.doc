@@ -157,13 +157,14 @@ Doc = [<py_Token>(0x7f70375be9d0), <py_Token>(0x7f70375be930),
 \end{code}
 
 This is not what we want.  Because the spaCy \const{Doc} class
-implements the \jargon{sequence} protocol it is translatd into a
-Prolog list.  The \const{Doc} class implements many more methods that
-we may wish to use.  An example is \const{noun_chunks}, which provides
-a Python \jargon{generator} that enumerates the noun chunks found in
-the input.  Each chunk is an instance of \const{Span}, a sequence of
-\const{Token} instances that have the property \const{text}.  So, if
-we want the noun chunks as text, we can write the following program:
+implements the \jargon{sequence} protocol it is translated into a
+Prolog list of spaCy \const{Token} instances.  The \const{Doc} class
+implements many more methods that we may wish to use.  An example is
+\const{noun_chunks}, which provides a Python \jargon{generator} that
+enumerates the noun chunks found in the input.  Each chunk is an
+instance of \const{Span}, a sequence of \const{Token} instances that
+have the property \const{text}.  So, if we want the noun chunks as
+text, we can write the following program:
 
 \begin{code}
 :- use_module(library(janus)).

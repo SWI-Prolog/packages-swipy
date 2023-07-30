@@ -86,14 +86,13 @@ This library implements calling Python from Prolog.
 %!  py_call(+Call, -Return, +Options) is det.
 %
 %   Call Python and return the result of   the called function. Call has
-%   the shape `[Target:]Action1[:Action2]*`, where `Target`  is either a
-%   Python module name or a Python object  reference. If `Target` is not
-%   given, `Action1` is called as a builtin function. `Action` is either
-%   an atom to get the denoted attribute from   the  `Target` or it is a
+%   the shape `[Target][:Action]*`, where `Target`   is  either a Python
+%   module name or a Python object reference. Each `Action` is either an
+%   atom to get the denoted attribute from   current `Target` or it is a
 %   compound term where the first  argument   is  the function or method
 %   name  and  the  arguments  provide  the  parameters  to  the  Python
 %   function. On success, the returned Python   object  is translated to
-%   Prolog.
+%   Prolog.  `Action` without a `Target` denotes a buit-in function.
 %
 %   Arguments to Python  functions  use   the  Python  conventions. Both
 %   _positional_  and  _keyword_  arguments    are   supported.  Keyword
@@ -134,10 +133,11 @@ This library implements calling Python from Prolog.
 %   variable `Dog`.
 %
 %       ?- py_call(dog:'Dog'("Fido"), Dog).
-%       Dog = <py_obj>(0x7f095c9d02e0)
+%       Dog = <py_Dog>(0x7f095c9d02e0).
 %       ?- py_call($Dog:add_trick("roll_over")).
-%       true.
+%       Dog = <py_Dog>(0x7f095c9d02e0).
 %       ?- py_call($Dog:tricks, Tricks).
+%       Dog = <py_Dog>(0x7f095c9d02e0),
 %       Tricks = ["roll_over"]
 %
 %   py_call/1 can also be used to set an attribute on a module or object
@@ -146,7 +146,7 @@ This library implements calling Python from Prolog.
 %       ?- py_call(dog:'Dog'("Fido"), Dog),
 %          py_call(Dog:owner = "Bob"),
 %          py_call(Doc:owner, Owner).
-%       Dog = <py_obj>(0x7ffff7112170),
+%       Dog = <py_Dog>(0x7ffff7112170),
 %       Owner = "Bob".
 %
 %   Options processed:

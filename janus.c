@@ -764,7 +764,12 @@ py_eval(PyObject *obj, term_t func)
   size_t arity;
   PyObject *py_res = NULL;
 
-  if ( PL_get_chars(func, &attr, CVT_ATOM) )
+  if ( !obj && get_py_obj(func, &py_res, FALSE) )
+  { Py_INCREF(py_res);
+    return py_res;
+  }
+
+  if ( obj && PL_get_chars(func, &attr, CVT_ATOM) )
   { return check_error(PyObject_GetAttrString(obj, attr));
   } else if ( PL_get_name_arity(func, &fname, &arity) )
   { PyObject *py_func = NULL;
