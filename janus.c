@@ -44,6 +44,8 @@ static atom_t ATOM_true;
 static atom_t ATOM_pydict;
 static atom_t ATOM_tuple;
 static atom_t ATOM_curl;
+static atom_t ATOM_atom;
+static atom_t ATOM_string;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
@@ -62,9 +64,6 @@ static int py_unify(term_t t, PyObject *obj, int flags);
 static int py_from_prolog(term_t t, PyObject **obj);
 static void py_yield(void);
 static void py_resume(void);
-
-#define U_AS_TERM	0x1
-#define U_AS_OBJECT	0x2
 
 #include "hash.c"
 #include "pymod.c"
@@ -185,7 +184,8 @@ write_python_object(IOSTREAM *s, atom_t symbol, int flags)
 
 static void
 acquire_python_object(atom_t symbol)
-{
+{ PyObject *obj  = PL_blob_data(symbol, NULL, NULL);
+  Py_INCREF(obj);
 }
 
 PL_blob_t PY_OBJECT = {
@@ -416,7 +416,7 @@ out:
 
 
 static int
-py_unify_int(term_t t, PyObject *obj, int flags)
+py_unify(term_t t, PyObject *obj, int flags)
 { if ( !obj )
   { check_error(obj);
     return FALSE;
@@ -441,20 +441,9 @@ py_unify_int(term_t t, PyObject *obj, int flags)
       return py_unify_dict(t, obj, flags);
   }
 
-  return unify_py_obj(t, obj) ? U_AS_OBJECT : FALSE;
+  return unify_py_obj(t, obj);
 }
 
-static int
-py_unify(term_t t, PyObject *obj, int flags)
-{ return !!py_unify_int(t, obj, flags);
-}
-
-static int
-py_unify_decref(term_t t, PyObject *obj, int flags)
-{ int rc = py_unify_int(t, obj, flags);
-  if ( rc == U_AS_TERM && obj ) Py_DECREF(obj);
-  return !!rc;
-}
 
 static int
 py_add_to_dict(term_t key, term_t value, void *closure)
@@ -764,6 +753,10 @@ succeeded:
 }
 
 
+/* Evaluate func on obj.  If obj = NULL, evaluate a builtin function
+ * Return value: New Reference
+ */
+
 static PyObject *
 py_eval(PyObject *obj, term_t func)
 { char *attr;
@@ -841,10 +834,9 @@ py_eval(PyObject *obj, term_t func)
     else
       py_res = check_error(PyObject_Call(py_func, py_argv, py_kws));
   out:
-    if ( py_argv ) Py_DECREF(py_argv);
-    if ( py_kws  ) Py_DECREF(py_kws);
-    if ( py_func ) Py_DECREF(py_func);
-    if ( obj     ) Py_DECREF(obj);		/* Py_DECREF() on obj! */
+    Py_CLEAR(py_argv);
+    Py_CLEAR(py_kws);
+    Py_CLEAR(py_func);
 
     return py_res;
   } else
@@ -858,6 +850,9 @@ py_eval(PyObject *obj, term_t func)
  * operate on and the final function call or attribute in `call`
  * As `call` is written to, it must be a copy of an argument
  * term.
+ *
+ * Decrements the references to objects we have done with and
+ * returns a new reference for *py_target
  */
 
 static int
@@ -877,7 +872,11 @@ unchain(term_t call, PyObject **py_target)
       }
       Py_INCREF(*py_target);
     } else
-    { if ( !(*py_target = py_eval(*py_target, on)) )
+    { PyObject *next = py_eval(*py_target, on);
+
+      Py_XDECREF(*py_target);
+      *py_target = next;
+      if ( !next )
       { rc = FALSE;
 	break;
       }
@@ -912,13 +911,54 @@ py_gil_release(PyGILState_STATE state)
 }
 
 
+static int
+atom_domain_error(const char *dom, atom_t a)
+{ term_t t;
+
+  return ( (t=PL_new_term_ref()) &&
+	   PL_put_atom(t, a) &&
+	   PL_domain_error(dom, t) );
+}
+
+
+static PL_option_t pycall_options[] =
+{ PL_OPTION("py_string_as",   OPT_ATOM),
+  PL_OPTION("py_object",      OPT_BOOL),
+  PL_OPTIONS_END
+};
+
+
+static int
+get_conversion_options(term_t options, int *flags)
+{ if ( options )
+  { atom_t string_as = 0;
+    int py_object    = FALSE;
+
+    if ( !PL_scan_options(options, 0, "py_call_options", pycall_options,
+			  &string_as, &py_object) )
+      return FALSE;
+    if ( py_object )
+      *flags |= PYU_OBJ;
+    if ( string_as == ATOM_atom )
+      *flags |= PYU_ATOM;
+    else if ( string_as && string_as != ATOM_string )
+      return atom_domain_error("py_string_as", string_as);
+  }
+
+  return TRUE;
+}
+
 static foreign_t
-py_call(term_t Call, term_t result)
+py_call3(term_t Call, term_t result, term_t options)
 { PyObject *py_target = NULL;
   term_t call = PL_copy_term_ref(Call);
   term_t val = 0;
   int rc = TRUE;
   PyGILState_STATE state;
+  int uflags = 0;
+
+  if ( !get_conversion_options(options, &uflags) )
+    return FALSE;
 
   if ( !py_gil_ensure(&state) )
     return FALSE;
@@ -951,7 +991,9 @@ py_call(term_t Call, term_t result)
     } else
     { rc = !!(py_target = py_eval(py_target, call));
       if ( rc && result )
-	rc = py_unify_decref(result, py_target, 0);
+      { rc = py_unify(result, py_target, uflags);
+	Py_DECREF(py_target);
+      }
     }
   }
 
@@ -961,8 +1003,13 @@ py_call(term_t Call, term_t result)
 }
 
 static foreign_t
+py_call2(term_t Call, term_t Ret)
+{ return py_call3(Call, Ret, 0);
+}
+
+static foreign_t
 py_call1(term_t Call)
-{ return py_call(Call, 0);
+{ return py_call3(Call, 0, 0);
 }
 
 
@@ -970,6 +1017,7 @@ typedef struct
 { PyObject *iterator;
   PyObject *nextf;
   PyObject *next;
+  int uflags;
   int allocated;
 } iter_state;
 
@@ -995,7 +1043,7 @@ free_iter_state(iter_state *state)
 }
 
 static foreign_t
-py_iter(term_t Iterator, term_t Result, control_t handle)
+py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
 { iter_state iter_buf;
   iter_state *state;
 
@@ -1006,6 +1054,9 @@ py_iter(term_t Iterator, term_t Result, control_t handle)
 
       state = &iter_buf;
       memset(state, 0, sizeof(*state));
+      if ( !get_conversion_options(options, &state->uflags) )
+	return FALSE;
+
       if ( !unchain(call, &iter) )
 	return FALSE;
       if ( !(iter = py_eval(iter, call)) )
@@ -1040,7 +1091,7 @@ py_iter(term_t Iterator, term_t Result, control_t handle)
   fid_t fid = PL_open_foreign_frame();
   if ( fid )
   { while ( state->next )
-    { int rc = py_unify(Result, state->next, 0);
+    { int rc = py_unify(Result, state->next, state->uflags);
 
       Py_CLEAR(state->next);
       state->next = check_error(PyObject_CallObject(state->nextf, NULL));
@@ -1066,6 +1117,12 @@ py_iter(term_t Iterator, term_t Result, control_t handle)
 failure:
   free_iter_state(state);
   return FALSE;
+}
+
+
+static foreign_t
+py_iter2(term_t Iterator, term_t Result, control_t handle)
+{ return py_iter3(Iterator, Result, 0, handle);
 }
 
 
@@ -1100,8 +1157,9 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
     { result = PyRun_StringFlags(cmd, Py_file_input, globals, locals, NULL);
 
       if ( result )
-	rc = py_unify_decref(Result, result, 0);
-      else
+      { rc = py_unify(Result, result, 0);
+	Py_DECREF(result);
+      } else
 	rc = !!check_error(result);
     }
 
@@ -1125,9 +1183,14 @@ py_str(term_t t, term_t str)
   if ( !py_gil_ensure(&state) )
     return FALSE;
   if ( (rc=py_from_prolog(t, &obj)) )
-  { PyObject *s = PyObject_Str(obj);
+  { PyObject *s = check_error(PyObject_Str(obj));
+    Py_DECREF(obj);
 
-    rc = py_unify_decref(str, s, 0);
+    if ( s )
+    { rc = py_unify(str, s, 0);
+      Py_DECREF(s);
+    } else
+      rc = FALSE;
   }
   py_gil_release(state);
 
@@ -1199,6 +1262,8 @@ install_janus(void)
 { MKATOM(None);
   MKATOM(false);
   MKATOM(true);
+  MKATOM(atom);
+  MKATOM(string);
   ATOM_tuple  = PL_new_atom(":");
   ATOM_pydict = PL_new_atom("py");
   ATOM_curl   = PL_new_atom("{}");
@@ -1214,9 +1279,11 @@ install_janus(void)
   FUNCTOR_tuple2  = PL_new_functor(ATOM_tuple, 2);
 
   PL_register_foreign("py_initialize_", 3, py_initialize_, 0);
-  PL_register_foreign("py_call",        2, py_call,        0);
   PL_register_foreign("py_call",        1, py_call1,       0);
-  PL_register_foreign("py_iter",        2, py_iter,        PL_FA_NONDETERMINISTIC);
+  PL_register_foreign("py_call",        2, py_call2,       0);
+  PL_register_foreign("py_call",        3, py_call3,       0);
+  PL_register_foreign("py_iter",        2, py_iter2,       PL_FA_NONDETERMINISTIC);
+  PL_register_foreign("py_iter",        3, py_iter3,       PL_FA_NONDETERMINISTIC);
   PL_register_foreign("py_run",         4, py_run,         0);
   PL_register_foreign("py_free",        1, py_free,        0);
   PL_register_foreign("py_with_gil",    1, py_with_gil,    PL_FA_TRANSPARENT);

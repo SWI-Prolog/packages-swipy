@@ -35,7 +35,9 @@
 :- module(janus,
           [ py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
+            py_call/3,                  % +Call, -Return, +Options
 	    py_iter/2,			% +Call, -Return
+	    py_iter/3,			% +Call, -Return, +Options
             py_run/4,                   % +String, +Globals, +Locals, -Return
             py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
@@ -81,6 +83,7 @@ This library implements calling Python from Prolog.
 
 %!  py_call(+Call) is det.
 %!  py_call(+Call, -Return) is det.
+%!  py_call(+Call, -Return, +Options) is det.
 %
 %   Call Python and return the result of   the called function. Call has
 %   the shape `[Target:]Action1[:Action2]*`, where `Target`  is either a
@@ -145,8 +148,19 @@ This library implements calling Python from Prolog.
 %          py_call(Doc:owner, Owner).
 %       Dog = <py_obj>(0x7ffff7112170),
 %       Owner = "Bob".
+%
+%   Options processed:
+%
+%     - py_string_as(+Type)
+%       If Type is `string` (default), translate a Python String into a
+%       Prolog string.  If Type is `atom`, translated into a Prolog atom.
+%     - py_object(Boolean)
+%       It `true` (default `false`), translate the return as a Python
+%       object reference unless it is an atomic type (number, string,
+%       boolean or `None`).
 
 %!  py_iter(+Iterator, -Value) is nondet.
+%!  py_iter(+Iterator, -Value, +Options) is nondet.
 %
 %   True when Value is returned by the Python Iterator. Python iterators
 %   may be used to implement   non-deterministic foreign predicates. The
@@ -182,6 +196,7 @@ This library implements calling Python from Prolog.
 %            yield i * i
 %   ```
 %
+%   @arg Options is processed as with py_call/3.
 %   @bug Iterator may not depend on janus.Query()
 
 %!  py_run(+String, +Globals, +Locals, -Result) is det.
