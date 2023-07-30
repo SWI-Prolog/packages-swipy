@@ -111,6 +111,83 @@ hline
 \end{tabular}
 \end{center}
 
+\section{Janus by example}
+\label{sec:janus-examples}
+
+This section introduces Janus by examples.
+
+\subsection{Janus callint spaCy}
+\label{sec:janus-spacy}
+
+The \href{https://spacy.io/}{spaCy} package provides natural language
+processing.   This section illustrates the Janus library using spaCy.
+Typically, spaCy and the English language models may be installed using
+
+\begin{code}
+> pip install spacy
+> python -m spacy download en
+\end{code}
+
+After spaCy is installed, we can define \nopredref{model}{1} to
+represent a Python object for the English language model using the
+code below.  Note that by tabling this code as shared, the model is
+loaded only once and is accessible from multiple Prolog threads.
+
+\begin{code}
+:- table english/1 as shared.
+
+english(NLP) :-
+    py_call(spacy:load(en_core_web_sm), NLP).
+\end{code}
+
+Calling \term{english}{X} results in \arg{X} =
+\verb$<py_English>(0x7f703c24f430)$.  This object implements the
+Python \jargon{callable} protocol.  Calling the model with a string
+results in a parsed document.   We can use this from Prolog using
+the built-in \const{__call__} method:
+
+\begin{code}
+?- english(NLP),
+   py_call(NLP:'__call__'("This is a sentence."), Doc).
+NLP = <py_English>(0x7f703851b8e0),
+Doc = [<py_Token>(0x7f70375be9d0), <py_Token>(0x7f70375be930),
+       <py_Token>(0x7f70387f8860), <py_Token>(0x7f70376dde40),
+       <py_Token>(0x7f70376de200)
+      ].
+\end{code}
+
+This is not what we want.  Because the spaCy \const{Doc} class
+implements the \jargon{sequence} protocol it is translatd into a
+Prolog list.  The \const{Doc} class implements many more methods that
+we may wish to use.  An example is \const{noun_chunks}, which provides
+a Python \jargon{generator} that enumerates the noun chunks found in
+the input.  Each chunk is an instance of \const{Span}, a sequence of
+\const{Token} instances that have the property \const{text}.  So, if
+we want the noun chunks as text, we can write the following program:
+
+\begin{code}
+:- use_module(library(janus)).
+
+:- table english/1.
+
+english(NLP) :-
+    py_call(spacy:load(en_core_web_sm),NLP).
+
+noun(Sentence, Noun) :-
+    english(NLP),
+    py_call(NLP:'__call__'(Sentence), Doc, [py_object(true)]),
+    py_iter(Doc:noun_chunks, Span, [py_object]),
+    py_call(Span:text, Noun, [py_string_as(atom)]).
+\end{code}
+
+After which we can call
+
+\begin{code}
+?- noun("This is a sentence.", Noun).
+Noun = 'This' ;
+Noun = 'a sentence'.
+\end{code}
+
 \input{libjanus.tex}
 
 \input{jnsutils.tex}
