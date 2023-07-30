@@ -165,8 +165,17 @@ compare_python_object(atom_t a, atom_t b)
 
 static int
 write_python_object(IOSTREAM *s, atom_t symbol, int flags)
-{ PyObject *obj= PL_blob_data(symbol, NULL, NULL);
-  Sfprintf(s, "<py_obj>(%p)", obj);
+{ PyObject *obj  = PL_blob_data(symbol, NULL, NULL);
+  PyObject *cls = NULL, *name = NULL;
+  const char *str = NULL;
+
+  if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
+       (name=PyObject_GetAttrString(cls, "__name__")) )
+    str = PyUnicode_AsUTF8(name);
+
+  Sfprintf(s, "<py_%Us>(%p)", str, obj);
+  Py_CLEAR(cls);
+  Py_CLEAR(name);
   return TRUE;
 }
 
