@@ -58,7 +58,7 @@ static functor_t FUNCTOR_py1;
 static int py_initialize_done = FALSE;
 
 static PyObject *check_error(PyObject *obj);
-static int py_unify(term_t t, PyObject *obj);
+static int py_unify(term_t t, PyObject *obj, int flags);
 static int py_from_prolog(term_t t, PyObject **obj);
 static void py_yield(void);
 static void py_resume(void);
@@ -279,9 +279,9 @@ check_error(PyObject *obj)
     term_t av = PL_new_term_refs(3);
 
     PyErr_Fetch(&type, &value, &stack);
-    int rc = ( py_unify(av+0, type) &&
-	       py_unify(av+1, value) &&
-	       (stack ? py_unify(av+2, stack)
+    int rc = ( py_unify(av+0, type, 0) &&
+	       py_unify(av+1, value, 0) &&
+	       (stack ? py_unify(av+2, stack, 0)
 		      : PL_unify_atom(av+2, ATOM_None)) &&
 	       PL_cons_functor_v(t, FUNCTOR_python_error3, av) &&
 	       PL_put_variable(av+0) &&
@@ -294,7 +294,7 @@ check_error(PyObject *obj)
 }
 
 static int
-py_unify_int(term_t t, PyObject *obj)
+py_unify_int(term_t t, PyObject *obj, int flags)
 { if ( !obj )
   { check_error(obj);
     return FALSE;
@@ -328,7 +328,7 @@ py_unify_int(term_t t, PyObject *obj)
       for(Py_ssize_t i=0; i<arity; i++)
       { PyObject *py_a = PyTuple_GetItem(obj, i);
 	_PL_get_arg(i+1, t, a);
-	if ( !py_unify_int(a, py_a) )
+	if ( !py_unify_int(a, py_a, flags) )
 	  return FALSE;
       }
       PL_reset_term_refs(a);
@@ -347,7 +347,7 @@ py_unify_int(term_t t, PyObject *obj)
       if ( !el )
 	return FALSE;
       int rc = ( PL_unify_list(tail, head,tail) &&
-		 py_unify_int(head, el) );
+		 py_unify_int(head, el, flags) );
       Py_DECREF(el);
       if ( !rc )
 	return FALSE;
@@ -398,7 +398,7 @@ py_unify_int(term_t t, PyObject *obj)
       { PL_representation_error("py_dict_key");
 	goto out;
       }
-      if ( !py_unify(pl_values+pli, py_value) )
+      if ( !py_unify(pl_values+pli, py_value, flags) )
 	goto out;
     }
 
@@ -417,13 +417,13 @@ py_unify_int(term_t t, PyObject *obj)
 }
 
 static int
-py_unify(term_t t, PyObject *obj)
-{ return !!py_unify_int(t, obj);
+py_unify(term_t t, PyObject *obj, int flags)
+{ return !!py_unify_int(t, obj, flags);
 }
 
 static int
-py_unify_decref(term_t t, PyObject *obj)
-{ int rc = py_unify_int(t, obj);
+py_unify_decref(term_t t, PyObject *obj, int flags)
+{ int rc = py_unify_int(t, obj, flags);
   if ( rc == U_AS_TERM && obj ) Py_DECREF(obj);
   return !!rc;
 }
@@ -923,7 +923,7 @@ py_call(term_t Call, term_t result)
     } else
     { rc = !!(py_target = py_eval(py_target, call));
       if ( rc && result )
-	rc = py_unify_decref(result, py_target);
+	rc = py_unify_decref(result, py_target, 0);
     }
   }
 
@@ -1012,7 +1012,7 @@ py_iter(term_t Iterator, term_t Result, control_t handle)
   fid_t fid = PL_open_foreign_frame();
   if ( fid )
   { while ( state->next )
-    { int rc = py_unify(Result, state->next);
+    { int rc = py_unify(Result, state->next, 0);
 
       Py_CLEAR(state->next);
       state->next = check_error(PyObject_CallObject(state->nextf, NULL));
@@ -1072,7 +1072,7 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
     { result = PyRun_StringFlags(cmd, Py_file_input, globals, locals, NULL);
 
       if ( result )
-	rc = py_unify_decref(Result, result);
+	rc = py_unify_decref(Result, result, 0);
       else
 	rc = !!check_error(result);
     }
@@ -1099,7 +1099,7 @@ py_str(term_t t, term_t str)
   if ( (rc=py_from_prolog(t, &obj)) )
   { PyObject *s = PyObject_Str(obj);
 
-    rc = py_unify_decref(str, s);
+    rc = py_unify_decref(str, s, 0);
   }
   py_gil_release(state);
 

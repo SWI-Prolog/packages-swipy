@@ -83,7 +83,7 @@ unify_input(term_t t, int arity, PyObject *args)
 { if ( arity == 1 )
     return PL_put_dict(t, ATOM_pydict, 0, NULL, 0);
   else
-    return py_unify(t, PyTuple_GetItem(args, 1));
+    return py_unify(t, PyTuple_GetItem(args, 1), 0);
 }
 
 static int
@@ -118,7 +118,7 @@ swipl_call(PyObject *self, PyObject *args)
   if ( (fid=PL_open_foreign_frame()) )
   { term_t av = PL_new_term_refs(3);
 
-    if ( py_unify(av+0, PyTuple_GetItem(args, 0)) &&
+    if ( py_unify(av+0, PyTuple_GetItem(args, 0), 0) &&
 	 unify_input(av+1, arity, args) )
     { qid_t qid = PL_open_query(user, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS,
 				pred, av);
@@ -182,7 +182,7 @@ swipl_open_query(PyObject *self, PyObject *args)
   if ( (fid=PL_open_foreign_frame()) )
   { term_t av = PL_new_term_refs(3);
 
-    if ( py_unify(av+0, PyTuple_GetItem(args, 0)) &&
+    if ( py_unify(av+0, PyTuple_GetItem(args, 0), 0) &&
 	 unify_input(av+1, arity, args) )
     { qid_t qid = PL_open_query(user, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS, pred, av);
 
