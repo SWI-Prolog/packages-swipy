@@ -80,6 +80,10 @@ static pthread_mutex_t crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define UNLOCK()
 #endif
 
+#define PYU_ATOM 0x0001		/* Unify text as atom */
+#define PYU_OBJ  0x0002		/* Unify as object */
+
+
 		 /*******************************
 		 *          DEBUGGING           *
 		 *******************************/
@@ -293,6 +297,124 @@ check_error(PyObject *obj)
     return obj;
 }
 
+
+static int
+py_unify_unicode(term_t t, PyObject *obj, int flags)
+{ ssize_t len;
+  const char *s;
+  int rc;
+  int uflags = REP_UTF8;
+
+  uflags |= (flags&PYU_ATOM) ? PL_ATOM : PL_STRING;
+
+  s = PyUnicode_AsUTF8AndSize(obj, &len);
+  if ( !check_error((void*)s) )
+    return FALSE;
+  PL_STRINGS_MARK();
+  rc = PL_unify_chars(t, uflags, len, s);
+  PL_STRINGS_RELEASE();
+  return rc;
+}
+
+
+static int
+py_unify_tuple(term_t t, PyObject *obj, int flags)
+{ Py_ssize_t arity = PyTuple_GET_SIZE(obj);
+  if ( PL_unify_functor(t, PL_new_functor(ATOM_tuple, arity)) )
+  { term_t a = PL_new_term_ref();
+    for(Py_ssize_t i=0; i<arity; i++)
+    { PyObject *py_a = PyTuple_GetItem(obj, i);
+      _PL_get_arg(i+1, t, a);
+      if ( !py_unify(a, py_a, flags) )
+	return FALSE;
+    }
+    PL_reset_term_refs(a);
+    return TRUE;
+  }
+  return FALSE;
+}
+
+static int
+py_unify_sequence(term_t t, PyObject *obj, int flags)
+{ ssize_t len = PySequence_Size(obj);
+  term_t tail = PL_copy_term_ref(t);
+  term_t head = PL_new_term_ref();
+
+  for(ssize_t i=0; i<len; i++)
+  { PyObject *el = check_error(PySequence_GetItem(obj, i));
+
+    if ( !el )
+      return FALSE;
+    int rc = ( PL_unify_list(tail, head,tail) &&
+	       py_unify(head, el, flags) );
+    Py_DECREF(el);
+    if ( !rc )
+      return FALSE;
+  }
+  if ( !PL_unify_nil(tail) )
+    return FALSE;
+
+  PL_reset_term_refs(tail);
+  return TRUE;
+}
+
+static int
+py_unify_dict(term_t t, PyObject *obj, int flags)
+{ Py_ssize_t size = PyDict_Size(obj);
+  term_t pl_dict = PL_new_term_ref();
+  term_t pl_values = PL_new_term_refs(size);
+  atom_t fast[25];
+  atom_t *pl_keys;
+  int rc = FALSE;
+  Py_ssize_t i = 0;
+  PyObject *py_key, *py_value;
+
+  if ( size < 25 )
+    pl_keys = fast;
+  else if ( !(pl_keys = malloc(size*sizeof(atom_t))) )
+    return PL_resource_error("memory");
+  memset(pl_keys, 0, size*sizeof(atom_t));
+
+  if ( !pl_keys )
+  { PL_resource_error("memory");
+    goto out;
+  }
+
+  for( size_t pli=0; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
+  { if ( PyUnicode_Check(py_key) )
+    { ssize_t len;
+      wchar_t *s;
+
+      s = PyUnicode_AsWideCharString(py_key, &len);
+      if ( !check_error((void*)s) )
+	goto out;
+      pl_keys[pli] = PL_new_atom_wchars(len, s);
+      PyMem_Free(s);
+    } else if ( PyLong_Check(py_key) )
+    { if ( !(pl_keys[pli]=_PL_cons_small_int(PyLong_AsLongLong(py_key))) )
+      { PL_representation_error("py_dict_key");
+	goto out;
+      }
+    } else
+    { PL_representation_error("py_dict_key");
+      goto out;
+    }
+    if ( !py_unify(pl_values+pli, py_value, flags) )
+      goto out;
+  }
+
+  rc = (PL_put_dict(pl_dict, ATOM_pydict, size, pl_keys, pl_values) &&
+	PL_unify(t, pl_dict));
+
+out:
+  _PL_unregister_keys(size, pl_keys);
+  if ( pl_keys != fast )
+    free(pl_keys);
+
+  return rc;
+}
+
+
 static int
 py_unify_int(term_t t, PyObject *obj, int flags)
 { if ( !obj )
@@ -308,109 +430,15 @@ py_unify_int(term_t t, PyObject *obj, int flags)
   if ( PyFloat_Check(obj) )
     return PL_unify_float(t, PyFloat_AsDouble(obj));
   if ( PyUnicode_Check(obj) )
-  { ssize_t len;
-    wchar_t *s;
-    int rc;
+    return py_unify_unicode(t, obj, flags);
 
-    s = PyUnicode_AsWideCharString(obj, &len);
-    if ( !check_error((void*)s) )
-      return FALSE;
-    PL_STRINGS_MARK();
-    rc = PL_unify_wchars(t, PL_STRING, len, s);
-    PL_STRINGS_RELEASE();
-    PyMem_Free(s);
-    return rc;
-  }
-  if ( PyTuple_Check(obj) )
-  { Py_ssize_t arity = PyTuple_GET_SIZE(obj);
-    if ( PL_unify_functor(t, PL_new_functor(ATOM_tuple, arity)) )
-    { term_t a = PL_new_term_ref();
-      for(Py_ssize_t i=0; i<arity; i++)
-      { PyObject *py_a = PyTuple_GetItem(obj, i);
-	_PL_get_arg(i+1, t, a);
-	if ( !py_unify_int(a, py_a, flags) )
-	  return FALSE;
-      }
-      PL_reset_term_refs(a);
-      return TRUE;
-    }
-    return FALSE;
-  }
-  if ( PySequence_Check(obj) )
-  { ssize_t len = PySequence_Size(obj);
-    term_t tail = PL_copy_term_ref(t);
-    term_t head = PL_new_term_ref();
-
-    for(ssize_t i=0; i<len; i++)
-    { PyObject *el = check_error(PySequence_GetItem(obj, i));
-
-      if ( !el )
-	return FALSE;
-      int rc = ( PL_unify_list(tail, head,tail) &&
-		 py_unify_int(head, el, flags) );
-      Py_DECREF(el);
-      if ( !rc )
-	return FALSE;
-    }
-    if ( !PL_unify_nil(tail) )
-      return FALSE;
-
-    PL_reset_term_refs(tail);
-    return TRUE;
-  }
-  if ( PyDict_Check(obj) )
-  { Py_ssize_t size = PyDict_Size(obj);
-    term_t pl_dict = PL_new_term_ref();
-    term_t pl_values = PL_new_term_refs(size);
-    atom_t fast[25];
-    atom_t *pl_keys;
-    int rc = FALSE;
-    Py_ssize_t i = 0;
-    PyObject *py_key, *py_value;
-
-    if ( size < 25 )
-      pl_keys = fast;
-    else if ( !(pl_keys = malloc(size*sizeof(atom_t))) )
-      return PL_resource_error("memory");
-    memset(pl_keys, 0, size*sizeof(atom_t));
-
-    if ( !pl_keys )
-    { PL_resource_error("memory");
-      goto out;
-    }
-
-    for( size_t pli=0; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
-    { if ( PyUnicode_Check(py_key) )
-      { ssize_t len;
-	wchar_t *s;
-
-	s = PyUnicode_AsWideCharString(py_key, &len);
-	if ( !check_error((void*)s) )
-	  goto out;
-	pl_keys[pli] = PL_new_atom_wchars(len, s);
-	PyMem_Free(s);
-      } else if ( PyLong_Check(py_key) )
-      { if ( !(pl_keys[pli]=_PL_cons_small_int(PyLong_AsLongLong(py_key))) )
-	{ PL_representation_error("py_dict_key");
-	  goto out;
-	}
-      } else
-      { PL_representation_error("py_dict_key");
-	goto out;
-      }
-      if ( !py_unify(pl_values+pli, py_value, flags) )
-	goto out;
-    }
-
-    rc = (PL_put_dict(pl_dict, ATOM_pydict, size, pl_keys, pl_values) &&
-	  PL_unify(t, pl_dict));
-
-  out:
-    _PL_unregister_keys(size, pl_keys);
-    if ( pl_keys != fast )
-      free(pl_keys);
-
-    return rc;
+  if ( !(flags&PYU_OBJ) )
+  { if ( PyTuple_Check(obj) )
+      return py_unify_tuple(t, obj, flags);
+    if ( PySequence_Check(obj) )
+      return py_unify_sequence(t, obj, flags);
+    if ( PyDict_Check(obj) )
+      return py_unify_dict(t, obj, flags);
   }
 
   return unify_py_obj(t, obj) ? U_AS_OBJECT : FALSE;
