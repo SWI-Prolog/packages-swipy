@@ -47,6 +47,10 @@ bench_iter_py(N) :-
     ansi_format(bold, 'Iterating over Python range(0,~d) from Prolog~n', [N]),
     time(forall(py_iter(range(0,N), _), true)).
 
+bench_px_cmd(N) :-
+    ansi_format(bold, 'Call px_cmd("true") ~D times', [N]),
+    time(py_call(demo:bench_px_cmd(N))).
+
 py_thread(Id) :-
     thread_self(Self),
     (   atom(Self)

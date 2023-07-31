@@ -83,6 +83,11 @@ def bench_call_v(n):
     for i in range(1,n):
         print((i, once("py_thread(T)", {})["T"]))
 
+def bench_px_cmd(n):
+    """Call `true` `n` times"""
+    for i in range(1,n):
+        px_cmd("user", "true")
+
 # Simple counter class
 
 class Counter:

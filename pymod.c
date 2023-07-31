@@ -80,7 +80,7 @@ Py_SetPrologErrorFromString(const char *s)
 
 static int
 unify_input(term_t t, int arity, PyObject *args)
-{ if ( arity == 1 )
+{ if ( arity == 1 )		/* no input arguments */
     return PL_put_dict(t, ATOM_pydict, 0, NULL, 0);
   else
     return py_unify(t, PyTuple_GetItem(args, 1), 0);
@@ -90,10 +90,10 @@ static int
 keep_bindings(PyObject *args)
 { PyObject *kp;
 
-  return ( PyTuple_GET_SIZE(args) == 3 &&
+  return ( PyTuple_GET_SIZE(args) >= 3 &&
 	   (kp=PyTuple_GetItem(args, 2))&&
 	   PyBool_Check(kp) &&
-	   PyLong_AsLongLong(kp) );
+	   PyLong_AsLong(kp) );
 }
 
 static predicate_t pred = NULL;
@@ -106,7 +106,8 @@ swipl_call(PyObject *self, PyObject *args)
   Py_ssize_t arity = PyTuple_GET_SIZE(args);
 
   if ( arity == 0 || arity > 3 )
-  { PyErr_SetString(PyExc_TypeError, "swipl.call(query,bindings,keep) takes 1..3 arguments");
+  { PyErr_SetString(PyExc_TypeError,
+		    "swipl.call(query,bindings,keep) takes 1..3 arguments");
     return NULL;
   }
 

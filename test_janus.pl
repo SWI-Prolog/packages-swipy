@@ -51,7 +51,8 @@ test_janus :-
                 janus_params,
                 janus_gc,
 		python_call_prolog,
-		janus_iter
+		janus_iter,
+		xsb_call
               ]).
 
 :- initialization
@@ -200,6 +201,14 @@ test(square, all(X = [1,4,9,16])) :-
     py_iter(demo:squares(1,5), X).
 
 :- end_tests(janus_iter).
+
+:- begin_tests(xsb_call).
+
+test(reverse, X == :([py{a:py{b:"c"}}, :("mytuple"), 3, 2, 1], 1)) :-
+    py_call(janus:px_qdet(lists, reverse,
+			  [1,2,3,:('mytuple'),py{'a':py{'b':'c'}}]),
+	    X).
+:- end_tests(xsb_call).
 
 
 bench_janus :-

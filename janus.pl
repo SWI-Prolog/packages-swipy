@@ -58,6 +58,8 @@
 
             op(50,  fx,  #)             % #Value
           ]).
+:- autoload(library(lists), [append/3]).
+
 :- if(current_prolog_flag(windows, true)).
 % just having the Python dir in PATH seems insufficient.  Note that
 % this probably does not yet deal with the requirement to have the
@@ -412,6 +414,70 @@ pydot(_Module, ObjRef, MethAttr, _Prolog_Opts, Ret) :-
 
 free_python_object(ObjRef) :-
     py_free(ObjRef).
+
+		 /*******************************
+		 *     SUPPORT PYTHON CALLS     *
+		 *******************************/
+
+:- public
+       px_cmd/3,
+       px_qdet/4,
+       px_comp/7.
+
+% These predicates are helpers  for the corresponding Python functions
+% in janus.py.
+
+px_cmd(M, P, Tuple) :-
+    atom_string(Pred, P),
+    atom_string(Module, M),
+    (   compound(Tuple)
+    ->  compound_name_arguments(Tuple, _, Args),
+	Goal =.. [Pred|Args]
+    ;   Goal = Pred
+    ),
+    call(Module:Goal).
+
+px_qdet(M, P, Tuple, Ret) :-
+    atom_string(Pred, P),
+    atom_string(Module, M),
+    (   compound(Tuple)
+    ->  compound_name_arguments(Tuple, _, Args),
+	append(Args, [Ret], GArgs),
+	Goal =.. [Pred|GArgs],
+	call(Module:Goal)
+    ;   call(Module:Pred, Ret)
+    ).
+
+px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
+    atom_string(Pred, P),
+    atom_string(Module, M),
+    length(Out, Vars),
+    (   compound(Tuple)
+    ->  compound_name_arguments(Tuple, _, Args),
+	append(Args, Out, GArgs),
+	Goal =.. [Pred|GArgs]
+    ;   Goal =.. [Pred|Out]
+    ),
+    compound_name_arguments(OTempl0, :, Out),
+    tv_goal_and_template(TV, Module:Goal, FGoal, OTempl0, OTempl),
+    findall(OTempl, FGoal, Ret0),
+    (   Set == true
+    ->  sort(Ret0, Ret)
+    ;   Ret = Ret0
+    ).
+
+tv_goal_and_template("plain",  Goal, ucall(Goal, TV), Templ, :(Templ,TV)) :- !.
+tv_goal_and_template("delays", Goal, call_delays(Goal, TV), Templ, :(Templ,TV)) :- !.
+tv_goal_and_template("none",   Goal, Goal, Templ, Templ) :- !.
+tv_goal_and_template(Mode, _, _, _, _) :-
+    domain_error("px_comp() truth_vals", Mode).
+
+ucall(Goal, TV) :-
+    call(Goal),
+    (   '$tbl_delay_list'([])
+    ->  TV = 1
+    ;   TV = 2
+    ).
 
 
 		 /*******************************
