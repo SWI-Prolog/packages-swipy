@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(swipl-janus)
+project(swipl-swipy)
 
 include("../cmake/PrologPackage.cmake")
 
