@@ -7,13 +7,15 @@ here.
     add_py_lib_dir(Dir, first).
 
 bench(N) :-
+    py_version,			% Load Python
     bench_py_call_int(N),
     bench_py_call_sumlist(N),
     bench_iter_py(N),
     bench_iter_prolog(N, _),
     bench_call_prolog(N),
     bench_echo_list(N),
-    bench_pass_list(N).
+    bench_pass_list(N),
+    bench_px_cmd(N).
 
 bench_py_call_int(N) :-
     ansi_format(bold, 'Calling python int() ~D times~n', [N]),

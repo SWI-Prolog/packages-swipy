@@ -59,6 +59,8 @@
             op(50,  fx,  #)             % #Value
           ]).
 :- autoload(library(lists), [append/3]).
+:- autoload(library(apply), [maplist/2, exclude/3, maplist/3]).
+:- autoload(library(error), [must_be/2, domain_error/2]).
 
 :- if(current_prolog_flag(windows, true)).
 % just having the Python dir in PATH seems insufficient.  Note that
@@ -278,16 +280,30 @@ py_version :-
 		 *           CALLBACK		*
 		 *******************************/
 
+:- dynamic py_call_cache/7 as volatile.
+
 :- meta_predicate py_call_string(:, +, -).
 
 py_call_string(M:String, Input, Dict) :-
-    term_string(Goal, String, [variable_names(Map)]),
-    exclude(not_in_projection(Input), Map, Map1),
-    dict_create(Dict, bindings, [status:Status|Map1]),
+    py_call_cache(String, Input, M, Goal, Dict, Status, OutVars),
+    !,
     (   call(M:Goal)
     *-> bind_status(Status)
     ;   Status = false,
-	maplist(bind_none, Map1)
+	maplist(bind_none, OutVars)
+    ).
+py_call_string(M:String, Input, Dict) :-
+    term_string(Goal, String, [variable_names(Map)]),
+    unbind_dict(Input, VInput),
+    exclude(not_in_projection(VInput), Map, OutBindings),
+    dict_create(Dict, bindings, [status=Status|OutBindings]),
+    maplist(arg(2), OutBindings, OutVars),
+    asserta(py_call_cache(String, VInput, M, Goal, Dict, Status, OutVars)),
+    VInput = Input,
+    (   call(M:Goal)
+    *-> bind_status(Status)
+    ;   Status = false,
+	maplist(bind_none, OutVars)
     ).
 
 not_in_projection(Input, Name=Value) :-
@@ -296,13 +312,20 @@ not_in_projection(Input, Name=Value) :-
     ;   sub_atom(Name, 0, _, _, '_')
     ).
 
-bind_none(_='None').
+bind_none('None').
 
 bind_status(Status) :-
     (   '$tbl_delay_list'([])
     ->  Status = true
     ;   Status = "Undefined"
     ).
+
+unbind_dict(Dict0, Dict) :-
+    dict_pairs(Dict0, Tag, Pairs0),
+    maplist(unbind, Pairs0, Pairs),
+    dict_pairs(Dict, Tag, Pairs).
+
+unbind(Name-_, Name-_).
 
 
 		 /*******************************
