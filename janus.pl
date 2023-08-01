@@ -61,6 +61,7 @@
 :- autoload(library(lists), [append/3]).
 :- autoload(library(apply), [maplist/2, exclude/3, maplist/3]).
 :- autoload(library(error), [must_be/2, domain_error/2]).
+:- use_module(library(apply_macros), []).
 
 :- if(current_prolog_flag(windows, true)).
 % just having the Python dir in PATH seems insufficient.  Note that
@@ -160,8 +161,7 @@ This library implements calling Python from Prolog.
 %       Prolog string.  If Type is `atom`, translated into a Prolog atom.
 %     - py_object(Boolean)
 %       It `true` (default `false`), translate the return as a Python
-%       object reference unless it is an atomic type (number, string,
-%       boolean or `None`).
+%       object reference unless it is a number, boolean or `None`.
 
 %!  py_iter(+Iterator, -Value) is nondet.
 %!  py_iter(+Iterator, -Value, +Options) is nondet.

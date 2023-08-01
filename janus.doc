@@ -38,17 +38,18 @@ performance.
 \section{Introduction}
 \label{sec:janus-intro}
 
-Unlike Prolog, Python has a huge set of resources, notably interfaces to
-just about anything one can imagine. Making such interfaces available to
-Prolog can surely be done. It typically requires programming in C or
+Python has a huge developer community that maintains a large set of
+resources, notably interfaces to just about anything one can imagine.
+Making such interfaces directly available to Prolog can surely be done.
+However, developing an interface typically requires programming in C or
 C++, a skill that is not widely available everywhere. Being able to
 access Python effortlessly from Prolog resolves that. This solution was
 proposed in \cite{janus}, initially developed for XSB.
 
 Janus provides a bi-directional interface between Prolog and Python
-using the embedding interface. Currently we only implement using Python
-embedded into SWI-Prolog. This makes using Python from Prolog as simple
-as taking the standard SWI-Prolog distribution and loading
+using the low-level C API of both languages. Currently we only support
+Python embedded into SWI-Prolog. This makes using Python from Prolog as
+simple as taking the standard SWI-Prolog distribution and loading
 \pllib{janus}. Both being dynamically typed languages, we can define an
 efficient and easy to use interface.
 
@@ -61,8 +62,8 @@ developed for the WASM (Web Assembly) version.  That is
     Currently, where the JavaScript interface supports any Prolog
     term, the Python interface does not.  This may change.
 
-    \item A Prolog predicate to call Python functions, access and set
-    object attributes.
+    \item A Prolog predicate to call Python functions and methods,
+    as well as access and set object attributes.
 
     \item A non-deterministic Prolog predicate enumerate a Python
     \jargon{iterator}.
@@ -94,19 +95,21 @@ translated into the same Python dict.
 \hline
 \textbf{Prolog} & & \textbf{Python} & \textbf{Notes} \\
 \hline
-Integer & $\Leftrightarrow$ & Integer  & Only 64 bit range \\
-'None'  & $\Leftrightarrow$ & None     & \\
-true    & $\Leftrightarrow$ & True     & \\
-false   & $\Leftrightarrow$ & False    & \\
-Atom    & $\rightarrow$     & String   & \\
-String  & $\Leftrightarrow$ & String   & \\
-\#(Term) & $\rightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
-List    & $\Leftrightarrow$ & Sequence & \\
-:(a,b,\ldots) & $\Leftrightarrow$ & (a,b,\ldots) & Python Tuples \\
-Dict    & $\Leftrightarrow$ & Dict     & \\
-\{k:v,\ldots\} & $\rightarrow$ & Dict    & Compatibility (see above) \\
-py(\{k:v,\ldots\}) & $\rightarrow$ & Dict & Compatibility (see above) \\
-\const{py_obj} blob & $\Leftrightarrow$ & Object & Used for any Python object not above \\
+Integer & $\Longleftrightarrow$ & Integer  & Only 64 bit range \\
+'None'  & $\Longleftrightarrow$ & None     & \\
+true    & $\Longleftrightarrow$ & True     & \\
+false   & $\Longleftrightarrow$ & False    & \\
+Atom    & $\longrightarrow$     & String   & \\
+String  & $\Longleftrightarrow$ & String   & \\
+\#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
+List    & $\longrightarrow$     & List & \\
+List    & $\longleftarrow$      & Sequence & \\
+List    & $\longleftarrow$      & Generator & \\
+:(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples \\
+Dict    & $\Longleftrightarrow$ & Dict     & \\
+\{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
+py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
+\const{py_obj} blob & $\Longleftrightarrow$ & Object & Used for any Python object not above \\
 hline
 \end{tabular}
 \end{center}
@@ -375,7 +378,7 @@ on AMD3950X running Ubuntu 22.04, SWI-Prolog 9.1.11 and Python 3.10.6.
 Echo list with 1,000,000 elements & 0.12 \\
 Call Pyton \exam{demo:int()} from Prolog 1,000,000 times & 0.44 \\
 Call Pyton \exam{demo:sumlist3(5,[1,2,3])} from Prolog 1,000,000 times & 1.4 \\
-Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 3.7 \\
+Call Prolog \exam{Y is X+1} from Python 1,000,000 times & 1.9 \\
 Iterate from Python over Prolog goal \exam{between(1, 1 000 000, X)} & 1.1 \\
 Iterate over Python iterator \exam{range(1,1000000)} from Prolog & 0.17 \\
 \hline
@@ -414,8 +417,37 @@ all cores of your hardware or get the best performance on calls or
 exchanging data should consider using the C or C++ interfaces of
 SWI-Prolog.
 
-\section{Compare to XSB Python interface}
+\section{Compatibility to the XSB Janus implementation}
 \label{sec:janus-vs-xsb}
+
+We aim to provide an interface that is close enough to allow
+developing Prolog code that uses Python and visa versa.  Differences
+between the two Prolog implementation make this non-trivial.
+SWI-Prolog has native support for \jargon{dicts}, \jargon{strings},
+\jargon{unbounded integers} and \jargon{blobs} that provide safe
+pointers to external objects that are subject to (atom) garbage
+collection.
+
+We try to find a compromise to make the data conversion as close as
+possible while supporting both systems as good as possible.  For this
+reason we support creating a Python dict both from a SWI-Prolog dict
+and from the Prolog term \verb$py({k1:v1, k2:v2, ...})$.  With
+\const{py} defined as a prefix operator, this may be written without
+parenthesis and is thus equivalent to the SWI-Prolog dict syntax.
+The \pllib{jns_util} library provides access predicates that are
+supported by both systems and where the SWI-Prolog version supports
+both SWI-Prolog dicts and the above Prolog representation.
+
+Both implementations provide a low-level and more high level
+interface.  The high level interface is realized by py_call/2 and
+py_iter/2 from Prolog and janus.once() and janus.Query() from Python.
+We realize the low level interfaces pyfunc/[3,4,5] and pydot/[4,5] on
+top of py_call/2 and the Python functions px_cmd(), px_qdet() and
+px_comp() on top of janus.once().  Emulation of the Prolog predicates
+is shallow and has little impact on performance.  Emulation of the
+Python functions on top of janus.once() is more expensive.  Future
+versions of the SWI-Prolog implementation may opt for a more low-level
+implementation.
 
 The XSB interface on which this work is based is different in several
 ways.  We summarize the differences below
