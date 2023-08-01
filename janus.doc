@@ -448,7 +448,7 @@ The \pllib{jns_util} library provides access predicates that are
 supported by both systems and where the SWI-Prolog version supports
 both SWI-Prolog dicts and the above Prolog representation.
 
-Both implementations provide a low-level and more high level
+Both implementations will provide a low-level and more high level
 interface.  The high level interface is realized by py_call/2 and
 py_iter/2 from Prolog and janus.once() and janus.Query() from Python.
 We realize the low level interfaces pyfunc/[3,4,5] and pydot/[4,5] on
@@ -459,64 +459,48 @@ Python functions on top of janus.once() is more expensive.  Future
 versions of the SWI-Prolog implementation may opt for a more low-level
 implementation.
 
-The XSB interface on which this work is based is different in several
-ways.  We summarize the differences below
+While we are discussing to minimize the differences we highlight the
+remaining issues below.
 
 \begin{itemize}
-   \item py_call/2 replaces pyfunc/[3,4,5] and pydot/[4,5].  The distinction
-         between calling a function in a module or a method on an object is
-         in both cases replaces by \arg{ObjOrMod}:\arg{Func} and Python
-         keyword arguments are handled, as in Python, using optional
-         \arg{Kwd}=\arg{Value} parameters after the positional parameters.
+   \item All Python list-like results are translated into a Prolog
+     list.  To be precise, we translate Python objects that
+     implement one of these protocols: \const{PyList}, \const{PyIter}
+     and \const{PySequence}.   XSB translates \const{PyList} to a list
+     and \const{PySet} to a term \term{pySet}{List}.  Sequences and
+     iterators are returned as Python objects.  The user typically
+     has to write a Python function to create a suitable intermediate
+     Python representation.
 
-         The SWI-Prolog version allows for chaining function calls using
-         \arg{Obj}:\arg{Func1}:\arg{Func2}:...  It also allows calling
-         \jargon{built-in} functions such as print() by omitting the
-         module or object.
-
-	 Finally, it allow setting attributes using py_call(Obj:Attr =
-	 Value)
    \item py_iter/2 Allows accessing Python iteractors and generators as
-         non-deterministic Prolog predicates.
+     non-deterministic Prolog predicates.
+
+   \item We provide py_call/3 and py_iter/3 with an option argument to
+     get a string rather than an atom from a Python string and force
+     to get a Python object reference rather than a translated version.
+
    \item Data translation differs:
    \begin{itemize}
        \item Numbers are handled the same
-       \item Python Booleans are translated to Prolog atoms \const{true}
-             and \const{false} rather than the XSB 1 and 0.
        \item Python dicts are translated to Prolog dicts and visa versa.
              Note that Prolog dicts can only have atoms and small integers
              as keys.  Other Python dicts result in a representation error.
-	     XSB uses \term{pyDict}{Tuple \ldots}.
-       \item Tuples are handled the same.  We have some doubts about the
-             use of \verb$''(a,b,c)$ because write/1 on this term produces
-	     the confusing \verb$(a,b,c)$.  Possible we should opt for the
-	     R representation \verb$c(a,b,c)$?
+	     XSB uses \term{py}{\{k:v, \ldots\}}.
        \item Python objects that are not translated by any of the above
              are translated to a SWI-Prolog \jargon{blob}.  This makes
              identifying them robust and provides garbage collection.
-	     XSB uses a term \arg{pyObj}{Ref}.
+	     XSB uses a term \arg{pyObj}{Ref} and requires py_free/1.
    \end{itemize}
-   \item Python calling Prolog uses a string and dict for the input and
-         gets the results as a dict.  The XSB version passes the module,
-         predicate and arguments seperately and provides px_qdet(),
-         px_cmd() and px_comp(), where px_comp() returns multiple
-         solutions as a list.  We provide once() and a Python
-         \jargon{iterator} by means of the class Prolog().
-   \item py_free/1 is identical to free_python_object/1 in XSB.  Where
-         free_python_object/1 is obligatory to avoid memory leaks,
-	 py_free/1 is optional as garbage collection will eventually
-	 deal with the object.
 \end{itemize}
 
 \section{Status of Janus}
 \label{sec:janus-status}
 
-The current version of this Janus library is experimental.
+The current version of this Janus library must be considered \jargon{alpha}
+code.
 
 \begin{itemize}
     \item The design is stable
-    \item Naming of predicates and Python functions may change
-    \item Prolog representation of Python data may change
     \item Testing is minimal.  Crashes are not impossible.
     \item The module must become loadable from Python, embedding
           Prolog.
