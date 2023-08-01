@@ -1069,27 +1069,26 @@ py_call3(term_t Call, term_t result, term_t options)
     { char *attr;
       if ( py_target )
       { if ( (rc=PL_get_chars(call, &attr, CVT_ATOM|CVT_EXCEPTION)) )
-	{ PyObject *py_val;
+	{ PyObject *py_val = NULL;
 
 	  if ( (rc=py_from_prolog(val, &py_val)) )
 	  { if ( PyObject_SetAttrString(py_target, attr, py_val) == -1 )
 	      rc = !!check_error(NULL);
-	    Py_DECREF(py_val);
 	    if ( rc && result )
 	      rc = PL_unify_atom(result, ATOM_None);
 	  }
+	  Py_CLEAR(py_val);
 	}
       } else
 	rc = PL_domain_error("py_attribute", call);
     } else
     { rc = !!(py_target = py_eval(py_target, call));
       if ( rc && result )
-      { rc = py_unify(result, py_target, uflags);
-	Py_DECREF(py_target);
-      }
+	rc = py_unify(result, py_target, uflags);
     }
   }
 
+  Py_CLEAR(py_target);
   py_gil_release(state);
 
   return rc;
