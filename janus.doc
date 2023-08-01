@@ -105,9 +105,9 @@ that py_call/3 and py_iiter/3 provide the option
 \hline
 \textbf{Prolog} & & \textbf{Python} & \textbf{Notes} \\
 \hline
-Variable& $\Longleftrightarrow$ & -        & \\
+Variable& $\longrightarrow$     & -        & (instantiation error) \\
 Integer & $\Longleftrightarrow$ & Integer  & Supports big integers \\
-Rational& $\Longleftrightarrow$ & -        & May be supported later \\
+Rational& $\longrightarrow$     & -        & (type error) May be supported later \\
 'None'  & $\Longleftrightarrow$ & None     & \\
 true    & $\Longleftrightarrow$ & True     & \\
 false   & $\Longleftrightarrow$ & False    & \\
@@ -117,12 +117,13 @@ String  & $\longrightarrow$     & String   & \\
 List    & $\longrightarrow$     & List & \\
 List    & $\longleftarrow$      & Sequence & \\
 List    & $\longleftarrow$      & Generator & \\
-pySet(List) & $\longrightarrow$ & Set & \\
+pySet(List) & $\Longleftrightarrow$ & Set & When converting to Prolog, the set is emptied \\
 :(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples \\
 Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
 py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
 \const{py_obj} blob & $\Longleftrightarrow$ & Object & Used for any Python object not above \\
+Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 \hline
 \end{tabular}
 \end{center}

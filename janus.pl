@@ -165,7 +165,9 @@ This library implements calling Python from Prolog.
 %       are also more efficient if they are short lived.
 %     - py_object(Boolean)
 %       It `true` (default `false`), translate the return as a Python
-%       object reference unless it is a number, boolean or `None`.
+%       object reference unless it is `None`, a boolean or a number.
+%       If the number class is subclassed, we return the object rather
+%       than the number.
 
 %!  py_iter(+Iterator, -Value) is nondet.
 %!  py_iter(+Iterator, -Value, +Options) is nondet.

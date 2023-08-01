@@ -428,6 +428,34 @@ py_unify_iter(term_t t, PyObject *obj, int flags)
 }
 
 static int
+py_unify_set(term_t t, PyObject *obj, int flags)
+{ ssize_t len = PySet_GET_SIZE(obj);
+  term_t tail = PL_new_term_ref();
+  term_t head = PL_new_term_ref();
+
+  if ( !PL_unify_functor(t, FUNCTOR_pySet1) )
+    return FALSE;
+  _PL_get_arg(1, t, tail);
+
+  for(ssize_t i=0; i<len; i++)
+  { PyObject *el = check_error(PySet_Pop(obj));
+
+    if ( !el )
+      return FALSE;
+    int rc = ( PL_unify_list(tail, head,tail) &&
+	       py_unify(head, el, flags) );
+    Py_DECREF(el);
+    if ( !rc )
+      return FALSE;
+  }
+  if ( !PL_unify_nil(tail) )
+    return FALSE;
+
+  PL_reset_term_refs(tail);
+  return TRUE;
+}
+
+static int
 py_unify_dict(term_t t, PyObject *obj, int flags)
 { Py_ssize_t size = PyDict_Size(obj);
   term_t pl_dict = PL_new_term_ref();
@@ -490,14 +518,23 @@ py_unify(term_t t, PyObject *obj, int flags)
   { check_error(obj);
     return FALSE;
   }
+
   if ( obj == Py_None )
     return PL_unify_atom(t, ATOM_None);
   if ( PyBool_Check(obj) )
     return PL_unify_bool(t, PyLong_AsLongLong(obj));
-  if ( PyLong_Check(obj) )
-    return py_unify_long(t, obj);
-  if ( PyFloat_Check(obj) )
-    return PL_unify_float(t, PyFloat_AsDouble(obj));
+
+  if ( (flags&PYU_OBJ) )
+  { if ( PyLong_CheckExact(obj) )
+      return py_unify_long(t, obj);
+    if ( PyFloat_CheckExact(obj) )
+      return PL_unify_float(t, PyFloat_AsDouble(obj));
+  } else
+  { if ( PyLong_Check(obj) )
+      return py_unify_long(t, obj);
+    if ( PyFloat_Check(obj) )
+      return PL_unify_float(t, PyFloat_AsDouble(obj));
+  }
 
   if ( !(flags&PYU_OBJ) )
   { if ( PyUnicode_Check(obj) )
@@ -510,11 +547,17 @@ py_unify(term_t t, PyObject *obj, int flags)
       return py_unify_iter(t, obj, flags);
     if ( PySequence_Check(obj) )
       return py_unify_sequence(t, obj, flags);
+    if ( PySet_Check(obj) )
+      return py_unify_set(t, obj, flags);
   }
 
   return unify_py_obj(t, obj);
 }
 
+
+		 /*******************************
+		 *       PROLOG -> PYTHON       *
+		 *******************************/
 
 static int
 py_add_to_dict(term_t key, term_t value, void *closure)
@@ -573,6 +616,18 @@ add_prolog_key_value_to_dict(PyObject *py_dict, term_t tuple,
 
 
 static int
+py_empty_dict(PyObject **obj)
+{ PyObject *py_dict = check_error(PyDict_New());
+
+  if ( py_dict )
+  { *obj = py_dict;
+    return TRUE;
+  } else
+    return FALSE;
+}
+
+
+static int
 py_from_prolog(term_t t, PyObject **obj)
 { wchar_t *s;
   size_t len;
@@ -601,7 +656,7 @@ py_from_prolog(term_t t, PyObject **obj)
       int rc;
 
       PL_STRINGS_MARK();
-      if ( (rc=PL_get_chars(t, &s, CVT_INTEGER)) )
+      if ( (rc=PL_get_chars(t, &s, CVT_INTEGER)) ) /* TBD: use hexadecimal exchange */
 	*obj = PyLong_FromString(s, NULL, 10);
       PL_STRINGS_RELEASE();
 
@@ -642,14 +697,7 @@ py_from_prolog(term_t t, PyObject **obj)
     }
 
     if ( a == ATOM_curl )
-    { PyObject *py_dict = check_error(PyDict_New());
-
-      if ( py_dict )
-      { *obj = py_dict;
-	return TRUE;
-      } else
-	return FALSE;
-    }
+      return py_empty_dict(obj);
   }
 
   // Normal text representations.  Note that [] does not qualify
@@ -663,17 +711,20 @@ py_from_prolog(term_t t, PyObject **obj)
   { term_t tail = PL_copy_term_ref(t);
     term_t head = PL_new_term_ref();
     PyObject *list = PyList_New(len);
+    int rc = TRUE;
 
     for(Py_ssize_t i=0; PL_get_list(tail, head, tail); i++)
-    { PyObject *el;
+    { PyObject *el = NULL;
 
-      if ( py_from_prolog(head, &el) )
-      { Py_INCREF(el);
-	PyList_SetItem(list, i, el);
+      if ( (rc=py_from_prolog(head, &el)) )
+      { PyList_SetItem(list, i, el);
       } else
-	return FALSE;			/* TBD: What about the list? */
+	break;
     }
-    *obj = list;
+    if ( rc )
+      *obj = list;
+    else
+      Py_CLEAR(list);
     return TRUE;
   }
 
@@ -714,20 +765,29 @@ py_from_prolog(term_t t, PyObject **obj)
   }
 
   if ( PL_is_dict(t) )
-  { PyObject *py_dict = PyDict_New();
+  { PyObject *py_dict = check_error(PyDict_New());
 
-    if ( PL_for_dict(t, py_add_to_dict, py_dict, 0) != 0 )
+    if ( !py_dict )
       return FALSE;
+    if ( PL_for_dict(t, py_add_to_dict, py_dict, 0) != 0 )
+    { Py_CLEAR(py_dict);
+      return FALSE;
+    }
     *obj = py_dict;
     return TRUE;
   }
   if ( PL_is_functor(t, FUNCTOR_py1) )
   { term_t a = PL_new_term_ref();
+    atom_t c;
+
     _PL_get_arg(1, t, a);
+
     if ( PL_is_functor(a, FUNCTOR_curl1) )
     { if ( !PL_put_term(t, a) )
 	return FALSE;
       PL_reset_term_refs(a);
+    } else if ( PL_get_atom(a, &c) && c == ATOM_curl )
+    { return py_empty_dict(obj);
     } else
       goto error;
   }
