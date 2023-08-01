@@ -56,6 +56,7 @@ static functor_t FUNCTOR_comma2;
 static functor_t FUNCTOR_curl1;
 static functor_t FUNCTOR_tuple2;
 static functor_t FUNCTOR_py1;
+static functor_t FUNCTOR_pySet1;
 
 static int py_initialize_done = FALSE;
 
@@ -674,6 +675,42 @@ py_from_prolog(term_t t, PyObject **obj)
     }
     *obj = list;
     return TRUE;
+  }
+
+  if ( PL_is_functor(t, FUNCTOR_pySet1) )
+  { term_t tail = PL_new_term_ref();
+
+    _PL_get_arg(1, t, tail);
+    if ( PL_skip_list(tail, 0, NULL) == PL_LIST )
+    { term_t head = PL_new_term_ref();
+      PyObject *set = check_error(PySet_New(NULL));
+      int rc = TRUE;
+
+      if ( !set )
+	return FALSE;
+
+      while(PL_get_list(tail, head, tail))
+      { PyObject *el;
+
+	if ( (rc=py_from_prolog(head, &el)) )
+	{ int r = PySet_Add(set, el);
+	  Py_CLEAR(el);
+	  if ( r )
+	  { check_error(NULL);
+	    rc = FALSE;
+	    break;
+	  }
+	} else
+	  break;
+      }
+      if ( rc )
+	*obj = set;
+      else
+	Py_CLEAR(set);
+
+      return rc;
+    } else
+      return PL_type_error("pySet", t);
   }
 
   if ( PL_is_dict(t) )
@@ -1368,6 +1405,7 @@ install_janus(void)
   FUNCTOR_hash1   = PL_new_functor(PL_new_atom("#"), 1);
   FUNCTOR_comma2  = PL_new_functor(PL_new_atom(","), 2);
   FUNCTOR_curl1   = PL_new_functor(PL_new_atom("{}"), 1);
+  FUNCTOR_pySet1  = PL_new_functor(PL_new_atom("pySet"), 1);
   FUNCTOR_tuple2  = PL_new_functor(ATOM_tuple, 2);
 
   PL_register_foreign("py_initialize_", 3, py_initialize_, 0);

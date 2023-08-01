@@ -105,7 +105,9 @@ that py_call/3 and py_iiter/3 provide the option
 \hline
 \textbf{Prolog} & & \textbf{Python} & \textbf{Notes} \\
 \hline
+Variable& $\Longleftrightarrow$ & -        & \\
 Integer & $\Longleftrightarrow$ & Integer  & Supports big integers \\
+Rational& $\Longleftrightarrow$ & -        & May be supported later \\
 'None'  & $\Longleftrightarrow$ & None     & \\
 true    & $\Longleftrightarrow$ & True     & \\
 false   & $\Longleftrightarrow$ & False    & \\
@@ -115,6 +117,7 @@ String  & $\longrightarrow$     & String   & \\
 List    & $\longrightarrow$     & List & \\
 List    & $\longleftarrow$      & Sequence & \\
 List    & $\longleftarrow$      & Generator & \\
+pySet(List) & $\longrightarrow$ & Set & \\
 :(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples \\
 Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
