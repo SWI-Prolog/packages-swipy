@@ -67,6 +67,9 @@ test(noarg, Z == 42) :-
     py_call(demo:int(), Z).
 test(multiply, Z == 6) :-
     py_call(demo:multiply(2,3), Z).
+test(bigint, Z == Big) :-
+    Big is 1<<1000,
+    py_call(demo:echo(Big), Z).
 test(multiply, Z == 6.8) :-
     py_call(demo:multiply(2,3.4), Z).
 test(concat, Z == 'aapnoot') :-

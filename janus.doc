@@ -105,7 +105,7 @@ that py_call/3 and py_iiter/3 provide the option
 \hline
 \textbf{Prolog} & & \textbf{Python} & \textbf{Notes} \\
 \hline
-Integer & $\Longleftrightarrow$ & Integer  & Only 64 bit range \\
+Integer & $\Longleftrightarrow$ & Integer  & Supports big integers \\
 'None'  & $\Longleftrightarrow$ & None     & \\
 true    & $\Longleftrightarrow$ & True     & \\
 false   & $\Longleftrightarrow$ & False    & \\

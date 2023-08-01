@@ -299,6 +299,54 @@ check_error(PyObject *obj)
 
 
 static int
+py_unify_long(term_t t, PyObject *obj)
+{ int overflow;
+  long long v = PyLong_AsLongLongAndOverflow(obj, &overflow);
+
+  if ( !overflow )
+  { assert(sizeof(long long) == sizeof(int64_t));
+    return PL_unify_int64(t, v);
+  } else
+  { static PyObject *hex = NULL;
+    PyObject *av = NULL, *hobj = NULL;
+    int rc = FALSE;
+
+    if ( !hex )
+    { PyObject *builtins = PyEval_GetBuiltins();
+      hex = PyDict_GetItemString(builtins , "hex");
+      Py_CLEAR(builtins);
+      if ( !hex )
+      { term_t ex;
+
+	return ( (ex=PL_new_term_ref()) &&
+		 PL_put_atom_chars(ex, "hex") &&
+		 PL_existence_error("python_builtin", ex) );
+      }
+    }
+
+    av = PyTuple_New(1);
+    if ( av )
+    { Py_INCREF(obj);
+      PyTuple_SetItem(av, 0, obj);
+      hobj = check_error(PyObject_CallObject(hex, av));
+      Py_CLEAR(av);
+      if ( hobj )
+      { Py_ssize_t len;
+	const char *s = PyUnicode_AsUTF8AndSize(hobj, &len);
+	term_t tmp;
+
+	rc = ( (tmp=PL_new_term_ref()) &&
+	       PL_put_term_from_chars(tmp, REP_UTF8, len, s) &&
+	       PL_unify(t, tmp) );
+	Py_CLEAR(hobj);
+      }
+    }
+
+    return rc;
+  }
+}
+
+static int
 py_unify_unicode(term_t t, PyObject *obj, int flags)
 { ssize_t len;
   const char *s;
@@ -446,7 +494,7 @@ py_unify(term_t t, PyObject *obj, int flags)
   if ( PyBool_Check(obj) )
     return PL_unify_bool(t, PyLong_AsLongLong(obj));
   if ( PyLong_Check(obj) )
-    return PL_unify_int64(t, PyLong_AsLongLong(obj));
+    return py_unify_long(t, obj);
   if ( PyFloat_Check(obj) )
     return PL_unify_float(t, PyFloat_AsDouble(obj));
 
@@ -544,9 +592,19 @@ py_from_prolog(term_t t, PyObject **obj)
   if ( PL_is_integer(t) )
   { int64_t i;
 
-    if ( PL_get_int64_ex(t, &i) )
+    if ( PL_get_int64(t, &i) )
     { *obj = PyLong_FromLongLong(i);
       return TRUE;
+    } else
+    { char *s;
+      int rc;
+
+      PL_STRINGS_MARK();
+      if ( (rc=PL_get_chars(t, &s, CVT_INTEGER)) )
+	*obj = PyLong_FromString(s, NULL, 10);
+      PL_STRINGS_RELEASE();
+
+      return rc;
     }
 
     return FALSE;

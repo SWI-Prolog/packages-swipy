@@ -31,6 +31,9 @@ def tuple():
 def multiply(a,b):
     return a*b;
 
+def lshift(i, n):
+    return i<<n
+
 def concat(a,b):
     return a+b;
 
