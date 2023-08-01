@@ -359,6 +359,26 @@ py_unify_sequence(term_t t, PyObject *obj, int flags)
 }
 
 static int
+py_unify_iter(term_t t, PyObject *obj, int flags)
+{ term_t tail = PL_copy_term_ref(t);
+  term_t head = PL_new_term_ref();
+  PyObject *item;
+
+  while((item=check_error(PyIter_Next(obj))))
+  { int rc = ( PL_unify_list(tail, head,tail) &&
+	       py_unify(head, item, flags) );
+    Py_DECREF(item);
+    if ( !rc )
+      return FALSE;
+  }
+  if ( PL_exception(0) || !PL_unify_nil(tail) )
+    return FALSE;
+
+  PL_reset_term_refs(tail);
+  return TRUE;
+}
+
+static int
 py_unify_dict(term_t t, PyObject *obj, int flags)
 { Py_ssize_t size = PyDict_Size(obj);
   term_t pl_dict = PL_new_term_ref();
@@ -429,16 +449,18 @@ py_unify(term_t t, PyObject *obj, int flags)
     return PL_unify_int64(t, PyLong_AsLongLong(obj));
   if ( PyFloat_Check(obj) )
     return PL_unify_float(t, PyFloat_AsDouble(obj));
-  if ( PyUnicode_Check(obj) )
-    return py_unify_unicode(t, obj, flags);
 
   if ( !(flags&PYU_OBJ) )
-  { if ( PyTuple_Check(obj) )
+  { if ( PyUnicode_Check(obj) )
+      return py_unify_unicode(t, obj, flags);
+    if ( PyTuple_Check(obj) )
       return py_unify_tuple(t, obj, flags);
-    if ( PySequence_Check(obj) )
-      return py_unify_sequence(t, obj, flags);
     if ( PyDict_Check(obj) )
       return py_unify_dict(t, obj, flags);
+    if ( PyIter_Check(obj) )
+      return py_unify_iter(t, obj, flags);
+    if ( PySequence_Check(obj) )
+      return py_unify_sequence(t, obj, flags);
   }
 
   return unify_py_obj(t, obj);
