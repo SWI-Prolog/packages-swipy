@@ -79,8 +79,8 @@ static pthread_mutex_t crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define UNLOCK()
 #endif
 
-#define PYU_ATOM 0x0001		/* Unify text as atom */
-#define PYU_OBJ  0x0002		/* Unify as object */
+#define PYU_STRING 0x0001		/* Unify text as Prolog string */
+#define PYU_OBJ    0x0002		/* Unify as object */
 
 
 		 /*******************************
@@ -305,7 +305,7 @@ py_unify_unicode(term_t t, PyObject *obj, int flags)
   int rc;
   int uflags = REP_UTF8;
 
-  uflags |= (flags&PYU_ATOM) ? PL_ATOM : PL_STRING;
+  uflags |= (flags&PYU_STRING) ? PL_STRING : PL_ATOM;
 
   s = PyUnicode_AsUTF8AndSize(obj, &len);
   if ( !check_error((void*)s) )
@@ -959,17 +959,25 @@ static int
 get_conversion_options(term_t options, int *flags)
 { if ( options )
   { atom_t string_as = 0;
-    int py_object    = FALSE;
+    int py_object    = -1;
 
     if ( !PL_scan_options(options, 0, "py_call_options", pycall_options,
 			  &string_as, &py_object) )
       return FALSE;
-    if ( py_object )
-      *flags |= PYU_OBJ;
-    if ( string_as == ATOM_atom )
-      *flags |= PYU_ATOM;
-    else if ( string_as && string_as != ATOM_string )
-      return atom_domain_error("py_string_as", string_as);
+    if ( py_object != -1 )
+    { if ( py_object )
+	*flags |= PYU_OBJ;
+      else
+	*flags &= ~PYU_OBJ;
+    }
+    if ( string_as )
+    { if ( string_as == ATOM_atom )
+	*flags &= ~PYU_STRING;
+      else if ( string_as == ATOM_string )
+	*flags |= PYU_STRING;
+      else
+	return atom_domain_error("py_string_as", string_as);
+    }
   }
 
   return TRUE;

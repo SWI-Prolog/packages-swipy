@@ -69,36 +69,44 @@ test(multiply, Z == 6) :-
     py_call(demo:multiply(2,3), Z).
 test(multiply, Z == 6.8) :-
     py_call(demo:multiply(2,3.4), Z).
-test(concat, Z == "aapnoot") :-
-    py_call(demo:concat("aap", "noot"), Z).
-test(concat, Z == "aapno\u0000ot") :-
-    py_call(demo:concat("aap", "no\u0000ot"), Z).
+test(concat, Z == 'aapnoot') :-
+    py_call(demo:concat('aap', 'noot'), Z).
+test(concat, Z == 'aapno\u0000ot') :-
+    py_call(demo:concat('aap', 'no\u0000ot'), Z).
 test(concat, Z == [1,2,3]) :-
     py_call(demo:concat([1], [2,3]), Z).
+test(dict, Z == py{name:bob, age:42}) :-
+    py_call(demo:echo(py{name:bob, age:42}), Z).
 test(dict, Z == py{name:"bob", age:42}) :-
-    py_call(demo:echo(py{name:"bob", age:42}), Z).
+    py_call(demo:echo(py{name:bob, age:42}), Z, [py_string_as(string)]).
 test(bool, Z == true) :-
     py_call(demo:echo(true), Z).
 test(bool, Z == false) :-
     py_call(demo:echo(false), Z).
 test(none, Z == 'None') :-
     py_call(demo:echo('None'), Z).
+test(bool, Z == true) :-
+    py_call(demo:echo(true), Z, [py_string_as(string)]).
+test(bool, Z == false) :-
+    py_call(demo:echo(false), Z, [py_string_as(string)]).
+test(none, Z == 'None') :-
+    py_call(demo:echo('None'), Z, [py_string_as(string)]).
 test(attr, Val = 42) :-
     py_call(demo:test_attr = 42),
     py_call(demo:test_attr, Val).
-test(stringify, R == "6") :-
+test(stringify, R == '6') :-
     py_call(demo:echo(#6), R).
-test(stringify, R == "3.14") :-
+test(stringify, R == '3.14') :-
     py_call(demo:echo(#3.14), R).
-test(stringify, R == "false") :-
+test(stringify, R == 'false') :-
     py_call(demo:echo(#false), R).
-test(stringify, R == "None") :-
+test(stringify, R == 'None') :-
     py_call(demo:echo(#'None'), R).
-test(stringify, R == "aap noot") :-        % does _not_ quote
+test(stringify, R == 'aap noot') :-        % does _not_ quote
     py_call(demo:echo(#'aap noot'), R).
-test(stringify_wc, R == "+(1,2)") :-       % write_canonical/1
+test(stringify_wc, R == '+(1,2)') :-       % write_canonical/1
     py_call(demo:echo(#(1 + 2)), R).
-test(stringify_wc, R == "f(A,_,A)") :-     % numbervars
+test(stringify_wc, R == 'f(A,_,A)') :-     % numbervars
     py_call(demo:echo(#f(X,_,X)), R).
 test(dict, R=py{a:1, 2:2}) :-
     py_call(demo:dict1(), R).
@@ -111,9 +119,9 @@ test(iterator, L == [1,2,3,4]) :-          % An iterator checks as a sequence
 
 :- begin_tests(janus_obj).
 
-test(dog, Tricks == ["roll over"]) :-
+test(dog, Tricks == ['roll over']) :-
     py_call(dog:'Dog'('Fido'), Dog),
-    py_call(Dog:add_trick("roll over"), _),
+    py_call(Dog:add_trick('roll over'), _),
     py_call(Dog:tricks, Tricks).
 
 :- end_tests(janus_obj).
@@ -124,10 +132,10 @@ test(arg, R == py{a:1,b:2,c:3}) :-
     py_call(demo:kwd(1,2), R).
 test(arg, R == py{a:1,b:2,c:4}) :-
     py_call(demo:kwd(1,2,4), R).
-test(arg, R == py{a:1,b:"a",c:3}) :-
-    py_call(demo:kwd(1,b="a"), R).
-test(arg, R == py{a:1,b:"a",c:"x"}) :-
-    py_call(demo:kwd(1,c="x",b="a"), R).
+test(arg, R == py{a:1,b:a,c:3}) :-
+    py_call(demo:kwd(1,b=a), R).
+test(arg, R == py{a:1,b:a,c:x}) :-
+    py_call(demo:kwd(1,c=x,b=a), R).
 
 :- end_tests(janus_params).
 
@@ -184,10 +192,10 @@ test(iter, Sum == 10011) :-
     py_call(demo:abort_iter(1000), Sum).
 test(iter, Sum == 10011) :-             % Check we didn't mess up the Prolog stack
     py_call(demo:abort_iter(1000), Sum).
-test(undef, Result == py{status:"Undefined"}) :-
-    py_call(janus:once("undefined"), Result).
-test(russel, List == [py{'X':"barber",'Y':"barber",status:"Undefined"},
-		      py{'X':"barber",'Y':"mayor",status:true}]) :-
+test(undef, Result == py{status:'Undefined'}) :-
+    py_call(janus:once(undefined), Result).
+test(russel, List == [py{'X':barber,'Y':barber,status:'Undefined'},
+		      py{'X':barber,'Y':mayor,status:true}]) :-
     py_call(demo:shaves(), List0),
     sort('Y', @=<, List0, List).
 
@@ -204,9 +212,9 @@ test(square, all(X = [1,4,9,16])) :-
 
 :- begin_tests(xsb_call).
 
-test(reverse, X == :([py{a:py{b:"c"}}, :("mytuple"), 3, 2, 1], 1)) :-
+test(reverse, X == :([py{a:py{b:c}}, :(mytuple), 3, 2, 1], 1)) :-
     py_call(janus:px_qdet(lists, reverse,
-			  [1,2,3,:('mytuple'),py{'a':py{'b':'c'}}]),
+			  [1,2,3,:(mytuple),py{a:py{b:c}}]),
 	    X).
 :- end_tests(xsb_call).
 

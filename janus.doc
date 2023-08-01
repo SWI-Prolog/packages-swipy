@@ -81,14 +81,24 @@ developed for the WASM (Web Assembly) version.  That is
 
 The bi-directional conversion between Prolog and Python terms is
 summarized in the table below.  For compatibility with Prolog
-implementation we support converting the curly-bracket and
-\arg{k}:\arg{v} to dicts.  Note that \verb${k1:v1, k2:v2}$ is
-syntactic sugar for \verb${}(','(:(k1,v1), :(k2,v2)))$.  We allow for
-embedding this in a \term{py}{Term} such that, with \const{py} defined
-as \jargon{prefix operator}, \verb$py{k1:v1, k2:v2}$ is both valid
-syntax as SWI-Prolog dict as as ISO Prolog compliant term and both are
+implementations without native dicts we support converting the
+curly-bracket and \arg{k}:\arg{v} to dicts.  Note that
+\verb${k1:v1, k2:v2}$ is syntactic sugar for
+\verb${}(','(:(k1,v1), :(k2,v2)))$.  We allow for embedding this in a
+\term{py}{Term} such that, with \const{py} defined as \jargon{prefix
+  operator}, \verb$py{k1:v1, k2:v2}$ is both valid syntax as
+SWI-Prolog dict as as ISO Prolog compliant term and both are
 translated into the same Python dict.
 
+Note that by default we translate Python strings into Prolog atoms.
+Given we support strings, this is somewhat dubious.  There are two
+reasons for this choice.  One is the pragmatic reason that Python uses
+strings both for \jargon{identifiers} and arbitrary text.  Ideally
+we'd have the first translated to Prolog atoms and the latter to
+Prolog strings, but this is not possible.  The second is to improve
+compatibility with Prolog systems that do not support strings.  Note
+that py_call/3 and py_iiter/3 provide the option
+\term{py_string_as}{string} to obtain a string if this is desirable.
 
 \begin{center}
 \begin{tabular}{|l|c|l|p{2in}|}
@@ -99,8 +109,8 @@ Integer & $\Longleftrightarrow$ & Integer  & Only 64 bit range \\
 'None'  & $\Longleftrightarrow$ & None     & \\
 true    & $\Longleftrightarrow$ & True     & \\
 false   & $\Longleftrightarrow$ & False    & \\
-Atom    & $\longrightarrow$     & String   & \\
-String  & $\Longleftrightarrow$ & String   & \\
+Atom    & $\longleftrightarrow$ & String   & Except the above reserved three atoms \\
+String  & $\longrightarrow$     & String   & \\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
 List    & $\longrightarrow$     & List & \\
 List    & $\longleftarrow$      & Sequence & \\
@@ -110,7 +120,7 @@ Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
 py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
 \const{py_obj} blob & $\Longleftrightarrow$ & Object & Used for any Python object not above \\
-hline
+\hline
 \end{tabular}
 \end{center}
 
@@ -181,7 +191,7 @@ noun(Sentence, Noun) :-
     english(NLP),
     py_call(NLP:'__call__'(Sentence), Doc, [py_object(true)]),
     py_iter(Doc:noun_chunks, Span, [py_object]),
-    py_call(Span:text, Noun, [py_string_as(atom)]).
+    py_call(Span:text, Noun).
 \end{code}
 
 After which we can call
@@ -466,15 +476,13 @@ ways.  We summarize the differences below
 
 	 Finally, it allow setting attributes using py_call(Obj:Attr =
 	 Value)
-   \item py_iter/2 Allows accessing Python iteractors as non-deterministic
-         Prolog predicates.
+   \item py_iter/2 Allows accessing Python iteractors and generators as
+         non-deterministic Prolog predicates.
    \item Data translation differs:
    \begin{itemize}
        \item Numbers are handled the same
        \item Python Booleans are translated to Prolog atoms \const{true}
              and \const{false} rather than the XSB 1 and 0.
-       \item Python strings are translated to Prolog strings rather than
-             XSB atoms.
        \item Python dicts are translated to Prolog dicts and visa versa.
              Note that Prolog dicts can only have atoms and small integers
              as keys.  Other Python dicts result in a representation error.

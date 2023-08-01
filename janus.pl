@@ -157,8 +157,12 @@ This library implements calling Python from Prolog.
 %   Options processed:
 %
 %     - py_string_as(+Type)
-%       If Type is `string` (default), translate a Python String into a
-%       Prolog string.  If Type is `atom`, translated into a Prolog atom.
+%       If Type is `atom` (default), translate a Python String into a
+%       Prolog atom.  If Type is `string`, translate into a Prolog string.
+%       Note that by using a string we can distinguish the Python ``Bool``
+%       ``True`` and ``False`` as well as Python ``None`` from the
+%       Python strings ``"true"``, ``"false"`` and ``"None"``.  Strings
+%       are also more efficient if they are short lived.
 %     - py_object(Boolean)
 %       It `true` (default `false`), translate the return as a Python
 %       object reference unless it is a number, boolean or `None`.
