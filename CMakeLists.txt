@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.16)
 project(swipl-swipy)
 
 include("../cmake/PrologPackage.cmake")
@@ -9,6 +9,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 find_package(Python COMPONENTS Interpreter Development)
+if(CMAKE_VERSION VERSION_LESS 3.18 AND Python_Development_FOUND)
+  set(Python_Development.Embed_FOUND ON)
+endif()
+
 if(Python_Development.Embed_FOUND)
 
 set(PYTHON_FILES janus.py)
