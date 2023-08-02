@@ -429,30 +429,34 @@ py_unify_iter(term_t t, PyObject *obj, int flags)
 
 static int
 py_unify_set(term_t t, PyObject *obj, int flags)
-{ ssize_t len = PySet_GET_SIZE(obj);
-  term_t tail = PL_new_term_ref();
-  term_t head = PL_new_term_ref();
+{ PyObject *iter = check_error(PyObject_GetIter(obj));
+  PyObject *item = NULL;
+  int rc = FALSE;
 
-  if ( !PL_unify_functor(t, FUNCTOR_pySet1) )
-    return FALSE;
-  _PL_get_arg(1, t, tail);
+  if ( iter )
+  { PyObject *item;
+    term_t tail = PL_new_term_ref();
+    term_t head = PL_new_term_ref();
 
-  for(ssize_t i=0; i<len; i++)
-  { PyObject *el = check_error(PySet_Pop(obj));
+    if ( !(rc=PL_unify_functor(t, FUNCTOR_pySet1)) )
+      goto out;
+    _PL_get_arg(1, t, tail);
 
-    if ( !el )
-      return FALSE;
-    int rc = ( PL_unify_list(tail, head,tail) &&
-	       py_unify(head, el, flags) );
-    Py_DECREF(el);
-    if ( !rc )
-      return FALSE;
+    while( rc && (item=PyIter_Next(iter)) )
+    { rc = ( PL_unify_list(tail, head,tail) &&
+	     py_unify(head, item, flags) );
+      Py_CLEAR(item);
+    }
+    rc = rc && PL_unify_nil(tail);
+
+    PL_reset_term_refs(tail);
   }
-  if ( !PL_unify_nil(tail) )
-    return FALSE;
 
-  PL_reset_term_refs(tail);
-  return TRUE;
+out:
+  Py_CLEAR(iter);
+  Py_CLEAR(item);
+
+  return rc;
 }
 
 static int
