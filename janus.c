@@ -919,7 +919,9 @@ py_initialize_(term_t prog, term_t Argv, term_t options)
 py_error:
   check_error(NULL);
   PL_warning("Python initialization failed");
+#if PY_VERSION_HEX >= 0x03080000
   PyConfig_Clear(&config);
+#endif
 
 failed:
   rc = FALSE;
