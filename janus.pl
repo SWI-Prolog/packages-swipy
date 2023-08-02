@@ -40,7 +40,6 @@
             py_call/3,                  % +Call, -Return, +Options
 	    py_iter/2,			% +Call, -Return
 	    py_iter/3,			% +Call, -Return, +Options
-            py_run/4,                   % +String, +Globals, +Locals, -Return
             py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
 
