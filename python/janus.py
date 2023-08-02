@@ -52,6 +52,18 @@ def consult(file):
     """
     once("consult(File)", {"File":file})
 
+def echo(v):
+    """
+    Echo its argument.
+
+    This utility may be used by py_call/3 to get a Python object
+    from a translated term.
+
+        ?- py_call(janus:echo(py{a:1, l:[1,2,3]}), Obj, [py_object]).
+        Obj = <py_dict>(0x7f939bd3e800).
+    """
+    return v
+
 def interact():
     """
     Used by `py_shell/0` to create an interactive Python session.

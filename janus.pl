@@ -33,7 +33,9 @@
 */
 
 :- module(janus,
-          [ py_call/1,                  % +Call
+          [ py_version/0,
+
+            py_call/1,                  % +Call
             py_call/2,                  % +Call, -Return
             py_call/3,                  % +Call, -Return, +Options
 	    py_iter/2,			% +Call, -Return
@@ -41,14 +43,6 @@
             py_run/4,                   % +String, +Globals, +Locals, -Return
             py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
-            py_str/2,                   % +Obj, -String
-
-            py_initialize/3,            % +Program, +Argv, +Options
-            py_version/0,
-            py_lib_dirs/1,              % -Dirs
-            add_py_lib_dir/1,           % +Dir
-            add_py_lib_dir/2,           % +Dir,+Where
-            py_shell/0,
 
             pyfunc/3,                   % +Module, +Function, -Return
             pyfunc/4,                   % +Module, +Function, +Kwargs, -Return
@@ -57,23 +51,33 @@
             pydot/5,                    % +Module, +ObjRef, +MethAttr, +Options, -Ret
             free_python_object/1,       % +ObjRef
 
-	    pp_py/1,                    % +Term
-            pp_py/2,                    % +Stream, +Term
             values/3,                   % +Dict, +Path, ?Val
             keys/2,                     % +Dict, ?Keys
             key/2,                      % +Dict, ?Key
             items/2,                    % +Dict, ?Items
+
+            py_shell/0,
+
+	    py_pp/1,                    % +Term
+            py_pp/2,                    % +Stream, +Term
+            py_pp/3,                    % +Stream, +Term, +Options
+
             obj_dir/2,                  % +ObjRef,-List
             obj_dict/2,                 % obj_dict(+ObjRef, -Dict)
 
-	    op(50,  fx,  #)             % #Value
+            py_initialize/3,            % +Program, +Argv, +Options
+            py_lib_dirs/1,              % -Dirs
+            add_py_lib_dir/1,           % +Dir
+            add_py_lib_dir/2,           % +Dir,+Where
+
+            op(50,  fx,  #)             % #Value
           ]).
 :- use_module(library(apply_macros), []).
 :- autoload(library(lists), [append/3, member/2]).
 :- autoload(library(apply), [maplist/2, exclude/3, maplist/3]).
 :- autoload(library(error), [must_be/2, domain_error/2]).
 :- autoload(library(dicts), [dict_keys/2]).
-:- autoload(library(pprint), [print_term/2]).
+:- autoload(library(option), [dict_options/2]).
 
 :- if(current_prolog_flag(windows, true)).
 % just having the Python dir in PATH seems insufficient.  Note that
@@ -97,6 +101,15 @@ add_python_dll_dir :-
 
 This library implements calling Python from Prolog.
 */
+
+%!  py_version is det.
+%
+%   Print version info on the available Python installation
+
+py_version :-
+    py_call(sys:version, X),
+    print_message(information, py_version(X)).
+
 
 %!  py_call(+Call) is det.
 %!  py_call(+Call, -Return) is det.
@@ -248,166 +261,6 @@ This library implements calling Python from Prolog.
 
 
 		 /*******************************
-		 *            INIT		*
-		 *******************************/
-
-%!  py_initialize is det.
-%
-%   Used as a callback from C for lazy initialization of Python.
-
-py_initialize :-
-    current_prolog_flag(executable, Program),
-    current_prolog_flag(argv, Argv),
-    py_initialize(Program, Argv, []).
-
-%!  py_initialize(+Program, +Argv, +Options) is det.
-%
-%   Initialize  and configure  the  embedded Python  system.  If  this
-%   predicate is  not called before any  other call to Python  such as
-%   py_call/2, it is called _lazily_, passing the Prolog executable as
-%   Program, the  non-Prolog arguments  as Argv  and an  empty Options
-%   list.
-%
-%   Calling this predicate while the  Python is already initialized is
-%   a no-op.   This predicate is  thread-safe, where the  first thread
-%   initializes Python.
-%
-%   @arg Options is currently ignored.  It will be used to provide
-%   additional configuration options.
-
-py_initialize(Program, Argv, Options) :-
-    (   py_initialize_(Program, Argv, Options)
-    ->  absolute_file_name(library('python/janus.py'), Janus,
-			   [ access(read) ]),
-	file_directory_name(Janus, PythonDir),
-	add_py_lib_dir(PythonDir, first)
-    ;   true
-    ).
-
-
-%!  py_version is det.
-%
-%   Print version info on the available Python installation
-
-py_version :-
-    py_call(sys:version, X),
-    print_message(information, py_version(X)).
-
-
-		 /*******************************
-		 *           CALLBACK		*
-		 *******************************/
-
-:- dynamic py_call_cache/7 as volatile.
-
-:- meta_predicate py_call_string(:, +, -).
-
-py_call_string(M:String, Input, Dict) :-
-    py_call_cache(String, Input, M, Goal, Dict, Status, OutVars),
-    !,
-    (   call(M:Goal)
-    *-> bind_status(Status)
-    ;   Status = false,
-	maplist(bind_none, OutVars)
-    ).
-py_call_string(M:String, Input, Dict) :-
-    term_string(Goal, String, [variable_names(Map)]),
-    unbind_dict(Input, VInput),
-    exclude(not_in_projection(VInput), Map, OutBindings),
-    dict_create(Dict, bindings, [status=Status|OutBindings]),
-    maplist(arg(2), OutBindings, OutVars),
-    asserta(py_call_cache(String, VInput, M, Goal, Dict, Status, OutVars)),
-    VInput = Input,
-    (   call(M:Goal)
-    *-> bind_status(Status)
-    ;   Status = false,
-	maplist(bind_none, OutVars)
-    ).
-
-not_in_projection(Input, Name=Value) :-
-    (   get_dict(Name, Input, Value)
-    ->  true
-    ;   sub_atom(Name, 0, _, _, '_')
-    ).
-
-bind_none('None').
-
-bind_status(Status) :-
-    (   '$tbl_delay_list'([])
-    ->  Status = true
-    ;   Status = "Undefined"
-    ).
-
-unbind_dict(Dict0, Dict) :-
-    dict_pairs(Dict0, Tag, Pairs0),
-    maplist(unbind, Pairs0, Pairs),
-    dict_pairs(Dict, Tag, Pairs).
-
-unbind(Name-_, Name-_).
-
-
-		 /*******************************
-		 *            PATHS		*
-		 *******************************/
-
-%!  py_lib_dirs(-Dirs) is det.
-%
-%   True when Dirs is a list of directories searched for Python modules.
-%   The elements of Dirs are in Prolog canonical notation.
-
-py_lib_dirs(Dirs) :-
-    py_call(sys:path, Dirs0),
-    maplist(prolog_to_os_filename, Dirs, Dirs0).
-
-%!  add_py_lib_dir(+Dir) is det.
-%!  add_py_lib_dir(+Dir, +Where) is det.
-%
-%   Add a directory to the Python  module   search  path.  In the second
-%   form, Where is one of `first`   or `last`. add_py_lib_dir/1 adds the
-%   directory as last.
-%
-%   Dir is in Prolog notation. The added   directory  is converted to an
-%   absolute path using the OS notation.
-
-add_py_lib_dir(Dir) :-
-    add_py_lib_dir(Dir, last).
-
-add_py_lib_dir(Dir, Where) :-
-    absolute_file_name(Dir, AbsDir),
-    prolog_to_os_filename(AbsDir, OSDir),
-    (   Where == last
-    ->  py_call(sys:path:append(OSDir), _)
-    ;   Where == first
-    ->  py_call(sys:path:insert(0, OSDir), _)
-    ;   must_be(oneof([first,last]), Where)
-    ).
-
-
-		 /*******************************
-		 *             SHELL		*
-		 *******************************/
-
-%!  py_shell
-%
-%   Start an interactive Python REPL  loop   using  the  embedded Python
-%   interpreter. The interpreter first imports `janus` as below.
-%
-%       from janus import *
-%
-%   So, we can do
-%
-%       ?- py_shell.
-%       ...
-%       >>> once("writeln(X)", {"X":"Hello world"})
-%       Hello world
-%       {'status': 'True'}
-
-py_shell :-
-    py_run("from janus import *", _{}, _{}, _),
-    py_call(janus:interact(), _).
-
-
-		 /*******************************
 		 *         COMPATIBILIY		*
 		 *******************************/
 
@@ -458,23 +311,8 @@ free_python_object(ObjRef) :-
 
 
 		 /*******************************
-		 *          UTILITIES           *
+		 *   PORTABLE ACCESS TO DICTS	*
 		 *******************************/
-
-%!  pp_py(+Term) is det.
-%!  pp_py(+Stream,+Term) is det.
-%
-%   Pretty prints the Prolog translation of   a Python data structure in
-%   Python-like  syntax.  The   current    implementation   simply  used
-%   print_term/2. That is mostly ok, except   that  atoms are not quoted
-%   and dicts that are printed as Prolog dicts, including the _tag_.
-%
-%   @bug Probably should be fully Python compliant
-
-pp_py(Term) :-
-    print_term(Term, [output(current_output)]).
-pp_py(Stream, Term) :-
-    print_term(Term, [output(Stream)]).
 
 %!  values(+Dict, +Path, ?Val) is semidet.
 %
@@ -564,6 +402,72 @@ comma_dict_items((Key:Value,T), Keys) =>
 comma_dict_items(Key:Value, Keys) =>
     Keys = [Key:Value].
 
+
+		 /*******************************
+		 *             SHELL		*
+		 *******************************/
+
+%!  py_shell
+%
+%   Start an interactive Python REPL  loop   using  the  embedded Python
+%   interpreter. The interpreter first imports `janus` as below.
+%
+%       from janus import *
+%
+%   So, we can do
+%
+%       ?- py_shell.
+%       ...
+%       >>> once("writeln(X)", {"X":"Hello world"})
+%       Hello world
+%       {'status': True}
+%
+%   If possible, we enable command line   editing using the GNU readline
+%   library.
+
+py_shell :-
+    py_run("from janus import *", _{}, _{}, _),
+    py_call(janus:interact(), _).
+
+
+		 /*******************************
+		 *          UTILITIES           *
+		 *******************************/
+
+%!  py_pp(+Term) is det.
+%!  py_pp(+Term, +Options) is det.
+%!  py_pp(+Stream, +Term, +Options) is det.
+%
+%   Pretty prints the Prolog translation of   a Python data structure in
+%   Python syntax. This  exploits  pformat()   from  the  Python  module
+%   `pprint` to do the actual  formatting.   Options  is translated into
+%   keyword arguments passed to pprint.pformat().  For example:
+%
+%   ```
+%   ?- py_pp(py{a:1, l:[1,2,3], size:1000000}, [underscore_numbers(true)]).
+%   {'a': 1, 'l': [1, 2, 3], 'size': 1_000_000}
+%   ```
+
+py_pp(Term) :-
+    py_pp(current_output, Term, []).
+
+py_pp(Term, Options) :-
+    py_pp(current_output, Term, Options).
+
+py_pp(Stream, Term, Options) :-
+    opts_kws(Options, Kws),
+    PFormat =.. [pformat, Term|Kws],
+    py_call(pprint:PFormat, String),
+    write(Stream, String).
+
+opts_kws(Options, Kws) :-
+    dict_options(Dict, Options),
+    dict_pairs(Dict, _, Pairs),
+    maplist(pair_kws, Pairs, Kws).
+
+pair_kws(Name-Value, Name=Value).
+
+
 %!  obj_dir(+ObjRef, -List) is det.
 %!  obj_dict(+ObjRef, -Dict) is det.
 %
@@ -577,6 +481,146 @@ obj_dir(ObjRef, List) :-
 
 obj_dict(ObjRef, Dict) :-
     py_call(ObjRef:'__dict__', Dict).
+
+
+		 /*******************************
+		 *            INIT		*
+		 *******************************/
+
+%   py_initialize is det.
+%
+%   Used as a callback from C for lazy initialization of Python.
+
+py_initialize :-
+    current_prolog_flag(executable, Program),
+    current_prolog_flag(argv, Argv),
+    py_initialize(Program, Argv, []).
+
+%!  py_initialize(+Program, +Argv, +Options) is det.
+%
+%   Initialize  and configure  the  embedded Python  system.  If  this
+%   predicate is  not called before any  other call to Python  such as
+%   py_call/2, it is called _lazily_, passing the Prolog executable as
+%   Program, the  non-Prolog arguments  as Argv  and an  empty Options
+%   list.
+%
+%   Calling this predicate while the  Python is already initialized is
+%   a no-op.   This predicate is  thread-safe, where the  first thread
+%   initializes Python.
+%
+%   @arg Options is currently ignored.  It will be used to provide
+%   additional configuration options.
+
+py_initialize(Program, Argv, Options) :-
+    (   py_initialize_(Program, Argv, Options)
+    ->  absolute_file_name(library('python/janus.py'), Janus,
+			   [ access(read) ]),
+	file_directory_name(Janus, PythonDir),
+	add_py_lib_dir(PythonDir, first)
+    ;   true
+    ).
+
+
+		 /*******************************
+		 *            PATHS		*
+		 *******************************/
+
+%!  py_lib_dirs(-Dirs) is det.
+%
+%   True when Dirs is a list of directories searched for Python modules.
+%   The elements of Dirs are in Prolog canonical notation.
+
+py_lib_dirs(Dirs) :-
+    py_call(sys:path, Dirs0),
+    maplist(prolog_to_os_filename, Dirs, Dirs0).
+
+%!  add_py_lib_dir(+Dir) is det.
+%!  add_py_lib_dir(+Dir, +Where) is det.
+%
+%   Add a directory to the Python  module   search  path.  In the second
+%   form, Where is one of `first`   or `last`. add_py_lib_dir/1 adds the
+%   directory as last.
+%
+%   Dir is in Prolog notation. The added   directory  is converted to an
+%   absolute path using the OS notation.
+
+add_py_lib_dir(Dir) :-
+    add_py_lib_dir(Dir, last).
+
+add_py_lib_dir(Dir, Where) :-
+    absolute_file_name(Dir, AbsDir),
+    prolog_to_os_filename(AbsDir, OSDir),
+    (   Where == last
+    ->  py_call(sys:path:append(OSDir), _)
+    ;   Where == first
+    ->  py_call(sys:path:insert(0, OSDir), _)
+    ;   must_be(oneof([first,last]), Where)
+    ).
+
+
+		 /*******************************
+		 *           CALLBACK		*
+		 *******************************/
+
+:- dynamic py_call_cache/7 as volatile.
+
+:- meta_predicate py_call_string(:, +, -).
+
+%   py_call_string(:String, +DictIn, -Dict) is nondet.
+%
+%   Support janus.once() and janus.Query(). Parses   String  into a goal
+%   term. Next, all variables from the goal   term that appear in DictIn
+%   are bound to the value from  this   dict.  Dict  is created from the
+%   remaining variables, unless they  start   with  an underscore (e.g.,
+%   `_Time`) and the key `status. On   success,  the Dict values contain
+%   the bindings from the  answer  and   `status`  is  either  `true` or
+%   `Undefined`. On failure, the Dict values are bound to `None` and the
+%   `status` is `false`.
+%
+%   Parsing and distributing the variables over the two dicts is cached.
+
+py_call_string(M:String, Input, Dict) :-
+    py_call_cache(String, Input, M, Goal, Dict, Status, OutVars),
+    !,
+    (   call(M:Goal)
+    *-> bind_status(Status)
+    ;   Status = false,
+	maplist(bind_none, OutVars)
+    ).
+py_call_string(M:String, Input, Dict) :-
+    term_string(Goal, String, [variable_names(Map)]),
+    unbind_dict(Input, VInput),
+    exclude(not_in_projection(VInput), Map, OutBindings),
+    dict_create(Dict, bindings, [status=Status|OutBindings]),
+    maplist(arg(2), OutBindings, OutVars),
+    asserta(py_call_cache(String, VInput, M, Goal, Dict, Status, OutVars)),
+    VInput = Input,
+    (   call(M:Goal)
+    *-> bind_status(Status)
+    ;   Status = false,
+	maplist(bind_none, OutVars)
+    ).
+
+not_in_projection(Input, Name=Value) :-
+    (   get_dict(Name, Input, Value)
+    ->  true
+    ;   sub_atom(Name, 0, _, _, '_')
+    ).
+
+bind_none('None').
+
+bind_status(Status) :-
+    (   '$tbl_delay_list'([])
+    ->  Status = true
+    ;   Status = "Undefined"
+    ).
+
+unbind_dict(Dict0, Dict) :-
+    dict_pairs(Dict0, Tag, Pairs0),
+    maplist(unbind, Pairs0, Pairs),
+    dict_pairs(Dict, Tag, Pairs).
+
+unbind(Name-_, Name-_).
 
 
 		 /*******************************
@@ -635,6 +679,8 @@ tv_goal_and_template("delays", Goal, call_delays(Goal, TV), Templ, :(Templ,TV)) 
 tv_goal_and_template("none",   Goal, Goal, Templ, Templ) :- !.
 tv_goal_and_template(Mode, _, _, _, _) :-
     domain_error("px_comp() truth_vals", Mode).
+
+:- public ucall/2.
 
 ucall(Goal, TV) :-
     call(Goal),
