@@ -42,6 +42,7 @@
             py_free/1,			% +Obj
 	    py_with_gil/1,		% :Goal
             py_str/2,                   % +Obj, -String
+
             py_initialize/3,            % +Program, +Argv, +Options
             py_version/0,
             py_lib_dirs/1,              % -Dirs
@@ -56,12 +57,23 @@
             pydot/5,                    % +Module, +ObjRef, +MethAttr, +Options, -Ret
             free_python_object/1,       % +ObjRef
 
-            op(50,  fx,  #)             % #Value
+	    pp_py/1,                    % +Term
+            pp_py/2,                    % +Stream, +Term
+            values/3,                   % +Dict, +Path, ?Val
+            keys/2,                     % +Dict, ?Keys
+            key/2,                      % +Dict, ?Key
+            items/2,                    % +Dict, ?Items
+            obj_dir/2,                  % +ObjRef,-List
+            obj_dict/2,                 % obj_dict(+ObjRef, -Dict)
+
+	    op(50,  fx,  #)             % #Value
           ]).
-:- autoload(library(lists), [append/3]).
+:- use_module(library(apply_macros), []).
+:- autoload(library(lists), [append/3, member/2]).
 :- autoload(library(apply), [maplist/2, exclude/3, maplist/3]).
 :- autoload(library(error), [must_be/2, domain_error/2]).
-:- use_module(library(apply_macros), []).
+:- autoload(library(dicts), [dict_keys/2]).
+:- autoload(library(pprint), [print_term/2]).
 
 :- if(current_prolog_flag(windows, true)).
 % just having the Python dir in PATH seems insufficient.  Note that
@@ -443,6 +455,129 @@ pydot(_Module, ObjRef, MethAttr, _Prolog_Opts, Ret) :-
 
 free_python_object(ObjRef) :-
     py_free(ObjRef).
+
+
+		 /*******************************
+		 *          UTILITIES           *
+		 *******************************/
+
+%!  pp_py(+Term) is det.
+%!  pp_py(+Stream,+Term) is det.
+%
+%   Pretty prints the Prolog translation of   a Python data structure in
+%   Python-like  syntax.  The   current    implementation   simply  used
+%   print_term/2. That is mostly ok, except   that  atoms are not quoted
+%   and dicts that are printed as Prolog dicts, including the _tag_.
+%
+%   @bug Probably should be fully Python compliant
+
+pp_py(Term) :-
+    print_term(Term, [output(current_output)]).
+pp_py(Stream, Term) :-
+    print_term(Term, [output(Stream)]).
+
+%!  values(+Dict, +Path, ?Val) is semidet.
+%
+%   Get the value associated with Dict at  Path. Path is either a single
+%   key or a list of keys.
+
+values(Dict, Key, Val), is_dict(Dict), atom(Key) =>
+    get_dict(Key, Dict, Val).
+values(Dict, Keys, Val), is_dict(Dict), is_list(Keys) =>
+    get_dict_path(Keys, Dict, Val).
+values(py({CommaDict}), Key, Val) =>
+    comma_values(CommaDict, Key, Val).
+values({CommaDict}, Key, Val) =>
+    comma_values(CommaDict, Key, Val).
+
+get_dict_path([], Val, Val).
+get_dict_path([H|T], Dict, Val) :-
+    get_dict(H, Dict, Val0),
+    get_dict_path(T, Val0, Val).
+
+comma_values(CommaDict, Key, Val), atom(Key) =>
+    comma_value(Key, CommaDict, Val).
+comma_values(CommaDict, Keys, Val), is_list(Keys) =>
+    comma_value_path(Keys, CommaDict, Val).
+
+comma_value(Key, Key:Val0, Val) =>
+    Val = Val0.
+comma_value(Key, (_,Tail), Val) =>
+    comma_value(Key, Tail, Val).
+
+comma_value_path([], Val, Val).
+comma_value_path([H|T], Dict, Val) :-
+    comma_value(H, Dict, Val0),
+    comma_value_path(T, Val0, Val).
+
+%!  keys(+Dict, ?Keys) is det.
+%
+%   True when Keys is a list of keys that appear in Dict.
+
+keys(Dict, Keys), is_dict(Dict) =>
+    dict_keys(Dict, Keys).
+keys(py({CommaDict}), Keys) =>
+    comma_dict_keys(CommaDict, Keys).
+keys({CommaDict}, Keys) =>
+    comma_dict_keys(CommaDict, Keys).
+
+comma_dict_keys((Key:_,T), Keys) =>
+    Keys = [Key|KT],
+    comma_dict_keys(T, KT).
+comma_dict_keys(Key:_, Keys) =>
+    Keys = [Key].
+
+%!  key(+Dict, ?Key) is nondet.
+%
+%   True when Key is a key in   Dict.  Backtracking enumerates all known
+%   keys.
+
+key(Dict, Key), is_dict(Dict) =>
+    dict_pairs(Dict, _Tag, Pairs),
+    member(Key-_, Pairs).
+key(py({CommaDict}), Keys) =>
+    comma_dict_key(CommaDict, Keys).
+key({CommaDict}, Keys) =>
+    comma_dict_key(CommaDict, Keys).
+
+comma_dict_key((Key:_,_), Key).
+comma_dict_key((_,T), Key) :-
+    comma_dict_key(T, Key).
+
+%!  items(+Dict, ?Items) is det.
+%
+%   True when Items is a list of Key:Value that appear in Dict.
+
+items(Dict, Items), is_dict(Dict) =>
+    dict_pairs(Dict, _, Pairs),
+    maplist(pair_item, Pairs, Items).
+items(py({CommaDict}), Keys) =>
+    comma_dict_items(CommaDict, Keys).
+items({CommaDict}, Keys) =>
+    comma_dict_items(CommaDict, Keys).
+
+pair_item(K-V, K:V).
+
+comma_dict_items((Key:Value,T), Keys) =>
+    Keys = [Key:Value|KT],
+    comma_dict_items(T, KT).
+comma_dict_items(Key:Value, Keys) =>
+    Keys = [Key:Value].
+
+%!  obj_dir(+ObjRef, -List) is det.
+%!  obj_dict(+ObjRef, -Dict) is det.
+%
+%   Examine attributes of an object. The predicate obj_dir/2 fetches the
+%   names of all attributes,  while  obj_dict/2   gets  a  dict with all
+%   attributes and their values.
+
+obj_dir(ObjRef, List) :-
+    py_call(ObjRef:'__dir__'(), List0),
+    maplist(atom_string, List, List0).
+
+obj_dict(ObjRef, Dict) :-
+    py_call(ObjRef:'__dict__', Dict).
+
 
 		 /*******************************
 		 *     SUPPORT PYTHON CALLS     *
