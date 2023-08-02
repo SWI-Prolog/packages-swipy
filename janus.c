@@ -1208,7 +1208,6 @@ py_call1(term_t Call)
 
 typedef struct
 { PyObject *iterator;
-  PyObject *nextf;
   PyObject *next;
   int uflags;
   int allocated;
@@ -1229,7 +1228,6 @@ alloc_iter_state(iter_state *state)
 static void
 free_iter_state(iter_state *state)
 { Py_CLEAR(state->iterator);
-  Py_CLEAR(state->nextf);
   Py_CLEAR(state->next);
   if ( state->allocated )
     free(state);
@@ -1255,18 +1253,11 @@ py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
       if ( !(iter = py_eval(iter, call)) )
 	return FALSE;
 
-      PyObject *iterf = check_error(PyObject_GetAttrString(iter, "__iter__"));
-      if ( !iterf )
-      { Py_DECREF(iter);
-	return FALSE;
-      }
-      state->iterator = check_error(PyObject_CallObject(iterf, NULL));
-      Py_DECREF(iterf);
+      state->iterator = check_error(PyObject_GetIter(iter));
       Py_DECREF(iter);
-      state->nextf = check_error(PyObject_GetAttrString(state->iterator, "__next__"));
-      if ( !state->nextf ) goto failure;
-      state->next = check_error(PyObject_CallObject(state->nextf, NULL));
-      if ( !state->next ) goto failure;
+      if ( !state->iterator )
+	goto failure;
+      state->next = PyIter_Next(state->iterator);
       break;
     }
     case PL_REDO:
@@ -1287,7 +1278,7 @@ py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
     { int rc = py_unify(Result, state->next, state->uflags);
 
       Py_CLEAR(state->next);
-      state->next = check_error(PyObject_CallObject(state->nextf, NULL));
+      state->next = PyIter_Next(state->iterator);
 
       if ( rc )
       { PL_close_foreign_frame(fid);

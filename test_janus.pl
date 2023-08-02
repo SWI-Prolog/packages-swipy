@@ -80,6 +80,10 @@ test(concat, Z == [1,2,3]) :-
     py_call(demo:concat([1], [2,3]), Z).
 test(dict, Z == py{name:bob, age:42}) :-
     py_call(demo:echo(py{name:bob, age:42}), Z).
+test(dict, Z == py{name:bob, age:42}) :-
+    py_call(demo:echo({name:bob, age:42}), Z).
+test(dict, Z == py{name:bob, age:42}) :-
+    py_call(demo:echo(py({name:bob, age:42})), Z).
 test(dict, Z == py{name:"bob", age:42}) :-
     py_call(demo:echo(py{name:bob, age:42}), Z, [py_string_as(string)]).
 test(bool, Z == true) :-
@@ -94,6 +98,9 @@ test(bool, Z == false) :-
     py_call(demo:echo(false), Z, [py_string_as(string)]).
 test(none, Z == 'None') :-
     py_call(demo:echo('None'), Z, [py_string_as(string)]).
+test(set, Set == [1, a, false]) :- % True canot be in a Python set??
+    py_call(demo:echo(pySet([1,a,false])), pySet(List)),
+    sort(List, Set).
 test(attr, Val = 42) :-
     py_call(demo:test_attr = 42),
     py_call(demo:test_attr, Val).
