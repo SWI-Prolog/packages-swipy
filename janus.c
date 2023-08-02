@@ -916,7 +916,9 @@ py_initialize_(term_t prog, term_t Argv, term_t options)
   rc = TRUE;
   goto succeeded;
 
+#ifdef PYTRY
 py_error:
+#endif
   check_error(NULL);
   PL_warning("Python initialization failed");
 #if PY_VERSION_HEX >= 0x03080000
