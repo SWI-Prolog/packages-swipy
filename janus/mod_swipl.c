@@ -318,6 +318,55 @@ swipl_close_query(PyObject *self, PyObject *args)
 }
 
 
+#ifdef PYTHON_PACKAGE
+
+install_t install_janus(void);
+
+static PyObject *
+swipl_initialize(PyObject *self, PyObject *args)
+{ int argc = PyTuple_GET_SIZE(args);
+  const char* *argv = malloc((argc+1)*sizeof(*argv));
+
+  memset(argv, 0, (argc+1)*sizeof(*argv));
+  for(int i=0; i<argc; i++)
+  { PyObject *a = PyTuple_GetItem(args, i);
+    if ( PyUnicode_Check(a) )
+    { argv[i] = PyUnicode_AsUTF8AndSize(a, NULL);
+    } else
+    { assert(0);
+    }
+  }
+
+  if ( !PL_initialise(argc, (char**)argv) )
+  { Py_SetPrologErrorFromString("Failed to initialize SWI-Prolog");
+    return NULL;
+  }
+
+  install_janus();
+
+  fid_t fid;
+  int rc = FALSE;
+  predicate_t pred = PL_predicate("use_module", 1, "user");
+
+  if ( (fid=PL_open_foreign_frame()) )
+  { term_t av = PL_new_term_refs(1);
+    PL_unify_term(av+0,
+		  PL_FUNCTOR_CHARS, "library", 1,
+		    PL_CHARS, "janus");
+    rc = PL_call_predicate(NULL, PL_Q_NORMAL, pred, av);
+    PL_discard_foreign_frame(fid);
+  }
+
+  if ( !rc )
+  { Py_SetPrologErrorFromString("Failed to load library(janus) into Prolog");
+    return NULL;
+  }
+
+  Py_RETURN_TRUE;
+}
+
+#endif /*PYTHON_PACKAGE*/
+
 static PyMethodDef swiplMethods[] =
 { {"call", swipl_call, METH_VARARGS,
    "Execute a Prolog query."},
@@ -327,6 +376,10 @@ static PyMethodDef swiplMethods[] =
    "Compute the next answer."},
   {"close_query", swipl_close_query, METH_VARARGS,
    "Close an open query."},
+#ifdef PYTHON_PACKAGE
+  {"initialize", swipl_initialize, METH_VARARGS,
+   "Initialize SWI-Prolog."},
+#endif
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

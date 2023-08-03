@@ -16,15 +16,15 @@ endif()
 if(Python_Development.Embed_FOUND)
 
 set(PYTHON_FILES janus.py)
-prepend(PYTHON_FILES python/ ${PYTHON_FILES})
+prepend(PYTHON_FILES janus/ ${PYTHON_FILES})
 
 swipl_plugin(
     janus
     MODULE janus
-    C_SOURCES janus.c
+    C_SOURCES janus/janus.c
     C_LIBS ${Python_LIBRARIES}
     C_INCLUDE_DIR ${Python_INCLUDE_DIRS}
-    PL_LIBS janus.pl
+    PL_LIBS janus/janus.pl
     PL_LIB_SUBDIR python
         PL_LIBS ${PYTHON_FILES})
 
@@ -36,6 +36,6 @@ test_libs(
     TEST_DIRS tests)
 
 pkg_doc(janus
-	SOURCE janus.pl libjanus.tex)
+	SOURCE janus/janus.pl libjanus.tex)
 
 endif(Python_Development.Embed_FOUND)

@@ -78,6 +78,7 @@
 :- autoload(library(dicts), [dict_keys/2]).
 :- autoload(library(option), [dict_options/2]).
 
+:- if(\+current_predicate(py_call/1)).
 :- if(current_prolog_flag(windows, true)).
 % just having the Python dir in PATH seems insufficient.  Note that
 % this probably does not yet deal with the requirement to have the
@@ -90,6 +91,8 @@ add_python_dll_dir :-
 :- endif.
 
 :- use_foreign_library(foreign(janus), [visibility(global)]).
+:- endif.
+
 :- meta_predicate py_with_gil(0).
 
 :- public

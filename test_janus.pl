@@ -36,7 +36,7 @@
           [ test_janus/0,
             bench_janus/0
           ]).
-:- use_module(janus).
+:- use_module(library(janus)).
 :- use_module(library(plunit)).
 :- use_module(library(debug)).
 :- use_module(library(apply_macros), []).
@@ -69,7 +69,7 @@ test(multiply, Z == 6) :-
     py_call(demo:multiply(2,3), Z).
 test(bigint, Z == Big) :-
     Big is 1<<1000,
-    py_call(demo:echo(Big), Z).
+    py_call(janus:echo(Big), Z).
 test(multiply, Z == 6.8) :-
     py_call(demo:multiply(2,3.4), Z).
 test(concat, Z == 'aapnoot') :-
@@ -79,45 +79,45 @@ test(concat, Z == 'aapno\u0000ot') :-
 test(concat, Z == [1,2,3]) :-
     py_call(demo:concat([1], [2,3]), Z).
 test(dict, Z == py{name:bob, age:42}) :-
-    py_call(demo:echo(py{name:bob, age:42}), Z).
+    py_call(janus:echo(py{name:bob, age:42}), Z).
 test(dict, Z == py{name:bob, age:42}) :-
-    py_call(demo:echo({name:bob, age:42}), Z).
+    py_call(janus:echo({name:bob, age:42}), Z).
 test(dict, Z == py{name:bob, age:42}) :-
-    py_call(demo:echo(py({name:bob, age:42})), Z).
+    py_call(janus:echo(py({name:bob, age:42})), Z).
 test(dict, Z == py{name:"bob", age:42}) :-
-    py_call(demo:echo(py{name:bob, age:42}), Z, [py_string_as(string)]).
+    py_call(janus:echo(py{name:bob, age:42}), Z, [py_string_as(string)]).
 test(bool, Z == true) :-
-    py_call(demo:echo(true), Z).
+    py_call(janus:echo(true), Z).
 test(bool, Z == false) :-
-    py_call(demo:echo(false), Z).
+    py_call(janus:echo(false), Z).
 test(none, Z == 'None') :-
-    py_call(demo:echo('None'), Z).
+    py_call(janus:echo('None'), Z).
 test(bool, Z == true) :-
-    py_call(demo:echo(true), Z, [py_string_as(string)]).
+    py_call(janus:echo(true), Z, [py_string_as(string)]).
 test(bool, Z == false) :-
-    py_call(demo:echo(false), Z, [py_string_as(string)]).
+    py_call(janus:echo(false), Z, [py_string_as(string)]).
 test(none, Z == 'None') :-
-    py_call(demo:echo('None'), Z, [py_string_as(string)]).
+    py_call(janus:echo('None'), Z, [py_string_as(string)]).
 test(set, Set == [1, a, false]) :- % True canot be in a Python set??
-    py_call(demo:echo(pySet([1,a,false])), pySet(List)),
+    py_call(janus:echo(pySet([1,a,false])), pySet(List)),
     sort(List, Set).
 test(attr, Val = 42) :-
     py_call(demo:test_attr = 42),
     py_call(demo:test_attr, Val).
 test(stringify, R == '6') :-
-    py_call(demo:echo(#6), R).
+    py_call(janus:echo(#6), R).
 test(stringify, R == '3.14') :-
-    py_call(demo:echo(#3.14), R).
+    py_call(janus:echo(#3.14), R).
 test(stringify, R == 'false') :-
-    py_call(demo:echo(#false), R).
+    py_call(janus:echo(#false), R).
 test(stringify, R == 'None') :-
-    py_call(demo:echo(#'None'), R).
+    py_call(janus:echo(#'None'), R).
 test(stringify, R == 'aap noot') :-        % does _not_ quote
-    py_call(demo:echo(#'aap noot'), R).
+    py_call(janus:echo(#'aap noot'), R).
 test(stringify_wc, R == '+(1,2)') :-       % write_canonical/1
-    py_call(demo:echo(#(1 + 2)), R).
+    py_call(janus:echo(#(1 + 2)), R).
 test(stringify_wc, R == 'f(A,_,A)') :-     % numbervars
-    py_call(demo:echo(#f(X,_,X)), R).
+    py_call(janus:echo(#f(X,_,X)), R).
 test(dict, R=py{a:1, 2:2}) :-
     py_call(demo:dict1(), R).
 test(dict, error(representation_error(py_dict_key))) :-

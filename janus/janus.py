@@ -1,4 +1,12 @@
-import swipl
+# Import the low-level module.  Note that if we embed Prolog into
+# Python, janus is a package and the module is janus.swipl.  When
+# Python is embedded into SWI-Prolog `swipl` is just a plain module.
+# There must be a cleaner way ...
+
+try:
+    from swipl import *
+except ModuleNotFoundError:
+    from janus.swipl import *
 
 ################################################################
 # Primary high level interface
@@ -16,17 +24,17 @@ class Query:
         Python data from this dict.
     """
     def __init__(self, query, inputs={}):
-        self.state = swipl.open_query(query, inputs)
+        self.state = open_query(query, inputs)
     def __iter__(self):
         return self
     def __next__(self):
-        rc = swipl.next_solution(self.state)
+        rc = next_solution(self.state)
         if rc == False or rc["status"] == False:
             raise StopIteration()
         else:
             return rc
     def __del__(self):
-        swipl.close_query(self.state)
+        close_query(self.state)
 
 def once(query, inputs={}, keep=False):
     """
@@ -44,7 +52,7 @@ def once(query, inputs={}, keep=False):
         be used to preserve changes to global variables using
         `b_setval/2`.
     """
-    return swipl.call(query, inputs, keep)
+    return call(query, inputs, keep)
 
 def consult(file):
     """
@@ -81,6 +89,12 @@ def interact():
     except:
         pass
     code.InteractiveConsole(vars).interact();
+
+def prolog():
+    """
+    Start and interactive Prolog toplevel.
+    """
+    once("prolog")
 
 ################################################################
 # Emulated XSB interface

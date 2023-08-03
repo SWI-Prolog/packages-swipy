@@ -1,3 +1,10 @@
+build
+*.so
+*.dll
+*.dylib
+janus.egg-info
 __pycache__
 *~
 .gdbinit
+TAGS
+Keep
