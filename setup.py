@@ -37,7 +37,8 @@ if ( PLVERSION < 90112 ):
 link_args=[]
 if ( sys.platform == 'linux' ):
     link_args.append(f'-Wl,-rpath={PLLIBDIR},--enable-new-dtags')
-
+elif ( sys.platform == 'darwin' ):
+    link_args.append(f'-Wl,-rpath,{PLLIBDIR}')
 
 setup(name='janus',
       version='0.1.0',
