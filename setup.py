@@ -4,6 +4,7 @@ SWIPL="swipl"
 
 from setuptools import setup, Extension
 import subprocess
+import sys
 
 PLBASE=None
 PLLIBDIR=None
@@ -33,6 +34,11 @@ if ( PLBASE == None or PLLIBDIR == None ):
 if ( PLVERSION < 90112 ):
     raise RuntimeError("At least SWI-Prolog version 9.1.12 is required")
 
+link_args=[]
+if ( sys.platform == 'linux' ):
+    link_args.append(f'-Wl,-rpath={PLLIBDIR},--enable-new-dtags')
+
+
 setup(name='janus',
       version='0.1.0',
       description="Janus library to call SWI-Prolog",
@@ -56,9 +62,7 @@ setup(name='janus',
                     include_dirs=[
                         f'{PLBASE}/include'
                     ],
-                    extra_link_args=[
-                        f'-Wl,-rpath={PLLIBDIR},--enable-new-dtags'
-                        ],
+                    extra_link_args=link_args,
                     library_dirs=[PLLIBDIR],
                     libraries=['swipl'])
           ])
