@@ -7,6 +7,7 @@ import subprocess
 
 PLBASE=None
 PLLIBDIR=None
+PLVERSION=None
 
 def swiplConfig():
     config = subprocess.run([SWIPL, '--dump-runtime-variables'],
@@ -15,27 +16,33 @@ def swiplConfig():
         i = line.find("=")      # line is name="value";
         name = line[0:i]
         value = line[i+2:-2]
-        print(value)
         if ( name == "PLBASE" ):
             global PLBASE
             PLBASE = value
         elif ( name == "PLLIBDIR"):
             global PLLIBDIR
             PLLIBDIR = value
+        elif ( name == "PLVERSION"):
+            global PLVERSION
+            PLVERSION = int(value)
 
 swiplConfig()
 
 if ( PLBASE == None or PLLIBDIR == None ):
-    print("Failed to find SWI-Prolog components")
-    quit()
+    raise RuntimeError("Failed to find SWI-Prolog components")
+if ( PLVERSION < 90112 ):
+    raise RuntimeError("At least SWI-Prolog version 9.1.12 is required")
 
 setup(name='janus',
-      version='0.1',
+      version='0.1.0',
       description="Janus library to call SWI-Prolog",
       author="Jan Wielemaker",
       author_email="jan@swi-prolog.org",
       url="http://github.com/SWI-Prolog/packages-swipy",
+      license="BSD-2",
       packages=['janus'],
+      package_dir={"janus":"janus"},
+      package_data={"janus": ['janus.pl']},
       ext_modules= [
           Extension('janus.swipl',
                     ['janus/janus.c'],

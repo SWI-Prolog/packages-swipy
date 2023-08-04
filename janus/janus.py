@@ -4,9 +4,18 @@
 # There must be a cleaner way ...
 
 try:
-    from swipl import *
-except ModuleNotFoundError:
-    from janus.swipl import *
+    from swipl import *         # Loading janus into Prolog
+except ModuleNotFoundError:     # Loading janus into Python
+    import sys
+    if ( hasattr(sys, "getdlopenflags") ):
+         import os
+         flags = sys.getdlopenflags()
+         newflags = (flags & ~os.RTLD_LOCAL|os.RTLD_GLOBAL)
+         sys.setdlopenflags(newflags)
+         from janus.swipl import *
+         sys.setdlopenflags(flags)
+    else:
+         from janus.swipl import *
 
 ################################################################
 # Primary high level interface
@@ -94,6 +103,7 @@ def prolog():
     """
     Start and interactive Prolog toplevel.
     """
+    once("'$toplevel':setup_interactive")
     once("prolog")
 
 ################################################################

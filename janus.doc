@@ -382,6 +382,15 @@ package using
 pip install .    
 \end{code}
 
+Installing the Python package requires
+
+\begin{itemize}
+\item The \program{swipl} program in the default search path.  The \file{setup.py}
+  runs \exam{swipl --dump-runtime-variables} to obtain the installation
+  locations of the various Prolog components.
+\item A C compiler that can be used by \program{pip}
+\end{itemize}
+
 After successful installation we should be able to use Prolog directly
 from Python.  For example:
 
@@ -391,6 +400,8 @@ python
 >>> once("writeln('Hello world!')")
 Hello world!
 {'status': True}
+>>> [a["D"] for a in Query("between(1,6,D)")]
+[1, 2, 3, 4, 5, 6]
 >>> prolog()
 ?- version.
 Welcome to SWI-Prolog (threaded, 64 bits, version 9.1.12-8-g70b70a968-DIRTY)
@@ -398,13 +409,6 @@ SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software.
 ...
 ?- 
 \end{code}
-
-\textbf{WARNING} Although the basics seem to work, the python
-extension is loaded without \const{RTLD_GLOBAL} on ELF systems (e.g.,
-Linux) and therefore the embedded Prolog cannot load foreign packages
-unless the \const{LD_PRELOAD} environment variable is set to make
-\file{libswipl.so} globally visible.
-
 
 \section{Prolog and Python}
 \label{sec:janus-prolog-python}
