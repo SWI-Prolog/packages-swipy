@@ -349,11 +349,13 @@ swipl_initialize(PyObject *self, PyObject *args)
   predicate_t pred = PL_predicate("use_module", 1, "user");
 
   if ( (fid=PL_open_foreign_frame()) )
-  { term_t av = PL_new_term_refs(1);
-    PL_unify_term(av+0,
-		  PL_FUNCTOR_CHARS, "library", 1,
-		    PL_CHARS, "janus");
-    rc = PL_call_predicate(NULL, PL_Q_NORMAL, pred, av);
+  { term_t av;
+
+    rc = ( (av=PL_new_term_refs(1)) &&
+	    PL_unify_term(av+0,
+			  PL_FUNCTOR_CHARS, "library", 1,
+			    PL_CHARS, "janus") &&
+	   PL_call_predicate(NULL, PL_Q_NORMAL, pred, av) );
     PL_discard_foreign_frame(fid);
   }
 
