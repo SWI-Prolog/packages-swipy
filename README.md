@@ -54,6 +54,17 @@ On success, this should work:
 	{'status': True}
 	>>>
 
+#### Building the Python janus package on Windows
+
+
+Starting          with         Python          downloaded         from
+https://www.python.org/downloads/windows/,   the  accompanying   `pip`
+requires MSVC.  Install this.
+
+Now  copy `libswipl.dll.a`  to `libswipl.lib`  (TBD: Not  delivered by
+default) After this `pip install .` should work properly.
+
+
 ## Documentation
 
 See [SWI-Prolog manual](https://www.swi-prolog.org/pldoc/package/janus)
