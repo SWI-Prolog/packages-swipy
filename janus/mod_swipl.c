@@ -79,7 +79,7 @@ Py_SetPrologErrorFromString(const char *s)
 
 
 static int
-unify_input(term_t t, int arity, PyObject *args)
+unify_input(term_t t, Py_ssize_t arity, PyObject *args)
 { if ( arity == 1 )		/* no input arguments */
     return PL_put_dict(t, ATOM_pydict, 0, NULL, 0);
   else
@@ -324,11 +324,11 @@ install_t install_janus(void);
 
 static PyObject *
 swipl_initialize(PyObject *self, PyObject *args)
-{ int argc = PyTuple_GET_SIZE(args);
+{ Py_ssize_t argc = PyTuple_GET_SIZE(args);
   const char* *argv = malloc((argc+1)*sizeof(*argv));
 
   memset(argv, 0, (argc+1)*sizeof(*argv));
-  for(int i=0; i<argc; i++)
+  for(Py_ssize_t i=0; i<argc; i++)
   { PyObject *a = PyTuple_GetItem(args, i);
     if ( PyUnicode_Check(a) )
     { argv[i] = PyUnicode_AsUTF8AndSize(a, NULL);
@@ -337,7 +337,7 @@ swipl_initialize(PyObject *self, PyObject *args)
     }
   }
 
-  if ( !PL_initialise(argc, (char**)argv) )
+  if ( !PL_initialise((int)argc, (char**)argv) )
   { Py_SetPrologErrorFromString("Failed to initialize SWI-Prolog");
     return NULL;
   }

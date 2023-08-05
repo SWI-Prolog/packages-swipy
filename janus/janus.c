@@ -75,15 +75,58 @@ static void py_resume(void);
 #include "mod_swipl.c"
 
 #ifdef _REENTRANT
+#ifdef __WINDOWS__
+#include <windows.h>
+static CRITICAL_SECTION py_mutex;
+
+BOOL WINAPI
+DllMain(HINSTANCE hinstDll, DWORD fdwReason, LPVOID lpvReserved)
+{ BOOL result = TRUE;
+
+  switch(fdwReason)
+  { case DLL_PROCESS_ATTACH:
+      InitializeCriticalSection(&py_mutex);
+      break;
+    case DLL_PROCESS_DETACH:
+      DeleteCriticalSection(&py_mutex);
+      break;
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+      break;
+  }
+
+  return result;
+}
+
+#define LOCK() EnterCriticalSection(&py_mutex)
+#define UNLOCK() LeaveCriticalSection(&py_mutex)
+
+#ifdef _MSC_VER
+/* Only for our purpose */
+static inline int
+__sync_bool_compare_and_swap(volatile void **addr, void *new, void *old)
+{
+#if _WIN64
+    return (int)_InterlockedCompareExchange64((volatile __int64*)addr, (__int64)new, (__int64)old);
+#else
+    return (int)_InterlockedCompareExchange64((volatile long*)addr, (long)new, (long)old);
+#endif
+}
+
+#define __thread __declspec(thread)
+#endif
+
+#else /*__WINDOWS__*/
 #include <pthread.h>
 
-static pthread_mutex_t crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
-#define LOCK() pthread_mutex_lock(&crypt_mutex)
-#define UNLOCK() pthread_mutex_unlock(&crypt_mutex)
-#else
+static pthread_mutex_t py_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define LOCK() pthread_mutex_lock(&py_mutex)
+#define UNLOCK() pthread_mutex_unlock(&py_mutex)
+#endif /*__WINDOWS__*/
+#else /*_REENTRANT*/
 #define LOCK()
 #define UNLOCK()
-#endif
+#endif /*_REENTRANT*/
 
 #define PYU_STRING 0x0001		/* Unify text as Prolog string */
 #define PYU_OBJ    0x0002		/* Unify as object */
@@ -468,12 +511,17 @@ static int
 py_unify_dict(term_t t, PyObject *obj, int flags)
 { Py_ssize_t size = PyDict_Size(obj);
   term_t pl_dict = PL_new_term_ref();
-  term_t pl_values = PL_new_term_refs(size);
+  term_t pl_values;
   atom_t fast[25];
   atom_t *pl_keys;
   int rc = FALSE;
   Py_ssize_t i = 0;
   PyObject *py_key, *py_value;
+
+  if ( size < 0 || size > INT_MAX )
+    return PL_resource_error("stack");
+
+  pl_values = PL_new_term_refs((int)size);
 
   if ( size < 25 )
     pl_keys = fast;
@@ -531,7 +579,7 @@ py_unify(term_t t, PyObject *obj, int flags)
   if ( obj == Py_None )
     return PL_unify_atom(t, ATOM_None);
   if ( PyBool_Check(obj) )
-    return PL_unify_bool(t, PyLong_AsLongLong(obj));
+    return PL_unify_bool(t, PyLong_AsLong(obj));
 
   if ( (flags&PYU_OBJ) )
   { if ( PyLong_CheckExact(obj) )
