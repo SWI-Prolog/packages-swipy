@@ -9,6 +9,7 @@ import sys
 PLBASE=None
 PLLIBDIR=None
 PLVERSION=None
+PLLIB="swipl"
 
 def swiplConfig():
     config = subprocess.run([SWIPL, '--dump-runtime-variables'],
@@ -39,6 +40,8 @@ if ( sys.platform == 'linux' ):
     link_args.append(f'-Wl,-rpath={PLLIBDIR},--enable-new-dtags')
 elif ( sys.platform == 'darwin' ):
     link_args.append(f'-Wl,-rpath,{PLLIBDIR}')
+elif ( sys.platform == 'win32' ):
+    PLLIB="libswipl"
 
 setup(name='janus',
       version='0.1.0',
@@ -65,5 +68,5 @@ setup(name='janus',
                     ],
                     extra_link_args=link_args,
                     library_dirs=[PLLIBDIR],
-                    libraries=['swipl'])
+                    libraries=[PLLIB])
           ])
