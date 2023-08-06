@@ -1265,14 +1265,14 @@ py_call3(term_t Call, term_t result, term_t options)
   if ( !get_conversion_options(options, &uflags) )
     return FALSE;
 
-  if ( !py_gil_ensure(&state) )
-    return FALSE;
-
   if ( PL_is_functor(call, FUNCTOR_eq2) )
   { val = PL_new_term_ref();
     _PL_get_arg(2, call, val);
     _PL_get_arg(1, call, call);
   }
+
+  if ( !py_gil_ensure(&state) )
+    return FALSE;
 
   rc = unchain(call, &py_target);
 
@@ -1348,6 +1348,8 @@ static foreign_t
 py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
 { iter_state iter_buf;
   iter_state *state;
+  PyGILState_STATE gil_state;
+  int rc = FALSE;
 
   switch( PL_foreign_control(handle) )
   { case PL_FIRST_CALL:
@@ -1359,25 +1361,32 @@ py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
       if ( !get_conversion_options(options, &state->uflags) )
 	return FALSE;
 
+      if ( !py_gil_ensure(&gil_state) )
+	return FALSE;
+
       if ( !unchain(call, &iter) )
-	return FALSE;
+	goto out;
       if ( !(iter = py_eval(iter, call)) )
-	return FALSE;
+	goto out;
 
       state->iterator = check_error(PyObject_GetIter(iter));
       Py_DECREF(iter);
       if ( !state->iterator )
-	goto failure;
+	goto out;
       state->next = PyIter_Next(state->iterator);
       break;
     }
     case PL_REDO:
       state = PL_foreign_context_address(handle);
+      if ( !py_gil_ensure(&gil_state) )
+	return FALSE;
       break;
     case PL_PRUNED:
       state = PL_foreign_context_address(handle);
-      free_iter_state(state);
-      return TRUE;
+      if ( !py_gil_ensure(&gil_state) )
+	return FALSE;
+      rc = TRUE;
+      goto out;
     default:
       assert(0);
       return FALSE;
@@ -1386,7 +1395,7 @@ py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
   fid_t fid = PL_open_foreign_frame();
   if ( fid )
   { while ( state->next )
-    { int rc = py_unify(Result, state->next, state->uflags);
+    { rc = py_unify(Result, state->next, state->uflags);
 
       Py_CLEAR(state->next);
       state->next = PyIter_Next(state->iterator);
@@ -1395,23 +1404,28 @@ py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
       { PL_close_foreign_frame(fid);
 
 	if ( state->next )
-	  PL_retry_address(alloc_iter_state(state));
+	{ py_gil_release(gil_state);
+	  PL_retry_address(alloc_iter_state(state)); /* returns */
+	}
 	free_iter_state(state);
-	return !PL_exception(0);
+	rc = !PL_exception(0);
+	goto out;
       }
 
       if ( PL_exception(0) )
       { PL_close_foreign_frame(fid);
-	free_iter_state(state);
-	return FALSE;
+	rc = FALSE;
+	goto out;
       }
       PL_rewind_foreign_frame(fid);
     }
   }
 
-failure:
+out:
   free_iter_state(state);
-  return FALSE;
+  py_gil_release(gil_state);
+
+  return rc;
 }
 
 
