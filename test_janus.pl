@@ -208,6 +208,15 @@ test(russel, List == [py{'X':barber,'Y':barber,status:'Undefined'},
 		      py{'X':barber,'Y':mayor,status:true}]) :-
     py_call(demo:shaves(), List0),
     sort('Y', @=<, List0, List).
+test(py_double, Tuples == [1:1,2:1,3:1,
+                           1:2,2:2,3:2,
+                           1:3,2:3,3:3,
+                           1:4,2:4,3:4]) :-
+    py_call(demo:double_iter(3,4), Tuples).
+test(invalid_nesting, X == true) :-
+    py_call(demo:test_invalid_nesting(), X).
+test(while, X == [1,2,3]) :-
+    py_call(demo:test_while(), X).
 
 :- end_tests(python_call_prolog).
 
@@ -217,6 +226,11 @@ test(range, all(X = [0,1,2,3,4,5])) :-
     py_iter(range(0, 6), X).
 test(square, all(X = [1,4,9,16])) :-
     py_iter(demo:squares(1,5), X).
+test(double, Pairs == [1-1,1-2,2-1,2-2]) :-
+    findall(X-Y,
+            (   py_iter(range(1,3), X),
+                py_iter(range(1,3), Y)
+            ), Pairs).
 
 :- end_tests(janus_iter).
 

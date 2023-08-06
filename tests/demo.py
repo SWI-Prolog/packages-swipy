@@ -64,6 +64,32 @@ def abort_iter(n):
             break;
     return sum;
 
+def double_iter(w,h):
+    tuples=[]
+    for yd in Query("between(1,M,Y)", {"M":h}):
+        for xd in Query("between(1,M,X)", {"M":w}):
+            tuples.append((xd['X'],yd['Y']))
+    return tuples
+
+def test_invalid_nesting():
+    q1 = Query("between(1,3,X)")
+    q2 = Query("between(1,3,Y)")
+    q2.next()
+    try:
+        q1.next()
+    except:
+        q2.close()
+    q1.next()
+    q1.close()
+    return True
+
+def test_while():
+    list=[]
+    q = Query("between(1,3,X)")
+    while ( s := q.next() ):
+        list.append(s['X'])
+    q.close()
+    return list
 
 # Test using generators as custom iterators.
 

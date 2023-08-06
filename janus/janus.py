@@ -44,6 +44,14 @@ class Query:
             return rc
     def __del__(self):
         close_query(self.state)
+    def next(self):
+        rc = next_solution(self.state)
+        if rc == False or rc["status"] == False:
+            return None
+        else:
+            return rc
+    def close(self):
+        close_query(self.state)
 
 def once(query, inputs={}, keep=False):
     """

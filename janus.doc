@@ -276,6 +276,60 @@ def printRange(from, to):
         print(d["X"])
 \end{code}
 
+Iterators may be nested.  For example,  we can create a list of tuples
+like below.
+
+\begin{code}
+def double_iter(w,h):
+    tuples=[]
+    for yd in Query("between(1,M,Y)", {"M":h}):
+        for xd in Query("between(1,M,X)", {"M":w}):
+            tuples.append((xd['X'],yd['Y']))
+    return tuples
+\end{code}
+
+After this, we may run
+
+\begin{code}
+>>>
+demo.double_iter(2,3)
+[(1, 1), (2, 1), (1, 2), (2, 2), (1, 3), (2, 3)]  
+\end{code}
+
+In addition to the \jargon{iterator} protocol that class \ctype{Query}
+implements, it also implements the methods query.next() and
+query.close().  This allows for e.g.
+
+\begin{code}
+    q = Query("between(1,3,X)")
+    while ( s := q.next() ):
+        print(s['X'])
+    q.close()
+\end{code}
+
+
+But, \textbf{iterators based on Prolog goals are fragile}.  This
+is because, while it is possible to open and run a new query while
+there is an open query, the inner query must be closed before we
+can ask for the next solution of the outer query.  We illustrate
+this using the sequence below.
+
+\begin{code}
+>>> q1 = Query("between(1,3,X)")
+>>> q2 = Query("between(1,3,X)")
+>>> q2.next()
+{'status': True, 'X': 1}  
+>>> q1.next()
+Traceback (most recent call last):
+...
+swipl.Error: swipl.next_solution(): not inner query
+>>> q2.close()
+>>> q1.next()
+{'status': True, 'X': 1}
+>>> q1.close()
+\end{code}
+
+
 \begin{description}
     \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False}
 Call \arg{query} using \arg{bindings} as once/1, returning a dict with
