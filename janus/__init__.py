@@ -1,21 +1,16 @@
 import os
 import sys
-import subprocess
-
-def _swipl_libdir():
-    config = subprocess.run(["swipl", '--dump-runtime-variables'],
-                            stdout=subprocess.PIPE).stdout.decode('utf-8')
-    for line in config.splitlines():
-        i = line.find("=")      # line is name="value";
-        name = line[0:i]
-        value = line[i+2:-2]
-        if ( name == "PLLIBSWIPL" ):
-            return os.path.dirname(value);
 
 if ( sys.platform == "win32" ):
-    dir=_swipl_libdir()
-#   print(f"Using SWI-Prolog DLLs from {dir}")
-    os.add_dll_directory(dir)
+    from janus._find_swipl import swipl_properties 
+    props = swipl_properties()
+    if ( props ):
+        if ( int(props["PLVERSION"]) < 90112 ):
+             raise RuntimeError("At least SWI-Prolog version 9.1.12 is required")
+        libdir = os.path.dirname(props["PLLIBSWIPL"])
+        os.add_dll_directory(libdir)
+    else:
+        raise RuntimeError("Could not find SWI-Prolog in %PATH% or registry")
 
 from janus.janus import *
 import janus.swipl
