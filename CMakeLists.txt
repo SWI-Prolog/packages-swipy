@@ -18,11 +18,21 @@ if(Python_Development.Embed_FOUND)
 set(PYTHON_FILES janus.py)
 prepend(PYTHON_FILES janus/ ${PYTHON_FILES})
 
+if(WIN32)
+  message("libs: ${Python_LIBRARIES}")
+  string(REGEX REPLACE "3[.0-9]+\\." "3." Python3_LIB ${Python_LIBRARIES})
+  message("libs: ${Python3_LIB}")
+  set(PYTHON3_COMPAT 1)
+else()
+  set(Python3_LIB ${Python_LIBRARIES})
+endif()
+
+
 swipl_plugin(
     janus
     MODULE janus
     C_SOURCES janus/janus.c
-    C_LIBS ${Python_LIBRARIES}
+    C_LIBS ${Python3_LIB}
     C_INCLUDE_DIR ${Python_INCLUDE_DIRS}
     PL_LIBS janus/janus.pl
     PL_LIB_SUBDIR python

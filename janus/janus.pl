@@ -80,9 +80,8 @@
 
 :- if(\+current_predicate(py_call/1)).
 :- if(current_prolog_flag(windows, true)).
-% just having the Python dir in PATH seems insufficient.  Note that
-% this probably does not yet deal with the requirement to have the
-% same version of Python installed than was used to build janus.
+% Just having the Python dir in PATH seems insufficient. We also need to
+% add the directory to the DLL search path.
 add_python_dll_dir :-
     absolute_file_name(path('python3.dll'), DLL, [access(read)]),
     file_directory_name(DLL, Dir),

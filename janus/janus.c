@@ -71,6 +71,38 @@ static int py_from_prolog(term_t t, PyObject **obj);
 static void py_yield(void);
 static void py_resume(void);
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+On Windows,  `python3.dll` provides the  stable C API that  relates to
+the concrete  Python version next  to it.  Our  CMakeLists.txt detects
+the presence of  `python3.dll` next to the concrete  dll.  When found,
+it   replaces   the   dependency  with   `python3.dll`   and   defines
+`PYTHON3_COMPAT`.
+
+The `PYTHON3_COMPAT` flag  is used here to use older  API calls rather
+than the  more convenient or  even preferred newer API  functions.  In
+particular:
+
+  - Slice the partially build argument tuple for a function when
+    we encounter keyword arguments rather than resizing it.
+  - Use the old (as of 3.11 deprecated) Py_Initialize() to initialize
+    the embedded Python system.
+  - There is no PyGILState_Check() in the stable API, so we keep
+    track ourselves whether we locked the gil.
+  - Py_CompileString() is in the stable API, but the header uses a
+    macro to redefine it to a newer API function that is not.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+
+#ifdef PYTHON3_COMPAT
+#undef Py_CompileString		/* See above */
+#else
+#if PY_VERSION_HEX >= 0x03080000
+#define HAVE_PYCONFIG 1
+#endif
+#define HAVE__PYTUPLE_RESIZE 1
+#define HAVE_PYGILSTATE_CHECK 1
+#endif
+
 #include "hash.c"
 #include "mod_swipl.c"
 
@@ -113,7 +145,7 @@ __sync_bool_compare_and_swap(volatile void **addr, void *new, void *old)
 #endif
 }
 
-#define __thread __declspec(thread)
+#define _Thread_local __declspec(thread)
 #endif
 
 #else /*__WINDOWS__*/
@@ -131,6 +163,10 @@ static pthread_mutex_t py_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define PYU_STRING 0x0001		/* Unify text as Prolog string */
 #define PYU_OBJ    0x0002		/* Unify as object */
 
+#ifndef HAVE_PYGILSTATE_CHECK
+static _Thread_local int have_gil;
+#define PyGILState_Check() (have_gil)
+#endif
 
 		 /*******************************
 		 *          DEBUGGING           *
@@ -223,7 +259,7 @@ write_python_object(IOSTREAM *s, atom_t symbol, int flags)
 
   if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
        (name=PyObject_GetAttrString(cls, "__name__")) )
-    str = PyUnicode_AsUTF8(name);
+    str = PyUnicode_AsUTF8AndSize(name, NULL);
 
   Sfprintf(s, "<py_%Us>(%p)", str, obj);
   Py_CLEAR(cls);
@@ -950,9 +986,12 @@ py_initialize_(term_t prog, term_t Argv, term_t options)
       goto failed;
   }
 
-#if PY_VERSION_HEX < 0x03080000
+#if !HAVE_PYCONFIG
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   Py_SetProgramName(pname);
   Py_Initialize();
+#pragma GCC diagnostic pop
 #else
   PyConfig config;
 
@@ -974,7 +1013,7 @@ py_error:
 #endif
   check_error(NULL);
   PL_warning("Python initialization failed");
-#if PY_VERSION_HEX >= 0x03080000
+#if HAVE_PYCONFIG
   PyConfig_Clear(&config);
 #endif
 
@@ -1043,10 +1082,18 @@ py_eval(PyObject *obj, term_t func)
 	term_t k = PL_new_term_ref();
 	term_t v = PL_new_term_ref();
 
+#if HAVE__PYTUPLE_RESIZE
 	if ( _PyTuple_Resize(&py_argv, i) == -1 )
 	{ check_error(py_argv);
 	  goto out;
 	}
+#else
+	PyObject *slice = check_error(PyTuple_GetSlice(py_argv, 0, i));
+	if ( !slice )
+	  goto out;
+	Py_CLEAR(py_argv);
+	py_argv = slice;
+#endif
 
 	for(; i<arity; i++)
 	{ _PL_get_arg(i+1, func, arg);
@@ -1138,6 +1185,9 @@ py_gil_ensure(PyGILState_STATE *state)
 
   py_resume();
   *state = PyGILState_Ensure();
+#ifndef HAVE_PYGILSTATE_CHECK
+  have_gil = TRUE;
+#endif
   if ( delayed )
     delayed_decref(NULL);
 
@@ -1148,7 +1198,11 @@ py_gil_ensure(PyGILState_STATE *state)
 static void
 py_gil_release(PyGILState_STATE state)
 { if ( state )
-  { PyGILState_Release(state);
+  {
+#ifndef HAVE_PYGILSTATE_CHECK
+    have_gil = FALSE;
+#endif
+    PyGILState_Release(state);
     py_yield();
   }
 }
@@ -1386,7 +1440,7 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
 
   if ( PL_get_chars(Cmd, &cmd, CVT_ATOM|CVT_STRING|CVT_LIST|CVT_EXCEPTION) )
   { PyObject *locals=NULL, *globals=NULL;
-    PyObject *result;
+    PyObject *result = NULL;
     PyGILState_STATE state;
     int rc;
 
@@ -1395,15 +1449,21 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
 
     if ( (rc = (py_from_prolog(Globals, &globals) &&
 		py_from_prolog(Locals, &locals))) )
-    { result = PyRun_StringFlags(cmd, Py_file_input, globals, locals, NULL);
+    { PyObject *code = check_error(Py_CompileString(cmd, "string",
+						    Py_file_input));
+
+      if ( code )
+	result = check_error(PyEval_EvalCode(code, globals, locals));
+
+      Py_CLEAR(code);
 
       if ( result )
       { rc = py_unify(Result, result, 0);
-	Py_DECREF(result);
       } else
-	rc = !!check_error(result);
+	rc = FALSE;
     }
 
+    Py_CLEAR(result);
     Py_CLEAR(locals);
     Py_CLEAR(globals);
     py_gil_release(state);
@@ -1466,7 +1526,7 @@ typedef struct
   int		 yielded;
 } py_state_t;
 
-static __thread py_state_t py_state;
+static _Thread_local py_state_t py_state;
 
 static void
 py_yield(void)
