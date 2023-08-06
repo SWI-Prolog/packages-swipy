@@ -1,7 +1,14 @@
 # Janus: a bi-directional interface to Python
 
-> This is explorative work.  This work is based on Janus for XSB by
-> Theresa Swift and Carl Anderson.
+> This is  _alpha_ software.  This work  is based on Janus  for XSB by
+> Theresa Swift  and Carl  Anderson.  Details of  the current  API may
+> change to  improve the  compatibility with other  implementations of
+> Janus.
+>
+> Design  and overall  implementation  structure is  considered to  be
+> robust.   Several  issues  still   need  to  be  addressed,  notably
+> considering  installation  in   various  environments  and  graceful
+> handling of violating the limitations of open Prolog queries.
 
 This  code  implements  a  ready-to-use  bi-directional  interface  to
 Python.  As  motivated by Theresa  Swift, Python opens many  doors for
@@ -39,13 +46,8 @@ printing relevant information on the embedded Python system.
 
 ### Embedding Prolog into Python
 
-This  package provides  `setup.py`.  Given  a SWI-Prolog  version with
-this library included accessible as `swipl` and the infra structure to
-build C extensions, you can install the package `janus` using
-
-    pip install .
-
-On success, this should work:
+This repo my  be installed as a  Python package such that  you can run
+e.g.,
 
     python
 	>>> from janus import *
@@ -54,17 +56,69 @@ On success, this should work:
 	{'status': True}
 	>>>
 
-#### Building the Python janus package on Windows
+To install  the package you  need `pip` with  a C compiler.   On Linux
+this is  probably provided by  default by installing `pip`.   On MacOS
+you need  to install Xcode.  On  Windows, it probably depends  how you
+installed    CPython.    Assuming    the   binary    installers   from
+https://www.python.org/downloads/windows/,   you   need   to   install
+Microsoft Visual C++.   If this is not installed, `pip`  will tell you
+and give a link from where to download Microsoft Visual C++.
 
+Next, you  need to make  sure `swipl`  (`swipl.exe` on Windows)  is in
+your  application   search  path.   On  Windows,   this  means  adding
+``C:\Program Files\swipl\bin`` to your  `%PATH%`.  On all systems, you
+can verify that by running `swipl` from a terminal.
 
-Starting          with         Python          downloaded         from
-https://www.python.org/downloads/windows/,   the  accompanying   `pip`
-requires MSVC.  Install this.
+If this is all in place, you can download this repo and install it, as
+in
 
-Now  copy `libswipl.dll.a`  to `libswipl.lib`  (TBD: Not  delivered by
-default) After this `pip install .` should work properly.
+    git clone https://github.com/SWI-Prolog/swipy.git
+	cd swipy
+	pip install .
+
+You can also do this using the one-liner below.
+
+    pip install git+https://github.com/SWI-Prolog/swipy.git#egg=janus
 
 
 ## Documentation
 
 See [SWI-Prolog manual](https://www.swi-prolog.org/pldoc/package/janus)
+
+
+## Alternatives
+
+### MQI (Machine Query Interface)
+
+SWI-Prolog               comes              bundled               with
+[MQI](https://www.swi-prolog.org/pldoc/package/mqi).  MQI is initiated
+from  Python and  starts SWI-Prolog  as a  server.  It  allows calling
+Prolog from Python.  Separated using networking, this approach is easy
+to  install and  runs  with any  Python version.   It  does not  allow
+calling Python  from Prolog, the  primary reason for the  existence of
+this package.  Using networking, the latency is relatively high.
+
+### pyswip
+
+The   [pyswip](https://github.com/yuce/pyswip)   interface  uses   the
+[Python    ctypes](https://docs.python.org/3/library/ctypes.html)   to
+embed Prolog into Python.  Only relying  on _ctypes_, the package is a
+fully portable Python package that supports a wide range of Python and
+Prolog versions.
+
+Unlike this  package, embedding  Python into  Prolog is  not possible.
+_pyswip_ calls Prolog, similarly than janus, using a string.  However,
+where  janus allows  passing input  to the  goal as  a _dict_  that is
+transferred using the C API  rather than strings, _pyswip_ also passes
+the  input as  a  string.   This is  slower,  sensitive to  _injection
+attacks_  and   complicated  because  the  user   is  responsible  for
+generating  valid Prolog  syntax.   Calls from  Prolog  to Python  are
+possible by defining a Prolog  predicate from Python.  This only seems
+to support  deterministic predicates and  it cannot pass data  back to
+Prolog.  Janus supports calling  Python functions and methods directly
+and  supports  enumerating  Python  _iterators_  and  _generators_  as
+non-deterministic goals using py_iter/2.
+
+The  overhead of  Janus is  roughly 5  times less  than _pyswip_.   As
+_pyswip_ still sustains over 100K  calls per second this is irrelevant
+to many applications.
