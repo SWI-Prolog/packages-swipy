@@ -1,45 +1,26 @@
 # Build janus as a Python package
 
 SWIPL="swipl"
+PLLIB="swipl"
 
 from setuptools import setup, Extension
 import subprocess
 import sys
+sys.path.append("janus")
+from _find_swipl import swipl_properties
 
-PLBASE=None
-PLLIBDIR=None
-PLVERSION=None
-PLLIB="swipl"
+props=swipl_properties()
 
-def swiplConfig():
-    config = subprocess.run([SWIPL, '--dump-runtime-variables'],
-                            stdout=subprocess.PIPE).stdout.decode('utf-8')
-    for line in config.splitlines():
-        i = line.find("=")      # line is name="value";
-        name = line[0:i]
-        value = line[i+2:-2]
-        if ( name == "PLBASE" ):
-            global PLBASE
-            PLBASE = value
-        elif ( name == "PLLIBDIR"):
-            global PLLIBDIR
-            PLLIBDIR = value
-        elif ( name == "PLVERSION"):
-            global PLVERSION
-            PLVERSION = int(value)
-
-swiplConfig()
-
-if ( PLBASE == None or PLLIBDIR == None ):
+if ( not props ):
     raise RuntimeError("Failed to find SWI-Prolog components")
-if ( PLVERSION < 90112 ):
+if ( int(props["PLVERSION"]) < 90112 ):
     raise RuntimeError("At least SWI-Prolog version 9.1.12 is required")
 
 link_args=[]
 if ( sys.platform == 'linux' ):
-    link_args.append(f'-Wl,-rpath={PLLIBDIR},--enable-new-dtags')
+    link_args.append(f'-Wl,-rpath={props["PLLIBDIR"]},--enable-new-dtags')
 elif ( sys.platform == 'darwin' ):
-    link_args.append(f'-Wl,-rpath,{PLLIBDIR}')
+    link_args.append(f'-Wl,-rpath,{props["PLLIBDIR"]}')
 elif ( sys.platform == 'win32' ):
     PLLIB="libswipl"
 
@@ -64,9 +45,9 @@ setup(name='janus',
                         ('PYTHON_PACKAGE', '1')
                     ],
                     include_dirs=[
-                        f'{PLBASE}/include'
+                        f'{props["PLBASE"]}/include'
                     ],
                     extra_link_args=link_args,
-                    library_dirs=[PLLIBDIR],
+                    library_dirs=[props["PLLIBDIR"]],
                     libraries=[PLLIB])
           ])

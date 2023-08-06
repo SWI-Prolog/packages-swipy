@@ -21,7 +21,7 @@ experience  with e.g.,  our JavaScript  interface.  We  are discussing
 changes on both ends to make the interfaces as compatible as possible.
 Part of this discussion is already reflected in the current state.
 
-## Installing
+## Installing as Prolog library
 
 This  is  normally a  GIT  sub  module  of  the SWI-Prolog  git  repo.
 Configuration and installation of `library(janus)` which embeds Python
@@ -64,10 +64,14 @@ https://www.python.org/downloads/windows/,   you   need   to   install
 Microsoft Visual C++.   If this is not installed, `pip`  will tell you
 and give a link from where to download Microsoft Visual C++.
 
-Next, you  need to make  sure `swipl`  (`swipl.exe` on Windows)  is in
-your  application   search  path.   On  Windows,   this  means  adding
-``C:\Program Files\swipl\bin`` to your  `%PATH%`.  On all systems, you
-can verify that by running `swipl` from a terminal.
+Next, you  need to  make sure  `swipl` can  be found.   The `setup.py`
+script first  tries to find  `swipl` (`swipl.exe` on Windows)  on your
+application search path.  You can  verify that by running `swipl` from
+a terminal.   If `swipl`  cannot be  found or it  is not  the expected
+version of  SWI-Prolog, adjust your ``PATH``.   On Windows, `setup.py`
+also checks the registry to find  SWI-Prolog as it is installed by the
+default installation.  If  this works, SWI-Prolog does not  need to be
+in ``%PATH%``.
 
 If this is all in place, you can download this repo and install it, as
 in
