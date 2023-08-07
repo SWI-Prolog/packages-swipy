@@ -707,12 +707,11 @@ ucall(Goal, TV) :-
     prolog:error_message//1,
     prolog:message//1.
 
-prolog:error_message(python_error(Type, Value, _Stack)) -->
-    { py_str(Type, PType),
-      py_str(Value, PValue)
+prolog:error_message(python_error(Class, Value, _Stack)) -->
+    { py_str(Value, Message)
     },
-    [ 'Python error ~w:'-[PType], nl,
-      '  ~w'-[PValue]
+    [ 'Python ', ansi(code, "'~w'", [Class]), ':', nl,
+      '  ~w'-[Message]
     ].
 
 prolog:message(janus(version(V))) -->

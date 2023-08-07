@@ -229,6 +229,23 @@ MyPy_DECREF(PyObject *o)
   }
 }
 
+
+static const char*
+py_class_name(PyObject *obj)
+{ PyObject *cls  = NULL;
+  PyObject *name = NULL;
+  const char *str = NULL;
+
+  if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
+       (name=PyObject_GetAttrString(cls, "__name__")) )
+    str = PyUnicode_AsUTF8AndSize(name, NULL);
+  if ( !str ) str = "<no class>";
+
+  Py_CLEAR(cls);
+  Py_CLEAR(name);
+  return str;
+}
+
 		 /*******************************
 		 *             BLOB             *
 		 *******************************/
@@ -254,16 +271,8 @@ compare_python_object(atom_t a, atom_t b)
 static int
 write_python_object(IOSTREAM *s, atom_t symbol, int flags)
 { PyObject *obj  = PL_blob_data(symbol, NULL, NULL);
-  PyObject *cls = NULL, *name = NULL;
-  const char *str = NULL;
 
-  if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
-       (name=PyObject_GetAttrString(cls, "__name__")) )
-    str = PyUnicode_AsUTF8AndSize(name, NULL);
-
-  Sfprintf(s, "<py_%Us>(%p)", str, obj);
-  Py_CLEAR(cls);
-  Py_CLEAR(name);
+  Sfprintf(s, "<py_%Us>(%p)", py_class_name(obj), obj);
   return TRUE;
 }
 
@@ -273,7 +282,7 @@ acquire_python_object(atom_t symbol)
   Py_INCREF(obj);
 }
 
-PL_blob_t PY_OBJECT = {
+static PL_blob_t PY_OBJECT = {
   PL_BLOB_MAGIC,
   PL_BLOB_UNIQUE|PL_BLOB_NOCOPY,
   "PyObject",
@@ -358,25 +367,30 @@ get_py_module(term_t name, PyObject **mod)
   return FALSE;
 }
 
+
 static PyObject *
 check_error(PyObject *obj)
 { PyObject *ex = PyErr_Occurred();
 
   if ( ex )
-  { PyObject *type, *value, *stack;
+  { PyObject *type = NULL, *value = NULL, *stack = NULL;
     term_t t  = PL_new_term_ref();
     term_t av = PL_new_term_refs(3);
 
     PyErr_Fetch(&type, &value, &stack);
-    int rc = ( py_unify(av+0, type, 0) &&
-	       py_unify(av+1, value, 0) &&
-	       (stack ? py_unify(av+2, stack, 0)
-		      : PL_unify_atom(av+2, ATOM_None)) &&
-	       PL_cons_functor_v(t, FUNCTOR_python_error3, av) &&
-	       PL_put_variable(av+0) &&
-	       PL_cons_functor(t, FUNCTOR_error2, t, av+0) &&
-	       PL_raise_exception(t) );
-    (void)rc;
+    const char *cls = py_class_name(value);
+    if ( PL_unify_chars(av+0, PL_ATOM|REP_UTF8, (size_t)-1, cls) &&
+	 py_unify(av+1, value, 0) &&
+	 (stack ? py_unify(av+2, stack, 0)
+		: PL_unify_atom(av+2, ATOM_None)) &&
+	 PL_cons_functor_v(t, FUNCTOR_python_error3, av) &&
+	 PL_put_variable(av+0) &&
+	 PL_cons_functor(t, FUNCTOR_error2, t, av+0) )
+      PL_raise_exception(t);
+
+    Py_CLEAR(type);
+    Py_CLEAR(value);
+    Py_CLEAR(stack);
     return NULL;
   } else
     return obj;

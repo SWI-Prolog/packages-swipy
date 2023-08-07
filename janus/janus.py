@@ -146,3 +146,19 @@ def px_comp(module, pred, *args, vars=1, set_collect=False, truth_vals=PLAIN_TRU
                "TV":truth_vals
               })
     return d["Ret"]
+
+class PrologError:
+    """
+    Class `PrologError` implements a generic error from Prolog
+
+    Attributes
+    ----------
+    message: str
+        String representation obtained from message_to_string/2
+    """
+    def __init__(self, msg):
+        self.message = msg
+    def __str__(self):
+        return self.message
+    def __repr__(self):
+        return self.message

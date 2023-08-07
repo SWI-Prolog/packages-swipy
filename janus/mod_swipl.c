@@ -36,7 +36,7 @@ static PyObject *PyExcProlog_store = NULL;
 static PyObject *
 PyExcProlog(void)
 { if ( !PyExcProlog_store )
-    PyExcProlog_store = PyErr_NewException("swipl.Error", NULL, NULL);
+    PyExcProlog_store = PyErr_NewException("janus.PrologError", NULL, NULL);
   return PyExcProlog_store;
 }
 
@@ -62,19 +62,57 @@ swipl_error_string(term_t ex)
   Py_RETURN_NONE;
 }
 
+
+static PyObject *
+mod_janus(void)
+{ static PyObject *janus = NULL;
+
+  if ( !janus )
+  { PyObject *janus_name = NULL;
+
+    if ( (janus_name=PyUnicode_FromString("janus")) )
+      janus = PyImport_Import(janus_name);
+
+    Py_CLEAR(janus_name);
+  }
+
+  return janus;
+}
+
+
+static void
+Py_SetPrologErrorFromString(PyObject *msg)
+{ PyObject *janus;
+  PyObject *constructor = NULL;
+  PyObject *argv = NULL;
+
+  if ( (janus=mod_janus()) &&
+       (constructor=PyObject_GetAttrString(janus, "PrologError")) &&
+       (argv=PyTuple_New(1)) )
+  { Py_INCREF(msg);
+    PyTuple_SetItem(argv, 0, msg);
+    PyObject *ex = PyObject_CallObject(constructor, argv);
+    if ( ex )
+      PyErr_SetObject(PyExcProlog(), ex);
+  }
+
+  Py_CLEAR(constructor);
+  Py_CLEAR(argv);
+}
+
+
 static void
 Py_SetPrologError(term_t ex)
 { PyObject *msg = swipl_error_string(ex);
-
-  PyErr_SetObject(PyExcProlog(), msg);
-  Py_DECREF(msg);
+  Py_SetPrologErrorFromString(msg);
+  Py_CLEAR(msg);
 }
 
 static void
-Py_SetPrologErrorFromString(const char *s)
+Py_SetPrologErrorFromChars(const char *s)
 { PyObject *msg = PyUnicode_FromString(s);
-  PyErr_SetObject(PyExcProlog(), msg);
-  Py_DECREF(msg);
+  Py_SetPrologErrorFromString(msg);
+  Py_CLEAR(msg);
 }
 
 
@@ -276,7 +314,7 @@ swipl_next_solution(PyObject *self, PyObject *args)
       PL_cut_query(qid);
       done = TRUE;
     case PL_S_NOT_INNER:
-      Py_SetPrologErrorFromString("swipl.next_solution(): not inner query");
+      Py_SetPrologErrorFromChars("swipl.next_solution(): not inner query");
       return NULL;
       break;
   }
@@ -304,7 +342,7 @@ swipl_close_query(PyObject *self, PyObject *args)
 
   if ( qid )
   { if ( PL_cut_query(qid) == PL_S_NOT_INNER )
-    { Py_SetPrologErrorFromString("swipl.next_solution(): not inner query");
+    { Py_SetPrologErrorFromChars("swipl.next_solution(): not inner query");
       return NULL;
     }
     if ( keep )
@@ -338,7 +376,7 @@ swipl_initialize(PyObject *self, PyObject *args)
   }
 
   if ( !PL_initialise((int)argc, (char**)argv) )
-  { Py_SetPrologErrorFromString("Failed to initialize SWI-Prolog");
+  { Py_SetPrologErrorFromChars("Failed to initialize SWI-Prolog");
     return NULL;
   }
 
@@ -360,7 +398,7 @@ swipl_initialize(PyObject *self, PyObject *args)
   }
 
   if ( !rc )
-  { Py_SetPrologErrorFromString("Failed to load library(janus) into Prolog");
+  { Py_SetPrologErrorFromChars("Failed to load library(janus) into Prolog");
     return NULL;
   }
 
