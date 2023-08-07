@@ -30,7 +30,7 @@ the  interface  requires  the  libraries  and  C  headers  for  Python
 embedding to be installed.  On __Debian__ based Linux systems, this is
 achieved using
 
-    apt install libpython3-dev
+    apt install python3 libpython3-dev
 
 On __MacOS__,  these files are  included in the Homebrew  and Macports
 versions of Python
@@ -76,7 +76,7 @@ in ``%PATH%``.
 If this is all in place, you can download this repo and install it, as
 in
 
-    git clone https://github.com/SWI-Prolog/packages-swipy.git
+    git clone https://github.com/SWI-Prolog/packages-swipy.git swipy
 	cd swipy
 	pip install .
 
