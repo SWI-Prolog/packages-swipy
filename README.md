@@ -76,13 +76,13 @@ in ``%PATH%``.
 If this is all in place, you can download this repo and install it, as
 in
 
-    git clone https://github.com/SWI-Prolog/swipy.git
+    git clone https://github.com/SWI-Prolog/packages-swipy.git
 	cd swipy
 	pip install .
 
 You can also do this using the one-liner below.
 
-    pip install git+https://github.com/SWI-Prolog/swipy.git#egg=janus
+    pip install git+https://github.com/SWI-Prolog/packages-swipy.git#egg=janus
 
 
 ## Documentation
