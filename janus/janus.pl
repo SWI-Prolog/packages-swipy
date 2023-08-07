@@ -109,7 +109,7 @@ This library implements calling Python from Prolog.
 
 py_version :-
     py_call(sys:version, X),
-    print_message(information, py_version(X)).
+    print_message(information, janus(version(X))).
 
 
 %!  py_call(+Call) is det.
@@ -427,8 +427,16 @@ comma_dict_items(Key:Value, Keys) =>
 %   library.
 
 py_shell :-
-    py_run("from janus import *", _{}, _{}, _),
+    import_janus,
     py_call(janus:interact(), _).
+
+import_janus :-
+    py_call(sys:hexversion, V),
+    V >= 0x030A0000,
+    !,
+    py_run("from janus import *", {}, {}, _).
+import_janus :-
+    print_message(warning, janus(py_shell(no_janus))).
 
 
 		 /*******************************
@@ -707,5 +715,9 @@ prolog:error_message(python_error(Type, Value, _Stack)) -->
       '  ~w'-[PValue]
     ].
 
-prolog:message(py_version(V)) -->
+prolog:message(janus(version(V))) -->
     [ 'Janus embeds Python ~w'-[V] ].
+prolog:message(janus(py_shell(no_janus))) -->
+    [ 'Janus: py_shell/0: Importing janus into the Python shell requires Python 3.10 or later.', nl,
+      'Run "', ansi(code, 'from janus import *', []), '" in the Python shell to import janus.'
+    ].
