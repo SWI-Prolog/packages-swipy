@@ -215,8 +215,10 @@ test(py_double, Tuples == [1:1,2:1,3:1,
     py_call(demo:double_iter(3,4), Tuples).
 test(invalid_nesting, X == true) :-
     py_call(demo:test_invalid_nesting(), X).
+:- if((py_call(sys:hexversion, V), V >= 0x03080000)).
 test(while, X == [1,2,3]) :-
-    py_call(demo:test_while(), X).
+    py_call(while:test_while(), X).
+:- endif.
 
 :- end_tests(python_call_prolog).
 

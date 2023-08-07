@@ -83,14 +83,6 @@ def test_invalid_nesting():
     q1.close()
     return True
 
-def test_while():
-    list=[]
-    q = Query("between(1,3,X)")
-    while ( s := q.next() ):
-        list.append(s['X'])
-    q.close()
-    return list
-
 # Test using generators as custom iterators.
 
 def squares(start, stop):
