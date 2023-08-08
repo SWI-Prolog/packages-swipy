@@ -51,6 +51,9 @@ static atom_t ATOM_tuple;
 static atom_t ATOM_curl;
 static atom_t ATOM_atom;
 static atom_t ATOM_string;
+static atom_t ATOM_file;
+static atom_t ATOM_eval;
+static atom_t ATOM_single;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
@@ -62,6 +65,7 @@ static functor_t FUNCTOR_curl1;
 static functor_t FUNCTOR_tuple2;
 static functor_t FUNCTOR_py1;
 static functor_t FUNCTOR_pySet1;
+static functor_t FUNCTOR_prolog1;
 
 static int py_initialize_done = FALSE;
 
@@ -70,6 +74,11 @@ static int py_unify(term_t t, PyObject *obj, int flags);
 static int py_from_prolog(term_t t, PyObject **obj);
 static void py_yield(void);
 static void py_resume(void);
+static PyObject *py_record(term_t t);
+static int py_unify_record(term_t t, PyObject *rec);
+static int py_is_record(PyObject *rec);
+static PyObject *py_free_record(PyObject *rec);
+
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 On Windows,  `python3.dll` provides the  stable C API that  relates to
@@ -231,18 +240,28 @@ MyPy_DECREF(PyObject *o)
 
 
 static const char*
-py_class_name(PyObject *obj)
-{ PyObject *cls  = NULL;
-  PyObject *name = NULL;
+py_name(PyObject *obj)
+{ PyObject *name = NULL;
   const char *str = NULL;
 
-  if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
-       (name=PyObject_GetAttrString(cls, "__name__")) )
+  if ( (name=PyObject_GetAttrString(obj, "__name__")) )
     str = PyUnicode_AsUTF8AndSize(name, NULL);
-  if ( !str ) str = "<no class>";
+  if ( !str ) str = "None";
+
+  Py_CLEAR(name);
+  return str;
+}
+
+
+static const char*
+py_class_name(PyObject *obj)
+{ PyObject *cls  = NULL;
+  const char *str = NULL;
+
+  if ( (cls=PyObject_GetAttrString(obj, "__class__")) )
+    str = py_name(cls);
 
   Py_CLEAR(cls);
-  Py_CLEAR(name);
   return str;
 }
 
@@ -378,7 +397,7 @@ check_error(PyObject *obj)
     term_t av = PL_new_term_refs(3);
 
     PyErr_Fetch(&type, &value, &stack);
-    const char *cls = py_class_name(value);
+    const char *cls = py_name(type);
     if ( PL_unify_chars(av+0, PL_ATOM|REP_UTF8, (size_t)-1, cls) &&
 	 py_unify(av+1, value, 0) &&
 	 (stack ? py_unify(av+2, stack, 0)
@@ -656,6 +675,8 @@ py_unify(term_t t, PyObject *obj, int flags)
       return py_unify_sequence(t, obj, flags);
     if ( PySet_Check(obj) )
       return py_unify_set(t, obj, flags);
+    if ( py_is_record(obj) )
+      return py_unify_record(t, obj);
   }
 
   return unify_py_obj(t, obj);
@@ -733,12 +754,36 @@ py_empty_dict(PyObject **obj)
     return FALSE;
 }
 
+static int
+py_from_prolog_curl(term_t t, PyObject **obj)
+{ term_t iter  = PL_new_term_ref();
+  term_t head  = PL_new_term_ref();
+  term_t key   = PL_new_term_ref();
+  term_t value = head;
+  PyObject *py_dict = PyDict_New();
+
+  _PL_get_arg(1, t, iter);
+  while( PL_is_functor(iter, FUNCTOR_comma2) )
+  { _PL_get_arg(1, iter, head);
+    _PL_get_arg(2, iter, iter);
+
+    if ( !add_prolog_key_value_to_dict(py_dict, head, key, value) )
+      return FALSE;
+  }
+  if ( !add_prolog_key_value_to_dict(py_dict, iter, key, value) )
+    return FALSE;
+
+  PL_reset_term_refs(iter);
+  *obj = py_dict;
+  return TRUE;
+}
 
 static int
 py_from_prolog(term_t t, PyObject **obj)
 { wchar_t *s;
   size_t len;
   atom_t a;
+  functor_t funct = 0;
 
   // #(Term) --> stringify
   if ( PL_is_functor(t, FUNCTOR_hash1) )
@@ -835,7 +880,10 @@ py_from_prolog(term_t t, PyObject **obj)
     return TRUE;
   }
 
-  if ( PL_is_functor(t, FUNCTOR_pySet1) )
+  int ign = PL_get_functor(t, &funct);
+  (void)ign;
+
+  if ( funct == FUNCTOR_pySet1 )
   { term_t tail = PL_new_term_ref();
 
     _PL_get_arg(1, t, tail);
@@ -883,43 +931,39 @@ py_from_prolog(term_t t, PyObject **obj)
     *obj = py_dict;
     return TRUE;
   }
-  if ( PL_is_functor(t, FUNCTOR_py1) )
+  if ( funct == FUNCTOR_py1 )
   { term_t a = PL_new_term_ref();
     atom_t c;
+    int rc;
 
     _PL_get_arg(1, t, a);
 
     if ( PL_is_functor(a, FUNCTOR_curl1) )
-    { if ( !PL_put_term(t, a) )
-	return FALSE;
-      PL_reset_term_refs(a);
+    { rc = py_from_prolog_curl(a, obj);
     } else if ( PL_get_atom(a, &c) && c == ATOM_curl )
-    { return py_empty_dict(obj);
+    { rc = py_empty_dict(obj);
     } else
       goto error;
+
+    PL_reset_term_refs(a);
+    return rc;
   }
-  if ( PL_is_functor(t, FUNCTOR_curl1) )
-  { term_t iter  = PL_new_term_ref();
-    term_t head  = PL_new_term_ref();
-    term_t key   = PL_new_term_ref();
-    term_t value = head;
-    PyObject *py_dict = PyDict_New();
+  if ( funct == FUNCTOR_curl1 )
+    return py_from_prolog_curl(t, obj);
 
-    _PL_get_arg(1, t, iter);
-    while( PL_is_functor(iter, FUNCTOR_comma2) )
-    { _PL_get_arg(1, iter, head);
-      _PL_get_arg(2, iter, iter);
-
-      if ( !add_prolog_key_value_to_dict(py_dict, head, key, value) )
-	return FALSE;
+  /* prolog(Term) --> record */
+  if ( funct == FUNCTOR_prolog1 )
+  { term_t a = PL_new_term_ref();
+    PyObject *r;
+    _PL_get_arg(1, t, a);
+    if ( (r=py_record(a)) )
+    { PL_reset_term_refs(a);
+      *obj = r;
+      return TRUE;
     }
-    if ( !add_prolog_key_value_to_dict(py_dict, iter, key, value) )
-      return FALSE;
-
-    PL_reset_term_refs(iter);
-    *obj = py_dict;
-    return TRUE;
+    return FALSE;
   }
+
   /* :(a,b,...) --> Python tuple  */
   if ( PL_get_name_arity(t, &a, &len) && a == ATOM_tuple )
   { PyObject *tp = check_error(PyTuple_New(len));
@@ -948,6 +992,104 @@ py_from_prolog(term_t t, PyObject **obj)
 
 error:
   return PL_domain_error("py_data", t),FALSE;
+}
+
+
+		 /*******************************
+		 *           RECORDS            *
+		 *******************************/
+
+static PyObject *
+py_term_constructor(void)
+{ static PyObject *con = NULL;
+
+  if ( !con )
+  { PyObject *janus;
+
+    if ( (janus=mod_janus()) )
+      con = PyObject_GetAttrString(janus, "Term");
+  }
+
+  return con;
+}
+
+static PyObject *
+py_record(term_t t)
+{ record_t rec = PL_record(t);
+
+  if ( rec )
+  { PyObject *r = PyLong_FromLongLong((long long)rec);
+    PyObject *argv = NULL;
+    PyObject *con;
+    PyObject *term = NULL;
+
+    if ( (con=py_term_constructor()) &&
+	 (argv=PyTuple_New(1)) )
+    { Py_INCREF(r);
+      PyTuple_SetItem(argv, 0, r);
+      term = PyObject_CallObject(con, argv);
+    }
+
+    Py_CLEAR(r);
+    Py_CLEAR(argv);
+    return term;
+  }
+
+  Py_SetPrologError(PL_exception(0));
+  return NULL;
+}
+
+
+static int
+py_unify_record(term_t t, PyObject *rec)
+{ PyObject *r = check_error(PyObject_GetAttrString(rec, "_record"));
+  int rc = FALSE;
+
+  if ( r )
+  { term_t tmp;
+    long long v;
+
+    rc = ( (v=PyLong_AsLongLong(r)) &&
+	   (tmp=PL_new_term_ref()) &&
+	   PL_recorded((record_t)v, tmp) &&
+	   PL_unify(t, tmp) );
+    Py_DECREF(r);
+  }
+
+  return rc;
+}
+
+
+static PyObject *
+py_free_record(PyObject *rec)
+{ PyObject *r = PyObject_GetAttrString(rec, "_record");
+  int rc = FALSE;
+
+  if ( r && PyLong_Check(r) )
+  { long long v = PyLong_AsLongLong(r);
+
+    if ( v )
+      PL_erase((record_t)v);
+    rc = TRUE;
+  }
+
+  Py_CLEAR(r);
+  if ( rc )
+    Py_RETURN_NONE;
+
+  return NULL;
+}
+
+
+static int
+py_is_record(PyObject *rec)
+{ int rc;
+
+  PyObject *cls = PyObject_GetAttrString(rec, "__class__");
+  rc = (cls == py_term_constructor());
+  Py_CLEAR(cls);
+
+  return rc;
 }
 
 
@@ -1462,8 +1604,16 @@ py_with_gil(term_t goal)
 }
 
 
+static PL_option_t pyrun_options[] =
+{ PL_OPTION("file_name", OPT_STRING),
+  PL_OPTION("start",     OPT_ATOM),
+  PL_OPTIONS_END
+};
+
+
+
 static foreign_t
-py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
+py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result, term_t options)
 { char *cmd;
 
   if ( PL_get_chars(Cmd, &cmd, CVT_ATOM|CVT_STRING|CVT_LIST|CVT_EXCEPTION) )
@@ -1471,14 +1621,29 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result)
     PyObject *result = NULL;
     PyGILState_STATE state;
     int rc;
+    char *file_name = "string";
+    atom_t start = ATOM_file;
+    int start_token;
+
+    if ( !PL_scan_options(options, 0, "py_run_options", pyrun_options,
+			  &file_name, &start) )
+      return FALSE;
+    if ( start == ATOM_file )
+      start_token = Py_file_input;
+    else if ( start == ATOM_eval )
+      start_token = Py_eval_input;
+    else if ( start == ATOM_single )
+      start_token = Py_single_input;
+    else
+      return atom_domain_error("py_run_start", start);
 
     if ( !py_gil_ensure(&state) )
       return FALSE;
 
     if ( (rc = (py_from_prolog(Globals, &globals) &&
 		py_from_prolog(Locals, &locals))) )
-    { PyObject *code = check_error(Py_CompileString(cmd, "string",
-						    Py_file_input));
+    { PyObject *code = check_error(Py_CompileString(cmd, file_name,
+						    start_token));
 
       if ( code )
 	result = check_error(PyEval_EvalCode(code, globals, locals));
@@ -1549,6 +1714,10 @@ py_free(term_t t)
 }
 
 
+		 /*******************************
+		 *        GIL MANAGEMENT        *
+		 *******************************/
+
 typedef struct
 { PyThreadState *state;
   int		 yielded;
@@ -1593,6 +1762,9 @@ install_janus(void)
   MKATOM(true);
   MKATOM(atom);
   MKATOM(string);
+  MKATOM(file);
+  MKATOM(eval);
+  MKATOM(single);
   ATOM_tuple  = PL_new_atom(":");
   ATOM_pydict = PL_new_atom("py");
   ATOM_curl   = PL_new_atom("{}");
@@ -1607,21 +1779,22 @@ install_janus(void)
   FUNCTOR_curl1   = PL_new_functor(PL_new_atom("{}"), 1);
   FUNCTOR_pySet1  = PL_new_functor(PL_new_atom("pySet"), 1);
   FUNCTOR_tuple2  = PL_new_functor(ATOM_tuple, 2);
+  MKFUNCTOR(prolog, 1);
 
 #define REGISTER(name, arity, func, flags) \
         PL_register_foreign_in_module("janus", name, arity, func, flags)
 
-  REGISTER("py_initialize_", 3, py_initialize_, 0);
-  REGISTER("py_call",        1, py_call1,       0);
-  REGISTER("py_call",        2, py_call2,       0);
-  REGISTER("py_call",        3, py_call3,       0);
-  REGISTER("py_iter",        2, py_iter2,       PL_FA_NONDETERMINISTIC);
-  REGISTER("py_iter",        3, py_iter3,       PL_FA_NONDETERMINISTIC);
-  REGISTER("py_run",         4, py_run,         0);
-  REGISTER("py_free",        1, py_free,        0);
-  REGISTER("py_with_gil",    1, py_with_gil,    PL_FA_TRANSPARENT);
-  REGISTER("py_str",         2, py_str,         0);
-  REGISTER("py_debug",       1, py_debug,       0);
+  REGISTER("py_initialize_",  3, py_initialize_, 0);
+  REGISTER("py_call",         1, py_call1,       0);
+  REGISTER("py_call",         2, py_call2,       0);
+  REGISTER("py_call",         3, py_call3,       0);
+  REGISTER("py_iter",         2, py_iter2,       PL_FA_NONDETERMINISTIC);
+  REGISTER("py_iter",         3, py_iter3,       PL_FA_NONDETERMINISTIC);
+  REGISTER("py_run",          5, py_run,         0);
+  REGISTER("py_free",         1, py_free,        0);
+  REGISTER("py_with_gil",     1, py_with_gil,    PL_FA_TRANSPARENT);
+  REGISTER("py_str",          2, py_str,         0);
+  REGISTER("py_debug",        1, py_debug,       0);
 
   if ( PyImport_AppendInittab("swipl", PyInit_swipl) == -1 )
     Sdprintf("Failed to add module swipl to Python");

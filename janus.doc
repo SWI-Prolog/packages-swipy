@@ -114,6 +114,8 @@ false   & $\Longleftrightarrow$ & False    & \\
 Atom    & $\longleftrightarrow$ & String   & Except the above reserved three atoms \\
 String  & $\longrightarrow$     & String   & \\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
+prolog(Term) & $\longrightarrow$ & janus.Term & Represent any Prolog term \\
+Term    & $\longleftarrow$      & janus.Term & \\
 List    & $\longrightarrow$     & List & \\
 List    & $\longleftarrow$      & Sequence & \\
 List    & $\longleftarrow$      & Generator & \\
@@ -127,6 +129,21 @@ Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 \hline
 \end{tabular}
 \end{center}
+
+The conversion \#(Term) allows passing anything as a Python string. If
+\arg{Term} is an atom or string, this is the same as passing the atom or
+string, except that the reserved atoms \const{'None'}, \const{true} and
+\const{false} are also converted to a string. Any other Prolog term is
+converted as defined by write_canonical/1.
+
+The conversion \term{prolog}{Term} creates an instance of
+\class{janus.Term}. This class encapsulates a copy of an arbitrary
+Prolog term. The SWI-Prolog implementation uses the PL_record() and
+PL_recorded() functions to store and retrieve the term. Internally,
+\class{janus.Term} is used to represent Prolog exeptions that are raised
+during the execution of \cfuncref{janus.once}{} or
+\cfuncref{janus.Query}{}.
+
 
 \section{Janus by example}
 \label{sec:janus-examples}
@@ -433,17 +450,14 @@ below. The library defines a rule for print_message/2 to render these
 errors in a human readable way.
 
 \begin{quote}
-\term{error}{\term{python_error}{ErrorClass, Value, Stack}, _}
+\term{error}{\term{python_error}{ErrorType, Value, Stack}, _}
 \end{quote}
 
-Here, \arg{ErrorClass} is the class name of \arg{Value}, as an atom,
-e.g., \const{'TypeError'}.\footnote{The first version passed the
-Python error type as an object, but this seems little informative and
-impractical for capturing specific errors from Python.}  \arg{Value}
-is the exception object represented by a Python object reference.
-\arg{Stack} is either \const{'None'} or an object that captures the
-Python stack.  The \pllib{janus} defines the message formatting, which
-makes us end up with a message like below.
+Here, \arg{ErrorType} is the name of the error type, as an atom, e.g.,
+\const{'TypeError'}. \arg{Value} is the exception object represented by
+a Python object reference. \arg{Stack} is either \const{'None'} or an
+object that captures the Python stack. The \pllib{janus} defines the
+message formatting, which makes us end up with a message like below.
 
 \begin{code}
 ?- py_call(nomodule:noattr).
@@ -453,13 +467,26 @@ ERROR: In:
 ERROR:   [10] janus:py_call(nomodule:noattr)
 \end{code}
 
-If a call from Python to Prolog raises a Prolog exception, the
-exception is translated into a string using message_to_string/2 and an
-instance of \class{janus.PrologError} is created.  Printing an
-instance of this class simply prints the Prolog error message.  Future
-versions are likely to wrap the Prolog exception term itself rather
-than the error string.
+If a call from Python to Prolog raises a Prolog exception, the exception
+is used to create an instance of \class{janus.PrologError} that
+excapsulates the exception using a \class{janus.Term}. The
+\cfuncref{__str__}{} method generates a description using
+print_message/2, while \cfuncref{__repr__}{} uses write_canonical/1 to
+return a canonical representation of the Prolog term. The default
+behavior gives the expected message:
 
+\begin{code}
+>>> x = janus.once("X is 3.14/0")['X']
+Traceback (most recent call last):
+  ...
+janus.PrologError: //2: Arithmetic: evaluation error: `zero_divisor'
+\end{code}
+
+At this moment we only define a single Python class for representing
+Prolog exceptions.  This suffices for error reporting, but does not
+make it easy to distinguish different Prolog errors.  Future versions
+may improve on that by either subclassing \class{janus.PrologError}
+or provide a method to classify the error more easily.
 
 \section{Janus as a Python package}
 \label{sec:janus-python-package}

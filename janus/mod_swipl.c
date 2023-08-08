@@ -40,29 +40,6 @@ PyExcProlog(void)
   return PyExcProlog_store;
 }
 
-static PyObject*
-swipl_error_string(term_t ex)
-{ predicate_t pred = PL_predicate("message_to_string", 2, "$messages");
-  fid_t fid;
-
-  if ( (fid=PL_open_foreign_frame()) )
-  { term_t av = PL_new_term_refs(2);
-    int rc = FALSE;
-    PyObject *obj;
-
-    if ( PL_put_term(av+0, ex) &&
-	 PL_call_predicate(NULL, PL_Q_NORMAL|PL_Q_NODEBUG, pred, av) )
-      rc = py_from_prolog(av+1, &obj);
-
-    PL_discard_foreign_frame(fid);
-    if ( rc )
-      return obj;
-  }
-
-  Py_RETURN_NONE;
-}
-
-
 static PyObject *
 mod_janus(void)
 { static PyObject *janus = NULL;
@@ -81,7 +58,7 @@ mod_janus(void)
 
 
 static void
-Py_SetPrologErrorFromString(PyObject *msg)
+Py_SetPrologErrorFromObject(PyObject *obj)
 { PyObject *janus;
   PyObject *constructor = NULL;
   PyObject *argv = NULL;
@@ -89,8 +66,8 @@ Py_SetPrologErrorFromString(PyObject *msg)
   if ( (janus=mod_janus()) &&
        (constructor=PyObject_GetAttrString(janus, "PrologError")) &&
        (argv=PyTuple_New(1)) )
-  { Py_INCREF(msg);
-    PyTuple_SetItem(argv, 0, msg);
+  { Py_INCREF(obj);
+    PyTuple_SetItem(argv, 0, obj);
     PyObject *ex = PyObject_CallObject(constructor, argv);
     if ( ex )
       PyErr_SetObject(PyExcProlog(), ex);
@@ -103,15 +80,15 @@ Py_SetPrologErrorFromString(PyObject *msg)
 
 static void
 Py_SetPrologError(term_t ex)
-{ PyObject *msg = swipl_error_string(ex);
-  Py_SetPrologErrorFromString(msg);
-  Py_CLEAR(msg);
+{ PyObject *obj = py_record(ex);
+  Py_SetPrologErrorFromObject(obj);
+  Py_CLEAR(obj);
 }
 
 static void
 Py_SetPrologErrorFromChars(const char *s)
 { PyObject *msg = PyUnicode_FromString(s);
-  Py_SetPrologErrorFromString(msg);
+  Py_SetPrologErrorFromObject(msg);
   Py_CLEAR(msg);
 }
 
@@ -356,6 +333,27 @@ swipl_close_query(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+swipl_erase(PyObject *self, PyObject *args)
+{ PyObject *rec = NULL;
+  PyObject *rc = NULL;
+
+  if ( PyTuple_GET_SIZE(args) != 1 )
+    goto error;
+  rec = PyTuple_GetItem(args, 0);
+  if ( py_is_record(rec) )
+    rc = py_free_record(rec);
+  Py_CLEAR(rec);
+  if ( rc )
+    return rc;
+
+error:
+  PyErr_SetString(PyExc_TypeError, "swipl.erase(Term) takes a Term");
+  return NULL;
+}
+
+
+
 #ifdef PYTHON_PACKAGE
 
 install_t install_janus(void);
@@ -416,6 +414,8 @@ static PyMethodDef swiplMethods[] =
    "Compute the next answer."},
   {"close_query", swipl_close_query, METH_VARARGS,
    "Close an open query."},
+  {"erase", swipl_erase, METH_VARARGS,
+   "Erase a record."},
 #ifdef PYTHON_PACKAGE
   {"initialize", swipl_initialize, METH_VARARGS,
    "Initialize SWI-Prolog."},

@@ -235,10 +235,18 @@ py_version :-
 %   @arg Options is processed as with py_call/3.
 %   @bug Iterator may not depend on janus.Query()
 
-%!  py_run(+String, +Globals, +Locals, -Result) is det.
+%!  py_run(+String, +Globals, +Locals, -Result, +Options) is det.
 %
-%   Interface to PyRun_String(). Currently   using  ``Py_file_input`` as
-%   _first token_. Unclear what we can do with this.
+%   Interface  to  Py_CompileString()  followed   by  PyEval_EvalCode().
+%   Options:
+%
+%       - file_name(String)
+%         Errors are reported against this pseudo file name
+%       - start(Token)
+%         One of `eval`, `file` (default) or `single`.
+%
+%   @arg Globals is a dict
+%   @arg Locals is a dict
 
 %!  py_free(+Obj) is det.
 %
@@ -432,9 +440,9 @@ py_shell :-
 
 import_janus :-
     py_call(sys:hexversion, V),
-    V >= 0x030A0000,
+    V >= 0x030A0000,                    % >= 3.10
     !,
-    py_run("from janus import *", {}, {}, _).
+    py_run("from janus import *", {}, {}, _, []).
 import_janus :-
     print_message(warning, janus(py_shell(no_janus))).
 
@@ -683,9 +691,9 @@ px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
     ;   Ret = Ret0
     ).
 
-tv_goal_and_template("plain",  Goal, ucall(Goal, TV), Templ, :(Templ,TV)) :- !.
-tv_goal_and_template("delays", Goal, call_delays(Goal, TV), Templ, :(Templ,TV)) :- !.
-tv_goal_and_template("none",   Goal, Goal, Templ, Templ) :- !.
+tv_goal_and_template(plain,  Goal, ucall(Goal, TV), Templ, :(Templ,TV)) :- !.
+tv_goal_and_template(delays, Goal, call_delays(Goal, TV), Templ, :(Templ,TV)) :- !.
+tv_goal_and_template(none,   Goal, Goal, Templ, Templ) :- !.
 tv_goal_and_template(Mode, _, _, _, _) :-
     domain_error("px_comp() truth_vals", Mode).
 

@@ -1,10 +1,58 @@
+# Part of SWI-Prolog
+
+# Author:        Jan Wielemaker
+# E-mail:        jan@swi-prolog.org
+# WWW:           http://www.swi-prolog.org
+# Copyright (c)  2023, SWI-Prolog Solutions b.v.
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+"""Make Prolog available to Python
+
+This module provides  access to Prolog from Python.  It  may be loaded
+both  from Prolog  through  `library(janus)` or  Python using  `import
+janus`.   The module provides three groups of support:
+
+  - Class janus.Query and function janus.once() that allow calling
+    Prolog at a high level of abstraction.
+  - Functions janus.px_cmp(), janus.qdet() and janus.comp() that
+    provide a more low-level interface for calling Prolog that
+    is compatible with the original version of Janus for XSB.
+  - The classes `Term` and `PrologError` to represent arbitrary
+    Prolog terms and Prolog exceptions.
+"""
+
 # Import the low-level module.  Note that if we embed Prolog into
 # Python, janus is a package and the module is janus.swipl.  When
 # Python is embedded into SWI-Prolog `swipl` is just a plain module.
 # There must be a cleaner way ...
 
 try:
-    from swipl import *         # Loading janus into Prolog
+    import swipl	        # Loading janus into Prolog
 except ModuleNotFoundError:     # Loading janus into Python
     import sys
     if ( hasattr(sys, "getdlopenflags") ):
@@ -12,10 +60,10 @@ except ModuleNotFoundError:     # Loading janus into Python
          flags = sys.getdlopenflags()
          newflags = (flags & ~os.RTLD_LOCAL|os.RTLD_GLOBAL)
          sys.setdlopenflags(newflags)
-         from janus.swipl import *
+         import janus.swipl as swipl
          sys.setdlopenflags(flags)
     else:
-         from janus.swipl import *
+         import janus.swipl as swipl
 
 ################################################################
 # Primary high level interface
@@ -33,25 +81,31 @@ class Query:
         Python data from this dict.
     """
     def __init__(self, query, inputs={}):
-        self.state = open_query(query, inputs)
+        """Create from query and inputs as janus.once()"""
+        self.state = swipl.open_query(query, inputs)
     def __iter__(self):
+        """Implement iter protocol"""
         return self
     def __next__(self):
-        rc = next_solution(self.state)
+        """Implement iter protocol.  Returns a dict as janus.once()"""
+        rc = swipl.next_solution(self.state)
         if rc == False or rc["status"] == False:
             raise StopIteration()
         else:
             return rc
     def __del__(self):
-        close_query(self.state)
+        """Close the Prolog query"""
+        swipl.close_query(self.state)
     def next(self):
-        rc = next_solution(self.state)
+        """Allow for explicit enumeration,  Returns None or a dict"""
+        rc = swipl.next_solution(self.state)
         if rc == False or rc["status"] == False:
             return None
         else:
             return rc
     def close(self):
-        close_query(self.state)
+        """Explicitly close the query."""
+        swipl.close_query(self.state)
 
 def once(query, inputs={}, keep=False):
     """
@@ -69,7 +123,7 @@ def once(query, inputs={}, keep=False):
         be used to preserve changes to global variables using
         `b_setval/2`.
     """
-    return call(query, inputs, keep)
+    return swipl.call(query, inputs, keep)
 
 def consult(file):
     """
@@ -96,8 +150,10 @@ def interact():
     editing.
     """
     import code
+    import sys
     vars = globals()
     vars.update(locals())
+    vars.update({"janus":sys.modules[__name__]})
     try:
         import readline
         import rlcompleter
@@ -118,6 +174,7 @@ def prolog():
 # Emulated XSB interface
 
 def px_cmd(module, pred, *args):
+    """Run module:pred(arg ...)"""
     once("janus:px_cmd(M,P,Args)", {"M":module, "P":pred, "Args":args})
 
 def _xsb_tv(status):
@@ -129,6 +186,28 @@ def _xsb_tv(status):
         return 2
 
 def px_qdet(module, pred, *args):
+    """Run predicate as once/1
+
+    The predicate is called with one more argument than provided in `args`.
+
+    Examples
+    --------
+    **Example 1**
+
+    >>> px_qdet("user", "current_prolog_flag", "version")
+    (90113, 1)
+
+    **Example 2**
+    >>> px_qdet("user", "current_prolog_flag", "no_such_flag")
+    (None, 0)
+
+    Returns
+    -------
+    result: (Return,Status)
+        A tuple holding the converted value of the last argument of pred
+        and the success status.  `0` means failure, `1`, success and `2`
+        _undefined_ (success with delays)
+    """
     d = once("janus:px_qdet(M,P,Args,Ret)", {"M":module, "P":pred, "Args":args})
     return (d["Ret"], _xsb_tv(d["status"]))
 
@@ -137,6 +216,34 @@ DELAY_LISTS="delays"
 NO_TRUTHVALS="none"
 
 def px_comp(module, pred, *args, vars=1, set_collect=False, truth_vals=PLAIN_TRUTHVALS):
+    """Call non-deterministic predicate
+
+
+    Examples
+    --------
+
+    >>> px_comp("user", "between", 1, 6)
+
+    Parameters
+    ----------
+    vars : int=1
+        Number of "output" variables that appear after `args`.
+    set_collect : Bool=False
+        When True, return a _set_ of answers rather than a _list_.
+    truth_vals : (PLAIN_TRUTHVALS|DELAY_LISTS|NO_TRUTHVALS)=PLAIN_TRUTHVALS
+        When `NO_TRUTHVALS`, answers are no tuples.  Otherwise each answer
+        is a tuple `(Value,Status)`.  Using `PLAIN_TRUTHVALS`, Status is
+        one of 1 or 2 (undefined).  Using `DELAY_LISTS`, the delay list
+        as returned by call_delays/2 is returned.
+
+    Returns
+    -------
+    answers: list
+        Each answer is a either a tuple holding the converted values
+        for each of the output arguments or a tuple holding this tuple
+        and the truth value.
+
+    """
     d = once("janus:px_comp(M,P,Args,Vars,Set,TV,Ret)",
              { "M":module,
                "P":pred,
@@ -147,18 +254,67 @@ def px_comp(module, pred, *args, vars=1, set_collect=False, truth_vals=PLAIN_TRU
               })
     return d["Ret"]
 
-class PrologError:
+################################################################
+# Represent Prolog data
+
+class Term:
+    """Represent any Prolog term
+
+    Class `Term` is much like the Python object reference that we have
+    in Prolog: it represents an arbitrary Prolog term we cannot represent
+    in Python.  Instances are created if data is passed to Python as
+    `prolog(Term)`.  Upon transforming the data back to Prolog, the
+    interface recovers a copy of the original Prolog terms.
+    
+    The user should never create instances of this explicitly.
     """
-    Class `PrologError` implements a generic error from Prolog
+
+    def __init__(self, record):
+        """Create from a Prolog record pointer. DO NOT USE!"""
+        self._record = record;
+    def __str__(self):
+        """Return the output of print/1 on self"""
+        return once("with_output_to(string(Str),print(Msg))",
+                    {"Msg":self})["Str"]
+    def __repr__(self):
+        """Return the output of write_canonical/1 on self"""
+        return once("with_output_to(string(Str),write_canonical(Msg))",
+                    {"Msg":self})["Str"]
+    def __del__(self):
+        """Destroy the represented term"""
+        swipl.erase(self)
+
+class PrologError:
+    """Represent a Prolog exception
+
+    This class is used when calling Prolog from Python to represent that
+    an exception occurred.  If the error comes from Prolog itself, it is
+    represented as a Prolog term.  If it originates from illegal use of
+    the Python interface functions before Prolog is called, it is
+    represented as a string.
 
     Attributes
     ----------
-    message: str
-        String representation obtained from message_to_string/2
+    term: Term|None
+        An instance of class `Term` that represents the exception.
+    message: str|None
+        Exception from a string
     """
     def __init__(self, msg):
-        self.message = msg
+        """Create an instance from a Term or str"""
+        if ( isinstance(msg, Term) ):
+            self.term = msg
+        else:
+            self.message = msg
     def __str__(self):
-        return self.message
+        """Return the output of message_to_string/2 on the term"""
+        if ( self.term ):
+            return once("message_to_string(Msg,Str)", {"Msg":self.term})["Str"]
+        else:
+            return self.message
     def __repr__(self):
+        """Return the output of write_canonical/1 on term"""
+        if ( self.term ):
+            return once("with_output_to(string(Str),write_canonical(Msg))",
+                         {"Msg":self.term})["Str"]
         return self.message

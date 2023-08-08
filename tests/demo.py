@@ -127,3 +127,13 @@ class GCAble:
     def __del__(self):
         global gced
         gced += 1
+
+# Test exceptions and terms
+
+def call_except(query, input={}):
+    """Call query, return the exception or none"""
+    try:
+        once(query, input)
+    except Exception as ex:
+        return ex
+    return None

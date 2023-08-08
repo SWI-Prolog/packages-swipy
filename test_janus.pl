@@ -47,11 +47,13 @@
 
 test_janus :-
     run_tests([ janus_data,
+                janus_prolog_data,
                 janus_obj,
                 janus_params,
                 janus_gc,
 		python_call_prolog,
 		janus_iter,
+		janus_errors,
 		xsb_call
               ]).
 
@@ -126,6 +128,19 @@ test(iterator, L == [1,2,3,4]) :-          % An iterator checks as a sequence
     py_call(range(1,5), L).
 
 :- end_tests(janus_data).
+
+:- begin_tests(janus_prolog_data).
+
+test(echo, Term =@= Copy) :-
+    Term = f(X,X,_),
+    py_call(janus:echo(prolog(Term)), Copy).
+test(echo, Term =@= Copy) :-
+    Term = f(X,X,_),
+    py_call(janus:echo(prolog(Term)), Ref, [py_object]),
+    py_call(Ref:'__str__'(), Str),
+    term_string(Copy, Str).
+
+:- end_tests(janus_prolog_data).
 
 :- begin_tests(janus_obj).
 
@@ -236,12 +251,26 @@ test(double, Pairs == [1-1,1-2,2-1,2-2]) :-
 
 :- end_tests(janus_iter).
 
+:- begin_tests(janus_errors).
+
+test(ex) :-
+    py_call(demo:call_except(foo), Ex),
+    py_call(Ex:'__str__'(), Str),
+    assertion(sub_string(Str,_,_,_,'Unknown procedure: foo/0')).
+
+:- end_tests(janus_errors).
+
 :- begin_tests(xsb_call).
 
 test(reverse, X == :([py{a:py{b:c}}, :(mytuple), 3, 2, 1], 1)) :-
     py_call(janus:px_qdet(lists, reverse,
 			  [1,2,3,:(mytuple),py{a:py{b:c}}]),
 	    X).
+test(px_comp, X == [:(1):1,:(2):1]) :-
+    py_call(janus:px_comp(user, between, 1, 2), X).
+test(px_comp, X == [:(1),:(2)]) :-
+    py_call(janus:px_comp(user, between, 1, 2, truth_vals=none), X).
+
 :- end_tests(xsb_call).
 
 
