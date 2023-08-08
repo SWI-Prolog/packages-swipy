@@ -1,0 +1,351 @@
+
+:- compiler_options([xpp_on]).
+#include "../janus_defs.h"
+
+:-  set_prolog_flag(character_set, utf_8) . 
+
+:- import concat_atom/2 from string.
+:- import length/2 from basics.
+:- import xsb_error_get_message/2 from error_handler.
+:- import pyfunc/3, pydot/4, pyfunc/4,pyfunc/5 from janus.
+
+testSuite:-
+    sumlist_tests, 
+    dataConversionTests,
+%    callback_test,
+    json_tests,
+    kwargs_tests,
+    error_tests,
+    object_tests,
+    variadic_tests,
+    pyc_tests,
+    pyfunc(gc,collect(),Collect),
+    writeln(collect(Collect)).
+
+%--------------------------------
+
+/* TES: getitertest and nexttest are not working temporarily --
+ * default was changed to eagerly return a list or tuple, which is much
+ * better.  I'll add the lazy option as an alternative */
+sumlist_tests :- 
+	(pyfuncTest ->
+	     write('pyfunc tests successful\n')
+	 ;   write('!!!pyfunc tests failed\n')).
+%	(pyObj_GetIterTest->
+%	     write('pyObj_GetIter tests successful\n')
+%	 ;   write('pyObj_GetIter tests failed\n')),
+%	(pyObj_NextTest->
+%	     write('pyObj_Next tests successful\n')
+%	   ; write('pyObj_Next tests failed\n')).
+
+pyfuncTest :- 
+    pyfunc('sumlist3', sumlist3(5,[1,2,3]), [6,7,8]),
+    not(pyfunc('sumlist3', sumlist3(5,[1,2,3]), [4,5,6])),
+    not(pyfunc('sumlist3', sumlist3(5,[1,2,3]),[1,2,3])).
+
+pyObj_GetIterTest :- 
+	pyfunc('test/sumlist3', sumlist3(5,[1,2,3]), R),
+	pyObj_GetIter(R, R1), pyObj_Next(R1, 6).
+
+pyObj_NextTest :- 
+	pyfunc('test/sumlist3', sumlist3(5,[1,2,3]), R),
+	pyObj_GetIter(R, R1), pyObj_Next(R1, 6), not(pyObj_Next(R, 6)).
+
+%--------------------------------
+
+dataConversionTests :- 
+    (intConvTest->
+	 write('int conversion tests successful\n')
+     ;   write('!!!int conversion tests failed\n')), 
+    (floatConvTest->
+	 write('float conversion tests successful\n')
+     ;   write('!!!float conversion tests failed\n')),
+    (stringConvTest->
+	 write('string conversion tests successful\n')
+     ;   write('!!!string conversion tests failed\n')),
+    (listConvTest->
+	 write('list conversion tests successful\n')
+     ;   write('!!!list conversion tests failed\n')),
+    (setConvTest->
+	 write('set conversion tests successful\n')
+     ;   write('!!!set conversion tests failed\n')),
+    (tupleConvTest->
+	 write('tuple conversion tests successful\n')
+    ;    write('!!!tuple conversion tests failed\n')),
+    fail.
+dataConversionTests :- 
+    (dictConvTest->
+	 write('dict conversion tests successful\n')
+    ;    write('!!!dict conversion tests failed\n')),
+    fail.
+dataConversionTests :- 
+    pyfunc(returnVal,return_None(),PYNONE_PROLOG),
+    writeln('return_None_succeeded'),
+    fail.
+dataConversionTests :- 
+    pyfunc(returnVal,return_True(),1),
+    writeln('return_True_succeeded'),
+    fail.
+dataConversionTests :- 
+    pyfunc(returnVal,return_False(),0),
+    writeln('return_False_succeeded'),
+    fail.
+dataConversionTests :- 
+    (intConvTest_sizecheck->
+	 write('int conversion_sizecheck tests successful\n')
+     ;   write('!!!int conversion_sizecheck tests failed\n')), 
+    (floatConvTest_sizecheck->
+	 write('float conversion_sizecheck tests successful\n')
+     ;   write('!!!float conversion_sizecheck tests failed\n')),
+    (stringConvTest_sizecheck->
+	 write('string conversion_sizecheck tests successful\n')
+     ;   write('!!!string conversion_sizecheck tests failed\n')),
+    (listConvTest_sizecheck->
+	 write('list conversion_sizecheck tests successful\n')
+     ;   write('!!!list conversion_sizecheck tests failed\n')),
+    (setConvTest_sizecheck->
+	 write('set conversion_sizecheck tests successful\n')
+     ;   write('!!!set conversion_sizecheck tests failed\n')),
+    (tupleConvTest_sizecheck->
+	 write('tuple conversion_sizecheck tests successful\n')
+    ;   write('!!!tuple conversion_sizecheck tests failed\n')),
+    fail.
+dataConversionTests:- 
+    (dictConvTest_sizecheck->
+	 write('dict conversion_sizecheck tests successful\n')
+    ;    write('!!!dict conversion_sizecheck tests failed\n')),
+    fail.
+dataConversionTests.
+
+pyfunc_sc(Mod,Func,Reg):-
+    pyfunc(Mod,Func,[],[sizecheck(true)],Reg).
+
+intConvTest :-
+    current_prolog_flag(min_integer, MinValue), 
+    not(var(MinValue)), 
+    current_prolog_flag(max_integer, MaxValue), 
+    not(var(MaxValue)),
+    pyfunc('test/returnVal', returnVal(MinValue), MinValue), 
+    pyfunc('test/returnVal', returnVal(MaxValue), MaxValue).
+
+intConvTest_sizecheck :-
+    current_prolog_flag(min_integer, MinValue), 
+    not(var(MinValue)), 
+    current_prolog_flag(max_integer, MaxValue), 
+    not(var(MaxValue)),
+    pyfunc_sc('test/returnVal', returnVal(MinValue), MinValue), 
+    pyfunc_sc('test/returnVal', returnVal(MaxValue), MaxValue).
+
+floatConvTest :- 
+    pyfunc('test/returnVal', returnVal(3.54), 3.54),
+    pyfunc('test/returnVal', returnVal(3.5535252352), 3.5535252352).
+
+floatConvTest_sizecheck :- 
+    pyfunc_sc('test/returnVal', returnVal(3.54), 3.54),
+    pyfunc_sc('test/returnVal', returnVal(3.5535252352), 3.5535252352).
+
+stringConvTest :-
+    pyfunc('test/returnVal', returnVal(helloworld), helloworld),
+    pyfunc('test/returnVal', returnVal('helloworld'), helloworld),
+    pyfunc('test/returnVal', returnVal('Санкт-Петербург'),R3),R3 == 'Санкт-Петербург'.
+				  
+stringConvTest_sizecheck :-
+    pyfunc_sc('test/returnVal', returnVal(helloworld), helloworld),
+    pyfunc_sc('test/returnVal', returnVal('helloworld'), helloworld),
+    pyfunc_sc('test/returnVal', returnVal('Санкт-Петербург'),R3),R3 == 'Санкт-Петербург'.
+				  
+listConvTest:-
+    pyfunc('test/returnVal', returnVal([a,b,c]), R1),R1 = [a,b,c],
+    pyfunc('test/returnVal', returnVal([]), R2), R2 == [],
+    pyfunc('test/returnVal', returnVal([1,[2,3,4],[hello,155]]), R3),
+    R3 ==  [1, [2, 3, 4], ['hello', 155]],
+    pyfunc('test/tupInList', func(), R4), R4 == [1,2,3, PYTUP_PROLOG(5, 6), 'hello', [11,17]],
+    !.
+listConvTest_sizecheck:-
+    pyfunc_sc('test/returnVal', returnVal([a,b,c]), R1),R1 = [a,b,c],
+    pyfunc_sc('test/returnVal', returnVal([]), R2), R2 == [],
+    pyfunc_sc('test/returnVal', returnVal([1,[2,3,4],[hello,155]]), R3),
+    R3 ==  [1, [2, 3, 4], ['hello', 155]],
+    pyfunc_sc('test/tupInList', func(), R4), R4 == [1,2,3, PYTUP_PROLOG(5, 6), 'hello', [11,17]],
+    !.
+
+setConvTest:- 
+    pyfunc('test/returnVal',returnSet( ) ,F ),
+    F = ['"foo"','''bar''',PYSET_PROLOG(S)],
+    length(S,3),
+    pyfunc('test/returnVal', returnVal(PYSET_PROLOG([a,b,c])), R1 ),
+    arg(1,R1,A), length(A,3),!.
+
+setConvTest_sizecheck:- 
+    pyfunc_sc('test/returnVal',returnSet( ) ,F ),
+    F = ['"foo"','''bar''',PYSET_PROLOG(S)],
+    length(S,3),
+    pyfunc_sc('test/returnVal', returnVal(PYSET_PROLOG([a,b,c])), R1 ),
+    arg(1,R1,A), length(A,3),!.
+
+tupleConvTest:-
+    pyfunc('test/returnVal', returnVal(PYTUP_PROLOG(a,b,c)), R1),R1 = PYTUP_PROLOG(a,b,c),
+    pyfunc('test/tupletest',func(),R2), R2 = PYTUP_PROLOG(5,PYTUP_PROLOG(),hello,PYTUP_PROLOG(5,6,7)),
+    !.
+
+tupleConvTest_sizecheck:-
+    pyfunc_sc('test/returnVal', returnVal(PYTUP_PROLOG(a,b,c)), R1),R1 = PYTUP_PROLOG(a,b,c),
+    pyfunc_sc('test/tupletest',func(),R2), R2 = PYTUP_PROLOG(5,PYTUP_PROLOG(),hello,PYTUP_PROLOG(5,6,7)),
+    !.
+
+dictConvTest_sizecheck:-
+    pyfunc(returnVal,return_dictionary(),[],[sizecheck(true)],Ret),
+    Ret = pyDict([''('Name','Geeks'),''(1,[1,2,3,4])]),!.
+
+dictConvTest:-
+    pyfunc(returnVal,return_dictionary(),Ret),
+    Ret = pyDict([''('Name','Geeks'),''(1,[1,2,3,4])]),!.
+
+%--------------------------------
+
+% TES: probably the wrong way to do this, but keeping it in for now.
+% it *might* be responsible for uninitialized stack frame problem.
+
+callback_test:- 
+    pyfunc('test/testc', tester(),  X),
+    X = [['Санкт-Петербург', '2']],
+    writeln('callback test successful'),
+    !.
+callback_test:-
+    writeln('!!!callback test failed').
+
+% used in callback
+p('Санкт-Петербург').
+p(3).
+q(2).
+
+%--------------------------------
+
+pyc_tests:- 
+    pyfunc('test/numpexamp',go(),X),X == 2,!,
+    writeln('pyc_tests successful').
+pyc_tests:- 
+    writeln('!!!pyc_tests failed').
+
+json_tests:-
+    Jstring = '{"name": "Bob", "languages": ["English", "Fench","GERMAN"]}',
+%     pyfunc('test/jintf',prolog_loads(Jstring),F),
+     pyfunc('jintf',prolog_loads(Jstring),F),
+     (F = PYDICT_PROLOG([PYTUP_PROLOG(name,'Bob'),PYTUP_PROLOG(languages,['English','Fench','GERMAN'])]) ->
+	  writeln('json_loads_test successful')
+        ; writeln('!!!json_loads_test_failed') ),
+     fail.
+%json_tests:-
+%    Jstring = '{"name": "Bob", "languages": ["English", "French","GERMAN"]}',
+%      atom_chars(Jgood,Jgch),write(Jgch),nl,
+%  pyfunc('xsbpy_json',prolog_loads(Jstring),Jdict),
+%    pyfunc('xsbpy_json',prolog_dumps(Jdict),[indent=2],Jindent),
+%    (Jindent = Jgood -> 
+%      writeln('json_dumps_test successful')
+%    ; write('!!!json_dumps_test_failed'),nl,
+%      writeq(Jgood),nl,writeq(Jindent),nl,
+%      atom_chars(Jgood,Jgch),write(Jgch),nl,
+%      writeln('----------------'),
+%      atom_chars(Jindent,Jich),writeq(Jich),nl ),
+%    fail.
+json_tests:- 
+    xsb_configuration(packagesdir, PackDir),
+    concat_atom([PackDir,'/janus/test/sample.json'],JsonFile),
+    pyfunc('test/jintf',prolog_load(JsonFile),F),
+    (F = PYDICT_PROLOG([PYTUP_PROLOG(glossary,PYDICT_PROLOG([PYTUP_PROLOG(title,'example glossary'),PYTUP_PROLOG('GlossDiv',PYDICT_PROLOG([PYTUP_PROLOG(title,'S'),PYTUP_PROLOG('GlossList',PYDICT_PROLOG([PYTUP_PROLOG('GlossEntry',PYDICT_PROLOG([PYTUP_PROLOG('ID','SGML'),PYTUP_PROLOG('SortAs','SGML'),PYTUP_PROLOG('GlossTerm','Standard Generalized Markup Language'),PYTUP_PROLOG('Acronym','SGML'),PYTUP_PROLOG('Abbrev','ISO 8879:1986'),PYTUP_PROLOG('GlossDef',PYDICT_PROLOG([PYTUP_PROLOG(para,'A meta-markup language, used to create markup languages such as DocBook.'),PYTUP_PROLOG('GlossSeeAlso',['GML','XML'])])),PYTUP_PROLOG('GlossSee',markup)]))]))]))]))]) -> 
+	 writeln('json_load_test successful')
+        ; writeln('!!!json_load_test_failed') ),
+     fail.
+json_tests.    
+
+kwargs_tests:-
+    pyfunc(kwargs,kwargs_append(foo),[bar=1,baz=2],Ret),
+    (Ret = [foo,PYTUP_PROLOG(bar,1),PYTUP_PROLOG(baz,2)] -> 
+       writeln('kwargs_test1 successful')
+     ; writeln('!!!kwargs_test1_failed') ).
+
+error_tests:-
+    error_tests_1(no_module,foo(1),
+		  [' Python Error;',_,'Type: <class ''ModuleNotFoundError''>',_,
+		   'Value: ModuleNotFoundError("No module named ''no_module''")',_]),
+    fail.
+error_tests:-
+%    catch(pyfunc(kwargs,foo(1),_X),E,(xsb_error_get_message(E,M),writeln(M))),
+    error_tests_1(kwargs,foo(1),
+		  [' ++Error[janus]: foo/1 is not a callable function in the Python module \'kwargs\' (arg 2 of pyfunc/3)']),
+    fail.
+error_tests:-
+    error_tests_1(kwargs,7,[' ++Error[janus]: ',_,' is not a callable function (in arg 2 of pyfunc/3)']),
+    fail.
+% returns obj
+%error_tests:-
+%    catch(pyfunc(test_err,raise_err_3(),_X),E,(xsb_error_get_message(E,M),writeln(M))),
+%    fail.
+error_tests:-
+    error_tests_1(test_err,raise_err_1(),
+		  [' Python Error;',_,'Type: <class ''Exception''>',_, 
+		   'Value: Exception(''spam'', ''eggs'')',_,
+		   'Python traceback (most recent call last):',_,
+		   'File ',_,', line 3, in raise_err_1',_]),
+    fail.
+error_tests.
+
+error_tests_1(Mod,Goal,Message):-
+    catch(pyfunc(Mod,Goal,_X),E,xsb_error_get_message(E,Mess)),
+    (concat_atom(Message,Mess) ->
+	 true
+    ;  writeln('!!!failed'(error_tests_1(Mod,Goal))),
+       writeln(Mess),
+       writeln(Message)).
+    
+object_tests:- 
+    meth_tests,
+    fail.
+object_tests.
+
+meth_tests:-
+    test_Person(_Obj,Ret1,Ret2,Ret3,Ret4,Ret5,M1,M2),
+%    writeq(Ret4),nl,
+    Ret1 = 'Hello my name is john',
+    Ret2 = 'Hello my name is john and I''m a doofus',
+    Ret3 = chocolate,
+    Ret4 = 'Hello my name is john and I''m a real doofus',
+    Ret5 = 'Hello my name is john and I''m a real big doofus',
+    M1 = ' ++Error[janus]: arg 2 of pydot/4 is not a Python Object: 1',
+    M2 = ' ++Error[janus]: arg 3 of pydot/4 is not a Python function or attribute: 1',
+    writeln('Person test succeeded'),!.
+meth_tests:- 
+    writeln('!!!Person test failed').
+
+test_Person(Obj,Ret1,Ret2,Ret3,Ret4,Ret5,Msg2,Msg3):- 
+    pyfunc('Person','Person'(john,35),Obj),
+    pydot('Person',Obj,func0(),Ret1),
+    pydot('Person',Obj,func1(doofus),Ret2),
+    pydot('Person',Obj,favorite_ice_cream,Ret3),
+    pydot('Person',Obj,func2(real,doofus),Ret4),
+    pydot('Person',Obj,func3(real,big,doofus),Ret5),
+    catch(pydot('Person',1,favorite_ice_cream,_Ret4),E2,xsb_error_get_message(E2,Msg2)),
+    catch(pydot('Person',Obj,1,_Ret5),E3,xsb_error_get_message(E3,Msg3)).
+
+variadic_tests:-
+    testit(pyfunc(variadic,variadic_print('a','b','c'),A),A,'a|b|c|'),
+    testit(pyfunc(variadic,variadic_print('a','b','c','d'),B),B,'a|b|c|d|'),
+    testit(pyfunc(variadic,opt_print('a'),C),C,'a|1'),
+    testit(pyfunc(variadic,opt_print('b','c'),D),D,'b|c'),
+    writeln('variadic tests succeeded'),!.
+variadic_tests:-
+    writeln('!!!variadic test failed').
+
+testit(Call,Var,Answer):-
+    call(Call),
+    (Var = Answer -> 
+       true
+    ; writeln('!!!wrong_answer'(Call,Var,Answer)),
+      fail).
+
+end_of_file.
+
+pytXSB :- pyfunc('test/testc', tester(),  X), pyList2prList(X, []).
+pythonXSBTests :- (pytXSB->write('python to XSB tests successful\n'); write('python to XSB tests failed\n')).
+
+
