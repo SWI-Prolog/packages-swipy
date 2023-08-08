@@ -486,7 +486,7 @@ py_unify_unicode(term_t t, PyObject *obj, int flags)
 static int
 py_unify_tuple(term_t t, PyObject *obj, int flags)
 { Py_ssize_t arity = PyTuple_GET_SIZE(obj);
-  if ( PL_unify_functor(t, PL_new_functor(ATOM_tuple, arity)) )
+  if ( PL_unify_compound(t, PL_new_functor(ATOM_tuple, arity)) )
   { term_t a = PL_new_term_ref();
     for(Py_ssize_t i=0; i<arity; i++)
     { PyObject *py_a = PyTuple_GetItem(obj, i);
