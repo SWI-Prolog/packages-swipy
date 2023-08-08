@@ -223,6 +223,7 @@ def px_comp(module, pred, *args, vars=1, set_collect=False, truth_vals=PLAIN_TRU
     --------
 
     >>> px_comp("user", "between", 1, 6)
+    [((1,), 1), ((2,), 1), ((3,), 1), ((4,), 1), ((5,), 1), ((6,), 1)]
 
     Parameters
     ----------
