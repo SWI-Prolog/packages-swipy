@@ -685,34 +685,30 @@ While we are discussing to minimize the differences we highlight the
 remaining issues below.
 
 \begin{itemize}
-   \item All Python list-like results are translated into a Prolog
-     list.  To be precise, we translate Python objects that
+   \item We translate all Python list-like results into Prolog
+     lists.  To be precise, we translate Python objects that
      implement one of these protocols: \const{PyList}, \const{PyIter}
-     and \const{PySequence}.   XSB translates \const{PyList} to a list
-     and \const{PySet} to a term \term{pySet}{List}.  Sequences and
-     iterators are returned as Python objects.  The user typically
-     has to write a Python function to create a suitable intermediate
-     Python representation.
-
-   \item py_iter/2 Allows accessing Python iteractors and generators as
-     non-deterministic Prolog predicates.
+     and \const{PySequence}.   XSB translates only class \class{list}
+     or one of its subclasses into a Prolog list.  Other list-like
+     objects are returned as object reference.
 
    \item We provide py_call/3 and py_iter/3 with an option argument to
      get a string rather than an atom from a Python string and force
      to get a Python object reference rather than a translated version.
 
-   \item Data translation differs:
-   \begin{itemize}
-       \item Numbers are handled the same
-       \item Python dicts are translated to Prolog dicts and visa versa.
-             Note that Prolog dicts can only have atoms and small integers
-             as keys.  Other Python dicts result in a representation error.
-	     XSB uses \term{py}{\{k:v, \ldots\}}.
-       \item Python objects that are not translated by any of the above
-             are translated to a SWI-Prolog \jargon{blob}.  This makes
-             identifying them robust and provides garbage collection.
-	     XSB uses a term \arg{pyObj}{Ref} and requires py_free/1.
-   \end{itemize}
+   \item py_iter/2 Allows accessing Python iteractors and generators as
+     non-deterministic Prolog predicates.
+
+   \item Python dicts are translated to Prolog dicts and visa versa.
+     Note that Prolog dicts can only have atoms and small integers
+     as keys.  Other Python dicts result in a representation error.
+     XSB plans on using \term{py}{\{k:v, \ldots\}}.\footnote{Still
+     under discussion.}
+
+   \item Python objects that are not translated by any of the above
+     are translated to a SWI-Prolog \jargon{blob}.  This makes
+     identifying them robust and provides garbage collection.
+     XSB uses a term \arg{pyObj}{Ref} and requires py_free/1.
 \end{itemize}
 
 \section{Status of Janus}
@@ -723,7 +719,9 @@ code.
 
 \begin{itemize}
     \item The design is stable
-    \item Testing is minimal.  Crashes are not impossible.
+    \item Testing is not exhaustive.
+    \item Illegal use of either API, typically due to errors
+      sometimes leads to crashes.
 \end{itemize}
 
 
