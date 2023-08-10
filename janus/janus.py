@@ -319,3 +319,62 @@ class PrologError:
             return once("with_output_to(string(Str),write_canonical(Msg))",
                          {"Msg":self.term})["Str"]
         return self.message
+
+################################################################
+# Rebind I/O
+
+import io
+import sys
+
+# `prompt` is  the current prompt  that we  get using the  audit event
+# `builtins.input`.  This is then written  to `stdout`.  We don't want
+# that because the Prolog command  line editor writes the prompt.  So,
+# the next write to `stdout` that writes the prompt is ignored.
+#
+# Hopefully there is a cleaner way to achieve this.
+
+prompt=""
+ignore=None
+
+class PrologIO(io.TextIOWrapper):
+    """Redefine terminal I/O
+
+    Subclass `io.TextIOWrapper`, refining the I/O methods to call Prolog.
+    `sys.stdin`, etc., are set to instances of this class such that console
+    I/O of Python uses Prolog's console I/O and we can use e.g. py_shell/0
+    also from `swipl-win` or other environments that redirect Prolog's
+    console to something else that the POSIX file descriptors 0,1 and 2.
+    """
+    def __init__(self, plstream, *args, **kwargs):
+        self.prolog_stream = plstream
+        super().__init__:__call__(args, kwargs)
+    def write(self, s):
+        global ignore
+        if ( ignore and ignore == s and self.prolog_stream == "user_output" ):
+            ignore = None
+        else:
+            once("janus:py_write(Stream, String)",
+                 {'Stream':self.prolog_stream, 'String':s})
+    def readline(self, size=-1):
+        global prompt
+        return once("janus:py_readline(Stream, Size, Prompt, Line)",
+                    {'Stream':self.prolog_stream, 'Size':size, 'Prompt':prompt})['Line']
+
+def audit(event, args):
+    """Intercept the current prompt"""
+    if ( event == "builtins.input" ):
+        global prompt
+        prompt = args[0];
+        global ignore
+        ignore = args[0];
+
+def connect_io(stdin=True, stdout=True, stderr=True):
+    """Handle Python console I/o using Prolog's I/O primitives
+    """
+    if ( stdin ):
+        sys.stdin  = PrologIO("user_input",  io.BytesIO(), line_buffering=True)
+        sys.addaudithook(audit)
+    if ( stdout ):
+        sys.stdout = PrologIO("user_output", io.BytesIO(), line_buffering=True)
+    if ( stderr ):
+        sys.stderr = PrologIO("user_error",  io.BytesIO(), write_through=True)

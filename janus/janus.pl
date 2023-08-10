@@ -96,7 +96,9 @@ add_python_dll_dir :-
 
 :- public
     py_initialize/0,
-    py_call_string/3.
+    py_call_string/3,
+    py_write/2,
+    py_readline/4.
 
 /** <module> Call Python from Prolog
 
@@ -433,6 +435,12 @@ comma_dict_items(Key:Value, Keys) =>
 %
 %   If possible, we enable command line   editing using the GNU readline
 %   library.
+%
+%   When used in an environment  where  Prolog   does  not  use the file
+%   handles 0,1,2 for  the  standard   streams,  e.g.,  in  `swipl-win`,
+%   Python's I/O is rebound to use  Prolog's I/O. This includes Prolog's
+%   command line editor, resulting in  a   mixed  history  of Prolog and
+%   Pythin commands.
 
 py_shell :-
     import_janus,
@@ -525,6 +533,13 @@ py_initialize :-
 %   a no-op.   This predicate is  thread-safe, where the  first thread
 %   initializes Python.
 %
+%   In addition to initializing the Python system, it
+%
+%     - Adds the directory holding `janus.py` to the Python module
+%       search path.
+%     - If Prolog I/O is not connected to the file handles 0,1,2,
+%       it rebinds Python I/O to use the Prolog I/O.
+%
 %   @arg Options is currently ignored.  It will be used to provide
 %   additional configuration options.
 
@@ -533,10 +548,28 @@ py_initialize(Program, Argv, Options) :-
     ->  absolute_file_name(library('python/janus.py'), Janus,
 			   [ access(read) ]),
 	file_directory_name(Janus, PythonDir),
-	add_py_lib_dir(PythonDir, first)
+	add_py_lib_dir(PythonDir, first),
+	py_connect_io
     ;   true
     ).
 
+%!  py_connect_io is det.
+%
+%   If SWI-Prolog console streams are bound to something non-standard,
+%   bind the Python console I/O to our streans.
+
+py_connect_io :-
+    maplist(non_file_stream,
+	    [0-user_input, 1-user_output, 2-user_error],
+	    NonFiles),
+    Call =.. [connect_io|NonFiles],
+    py_call(janus:Call).
+
+non_file_stream(Expect-Stream, Bool) :-
+    (   stream_property(Stream, file_no(Expect))
+    ->  Bool = false
+    ;   Bool = true
+    ).
 
 		 /*******************************
 		 *            PATHS		*
@@ -705,6 +738,37 @@ ucall(Goal, TV) :-
     ->  TV = 1
     ;   TV = 2
     ).
+
+		 /*******************************
+		 *          PYTHON I/O          *
+		 *******************************/
+
+%!  py_write(+Stream, -String) is det.
+%!  py_readline(+Stream, +Size, +Prompt, +Line) is det.
+%
+%   Called from redefined Python console  I/O   to  write/read using the
+%   Prolog streams.
+
+:- '$hide'((py_write/1,
+	    py_readline/4)).
+
+py_write(Stream, String) :-
+    notrace(format(Stream, '~s', [String])).
+
+py_readline(Stream, Size, Prompt, Line) :-
+    notrace(py_readline_(Stream, Size, Prompt, Line)).
+
+py_readline_(Stream, _Size, Prompt, Line) :-
+    prompt1(Prompt),
+    read_line_to_string(Stream, Read),
+    (   Read == end_of_file
+    ->  Line = ""
+    ;   string_concat(Read, "\n", Line),
+	py_add_history(Read)
+    ).
+
+py_add_history(Line) :-
+    ignore(catch(prolog:history(user_input, add(Line)), _, true)).
 
 
 		 /*******************************

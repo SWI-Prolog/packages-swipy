@@ -623,13 +623,6 @@ binary distribution provides in addition to \file{python3xx.dll}.  Calling
 Python from Prolog is supported out of the box, provided the folder holding
 \file{python3.dll} is in the search \verb$%PATH%$.
 
-When using \program{swipl-win.exe}, the default app that creates its own
-console, Python cannot read or write to the user.  As a result, e.g.,
-py_shell/0 does not work.  Python interaction that does not require
-Python to read or write to the terminal works normal.  If you wish to
-play with the Python shell for debugging, use \program{swipl.exe} in
-a Windows console or PowerShell window.
-
 The Python package can be installed using \program{pip} as described in
 \secref{janus-python-package}.  Once built, this package finds SWI-Prolog
 on \verb$%PATH%$ or using the registry and should be fairly independent
