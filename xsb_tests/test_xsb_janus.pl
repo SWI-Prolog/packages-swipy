@@ -1,5 +1,5 @@
-:- module(xsb_test_suite,
-          [ xsb_test_suite/0
+:- module(test_xsb_janus,
+          [ test_xsb_janus/0
           ]).
 
 /** <module> Port of XSB test suite
@@ -14,12 +14,12 @@ This module is a port of testSuite.P from XSB.  Encountered issues
 :- use_module(library(plunit)).
 :- set_prolog_flag(encoding, utf8) .
 
-xsb_test_suite :-
+test_xsb_janus :-
     run_tests([ xsb_janus
               ]).
 
 :- initialization
-    source_file(testSuite, File),
+    source_file(test_xsb_janus, File),
     file_directory_name(File, Dir),
     add_py_lib_dir(Dir, first).
 
