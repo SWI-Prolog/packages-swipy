@@ -11,9 +11,10 @@ endif()
 # Note: allows for -DCPYTHON_VERSION="3.11;EXACT" to demand an exact
 # version of CPython.  Used by the Macports Portfile to ensure the
 # requested dependency and the version used are the same.
-option(CPYTHON_VERSION
-       "Specify the required CPython version"
-       3.6)
+if(NOT CPYTHON_VERSION)
+  set(CPYTHON_VERSION 3.6 CACHE STRING
+      "Specify the required CPython version.  Use e.g. 3.9;EXACT for exact version")
+endif()
 
 find_package(Python ${CPYTHON_VERSION} COMPONENTS Interpreter Development)
 if(CMAKE_VERSION VERSION_LESS 3.18 AND Python_Development_FOUND)
