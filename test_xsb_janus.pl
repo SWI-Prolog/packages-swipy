@@ -73,8 +73,9 @@ test(data_conversion) :-
 %   pyfunc(returnVal,return_False(),0).
 test(json1) :- json_test_1.
 test(json2) :- json_test_2.
-test(pyc, X == 2) :-
-    pyfunc('numpexamp',go(),X).
+% Asking for numpy dependency for tests is a bit too much.
+%test(pyc, X == 2) :-
+%    pyfunc('numpexamp',go(),X).
 test(kwargs, Ret == [foo,:(bar,1),:(baz,2)]) :-
     pyfunc(kwargs,kwargs_append(foo),[bar=1,baz=2],Ret).
 test(error) :-
