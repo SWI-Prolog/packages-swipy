@@ -3,7 +3,7 @@ project(swipl-swipy)
 
 include("../cmake/PrologPackage.cmake")
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Sanitize")
   message("Trying to find debug version of Python")
   set(Python_FIND_ABI "ON" "ANY" "ANY")
 endif()
