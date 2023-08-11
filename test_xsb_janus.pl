@@ -34,6 +34,10 @@ This module is a port of testSuite.P from XSB.  Encountered issues
 
 :- use_module(library(janus)).
 :- use_module(library(plunit)).
+:- use_module(library(apply)).
+:- use_module(library(debug)).
+:- use_module(library(filesex)).
+
 :- set_prolog_flag(encoding, utf8) .
 
 test_xsb_janus :-
@@ -43,7 +47,8 @@ test_xsb_janus :-
 :- initialization
     source_file(test_xsb_janus, File),
     file_directory_name(File, Dir),
-    add_py_lib_dir(Dir, first).
+    directory_file_path(Dir, xsb_tests, XSBDir),
+    add_py_lib_dir(XSBDir, first).
 
 :- begin_tests(xsb_janus).
 
@@ -142,7 +147,7 @@ json_test_1 :-
 json_test_2 :-
     source_file(json_test_2, This),
     file_directory_name(This, Dir),
-    directory_file_path(Dir, 'sample.json', JsonFile),
+    directory_file_path(Dir, 'xsb_tests/sample.json', JsonFile),
     pyfunc('jintf',prolog_load(JsonFile),F),
     assertion(F ==
               py{glossary:

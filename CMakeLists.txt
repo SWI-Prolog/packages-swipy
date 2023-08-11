@@ -39,7 +39,7 @@ swipl_plugin(
 configure_file(config.h.cmake config.h)
 
 test_libs(
-    janus
+    janus xsb_janus
     PACKAGES plunit
     TEST_DIRS tests)
 
