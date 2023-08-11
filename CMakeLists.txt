@@ -8,7 +8,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(Python_FIND_ABI "ON" "ANY" "ANY")
 endif()
 
-find_package(Python COMPONENTS Interpreter Development)
+# Note: allows for -DCPYTHON_VERSION="3.11;EXACT" to demand an exact
+# version of CPython.  Used by the Macports Portfile to ensure the
+# requested dependency and the version used are the same.
+option(CPYTHON_VERSION
+       "Specify the required CPython version"
+       3.6)
+
+find_package(Python ${CPYTHON_VERSION} COMPONENTS Interpreter Development)
 if(CMAKE_VERSION VERSION_LESS 3.18 AND Python_Development_FOUND)
   set(Python_Development.Embed_FOUND ON)
 endif()
