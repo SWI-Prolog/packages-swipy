@@ -417,9 +417,8 @@ py_unify_long(term_t t, PyObject *obj)
     int rc = FALSE;
 
     if ( !hex )
-    { PyObject *builtins = PyEval_GetBuiltins();
+    { PyObject *builtins = PyEval_GetBuiltins(); /* borrowed reference */
       hex = PyDict_GetItemString(builtins , "hex");
-      Py_CLEAR(builtins);
       if ( !hex )
       { term_t ex;
 
@@ -1199,7 +1198,7 @@ py_eval(PyObject *obj, term_t func)
     if ( obj )
     { py_func = check_error(PyObject_GetAttrString(obj, PL_atom_chars(fname)));
     } else
-    { PyObject *builtins = PyEval_GetBuiltins();
+    { PyObject *builtins = PyEval_GetBuiltins(); /* borrowed reference */
       py_func = PyDict_GetItemString(builtins , PL_atom_chars(fname));
       if ( !py_func )
       { term_t fn;
@@ -1208,8 +1207,6 @@ py_eval(PyObject *obj, term_t func)
 	     PL_put_atom(fn, fname) )
 	  PL_existence_error("python_builtin", fn);
       }
-
-      Py_DECREF(builtins);
     }
     if ( !py_func )
       goto out;

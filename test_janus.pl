@@ -171,7 +171,7 @@ test(arg, R == py{a:1,b:a,c:x}) :-
 % Therefore we stop this thread and restore the old mode after the
 % test.
 
-test(gc) :-
+test(gc1) :-
     current_prolog_flag(gc_thread, Old),
     set_prolog_gc_thread(false),
     py_call(demo:gced = 0),
@@ -181,7 +181,7 @@ test(gc) :-
     set_prolog_gc_thread(Old),
     py_call(demo:gced, GCed),
     assertion(GCed > 1 000).
-test(gc, [GCed0,GCed] == [10 000, 10 000]) :-
+test(gc2, [GCed0,GCed] == [10 000, 10 000]) :-
     current_prolog_flag(gc_thread, Old),
     set_prolog_gc_thread(false),
     garbage_collect_atoms,

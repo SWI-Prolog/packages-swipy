@@ -50,7 +50,12 @@ test_xsb_janus :-
     directory_file_path(Dir, xsb_tests, XSBDir),
     add_py_lib_dir(XSBDir, first).
 
-:- begin_tests(xsb_janus).
+py_gc :-
+    py_call(gc:collect()).
+
+:- begin_tests(xsb_janus,
+	       [ cleanup(py_gc)
+	       ]).
 
 test(sumlist) :-
     pyfunc('sumlist3', sumlist3(5,[1,2,3]), [6,7,8]),
@@ -230,4 +235,3 @@ testit(Call,Var,Answer):-
     ;   writeln('!!!wrong_answer'(Call,Var,Answer)),
         fail
     ).
-
