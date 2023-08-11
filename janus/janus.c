@@ -396,10 +396,7 @@ check_error(PyObject *obj)
 	 PL_cons_functor(t, FUNCTOR_error2, t, av+0) )
       PL_raise_exception(t);
 
-    Py_CLEAR(type);
     Py_CLEAR(tname);
-    Py_CLEAR(value);
-    Py_CLEAR(stack);
     return NULL;
   } else
     return obj;
