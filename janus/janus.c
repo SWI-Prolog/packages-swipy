@@ -1469,7 +1469,9 @@ alloc_iter_state(iter_state *state)
 { if ( !state->allocated )
   { iter_state *copy = malloc(sizeof(*state));
     if ( copy )
-      *copy = *state;
+    { *copy = *state;
+      copy->allocated = TRUE;
+    }
     state = copy;
   }
 
@@ -1547,7 +1549,6 @@ py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
 	{ py_gil_release(gil_state);
 	  PL_retry_address(alloc_iter_state(state)); /* returns */
 	}
-	free_iter_state(state);
 	rc = !PL_exception(0);
 	goto out;
       }
