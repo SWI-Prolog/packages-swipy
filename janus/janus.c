@@ -304,14 +304,16 @@ unify_py_obj(term_t t, PyObject *obj)
 }
 
 static int
-get_py_obj(term_t t, PyObject **obj, int error)
+get_py_obj(term_t t, PyObject **objp, int error)
 { void *data;
   size_t size;
   PL_blob_t *type;
 
   if ( PL_get_blob(t, &data, &size, &type) && type == &PY_OBJECT )
   { if ( size != 0 )
-    { *(void**)obj = data;
+    { PyObject *obj = data;
+      Py_INCREF(obj);
+      *objp = obj;
       return TRUE;
     } else
       return PL_existence_error("PyObject", t);
@@ -352,7 +354,8 @@ get_py_module(term_t name, PyObject **mod)
       py_module_table = py_new_hashmap();
 
     if ( (obj=py_lookup_hashmap(py_module_table, id)) )
-    { *mod = obj;
+    { Py_INCREF(obj);
+      *mod = obj;
       return TRUE;
     } else
     { PyObject *idobj;
@@ -1184,9 +1187,7 @@ py_eval(PyObject *obj, term_t func)
   PyObject *py_res = NULL;
 
   if ( !obj && get_py_obj(func, &py_res, FALSE) )
-  { Py_INCREF(py_res);
     return py_res;
-  }
 
   if ( obj && PL_get_chars(func, &attr, CVT_ATOM) )
   { return check_error(PyObject_GetAttrString(obj, attr));
@@ -1300,7 +1301,6 @@ unchain(term_t call, PyObject **py_target)
       { rc = PL_type_error("py_target", on);
 	break;
       }
-      Py_INCREF(*py_target);
     } else
     { PyObject *next = py_eval(*py_target, on);
 
