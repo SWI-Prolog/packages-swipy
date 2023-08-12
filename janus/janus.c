@@ -866,7 +866,7 @@ py_from_prolog(term_t t, PyObject **obj)
       *obj = list;
     else
       Py_CLEAR(list);
-    return TRUE;
+    return rc;
   }
 
   int ign = PL_get_functor(t, &funct);
