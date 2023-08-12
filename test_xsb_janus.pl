@@ -81,7 +81,7 @@ test(json2) :- json_test_2.
 % Asking for numpy dependency for tests is a bit too much.
 %test(pyc, X == 2) :-
 %    pyfunc('numpexamp',go(),X).
-test(kwargs, Ret == [foo,:(bar,1),:(baz,2)]) :-
+test(kwargs, Ret == [foo,-(bar,1),-(baz,2)]) :-
     pyfunc(kwargs,kwargs_append(foo),[bar=1,baz=2],Ret).
 test(error) :-
     error_test(no_module,foo(1),
@@ -125,7 +125,7 @@ listConvTest:-
     pyfunc('returnVal', returnVal([]), R2), R2 == [],
     pyfunc('returnVal', returnVal([1,[2,3,4],[hello,155]]), R3),
     R3 ==  [1, [2, 3, 4], ['hello', 155]],
-    pyfunc('tupInList', func(), R4), R4 == [1,2,3, :(5, 6), 'hello', [11,17]],
+    pyfunc('tupInList', func(), R4), R4 == [1,2,3, -(5, 6), 'hello', [11,17]],
     !.
 
 setConvTest:-
@@ -136,8 +136,8 @@ setConvTest:-
     arg(1,R1,A), length(A,3),!.
 
 tupleConvTest:-
-    pyfunc('returnVal', returnVal(:(a,b,c)), R1),R1 = :(a,b,c),
-    pyfunc('tupletest',func(),R2), R2 = :(5,:(),hello,:(5,6,7)),
+    pyfunc('returnVal', returnVal(-(a,b,c)), R1),R1 = -(a,b,c),
+    pyfunc('tupletest',func(),R2), R2 = -(5,-(),hello,-(5,6,7)),
     !.
 
 dictConvTest:-

@@ -716,7 +716,7 @@ px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
 	Goal =.. [Pred|GArgs]
     ;   Goal =.. [Pred|Out]
     ),
-    compound_name_arguments(OTempl0, :, Out),
+    compound_name_arguments(OTempl0, -, Out),
     tv_goal_and_template(TV, Module:Goal, FGoal, OTempl0, OTempl),
     findall(OTempl, FGoal, Ret0),
     (   Set == true
@@ -724,8 +724,8 @@ px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
     ;   Ret = Ret0
     ).
 
-tv_goal_and_template(plain,  Goal, ucall(Goal, TV), Templ, :(Templ,TV)) :- !.
-tv_goal_and_template(delays, Goal, call_delays(Goal, TV), Templ, :(Templ,TV)) :- !.
+tv_goal_and_template(plain,  Goal, ucall(Goal, TV), Templ, -(Templ,TV)) :- !.
+tv_goal_and_template(delays, Goal, call_delays(Goal, TV), Templ, -(Templ,TV)) :- !.
 tv_goal_and_template(none,   Goal, Goal, Templ, Templ) :- !.
 tv_goal_and_template(Mode, _, _, _, _) :-
     domain_error("px_comp() truth_vals", Mode).

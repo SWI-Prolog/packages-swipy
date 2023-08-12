@@ -62,7 +62,7 @@ static functor_t FUNCTOR_eq2;
 static functor_t FUNCTOR_hash1;
 static functor_t FUNCTOR_comma2;
 static functor_t FUNCTOR_curl1;
-static functor_t FUNCTOR_tuple2;
+static functor_t FUNCTOR_key_value2;
 static functor_t FUNCTOR_py1;
 static functor_t FUNCTOR_pySet1;
 static functor_t FUNCTOR_prolog1;
@@ -708,7 +708,7 @@ py_add_to_dict(term_t key, term_t value, void *closure)
 static int
 add_prolog_key_value_to_dict(PyObject *py_dict, term_t tuple,
 			     term_t key, term_t value)
-{ if ( PL_is_functor(tuple, FUNCTOR_tuple2) )
+{ if ( PL_is_functor(tuple, FUNCTOR_key_value2) )
   { _PL_get_arg(1, tuple, key);
     _PL_get_arg(2, tuple, value);
     PyObject *py_key = NULL, *py_value = NULL;
@@ -1750,20 +1750,20 @@ install_janus(void)
   MKATOM(file);
   MKATOM(eval);
   MKATOM(single);
-  ATOM_tuple  = PL_new_atom(":");
+  ATOM_tuple  = PL_new_atom("-");
   ATOM_pydict = PL_new_atom("py");
   ATOM_curl   = PL_new_atom("{}");
 
   MKFUNCTOR(python_error, 3);
   MKFUNCTOR(error, 2);
   MKFUNCTOR(py, 1);
-  FUNCTOR_module2 = PL_new_functor(PL_new_atom(":"), 2);
-  FUNCTOR_eq2     = PL_new_functor(PL_new_atom("="), 2);
-  FUNCTOR_hash1   = PL_new_functor(PL_new_atom("#"), 1);
-  FUNCTOR_comma2  = PL_new_functor(PL_new_atom(","), 2);
-  FUNCTOR_curl1   = PL_new_functor(PL_new_atom("{}"), 1);
-  FUNCTOR_pySet1  = PL_new_functor(PL_new_atom("pySet"), 1);
-  FUNCTOR_tuple2  = PL_new_functor(ATOM_tuple, 2);
+  FUNCTOR_module2    = PL_new_functor(PL_new_atom(":"), 2);
+  FUNCTOR_eq2        = PL_new_functor(PL_new_atom("="), 2);
+  FUNCTOR_hash1      = PL_new_functor(PL_new_atom("#"), 1);
+  FUNCTOR_comma2     = PL_new_functor(PL_new_atom(","), 2);
+  FUNCTOR_curl1      = PL_new_functor(PL_new_atom("{}"), 1);
+  FUNCTOR_pySet1     = PL_new_functor(PL_new_atom("pySet"), 1);
+  FUNCTOR_key_value2 = FUNCTOR_module2;
   MKFUNCTOR(prolog, 1);
 
 #define REGISTER(name, arity, func, flags) \

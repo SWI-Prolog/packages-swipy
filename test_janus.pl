@@ -223,10 +223,10 @@ test(russel, List == [py{'X':barber,'Y':barber,status:'Undefined'},
 		      py{'X':barber,'Y':mayor,status:true}]) :-
     py_call(demo:shaves(), List0),
     sort('Y', @=<, List0, List).
-test(py_double, Tuples == [1:1,2:1,3:1,
-                           1:2,2:2,3:2,
-                           1:3,2:3,3:3,
-                           1:4,2:4,3:4]) :-
+test(py_double, Tuples == [1-1,2-1,3-1,
+                           1-2,2-2,3-2,
+                           1-3,2-3,3-3,
+                           1-4,2-4,3-4]) :-
     py_call(demo:double_iter(3,4), Tuples).
 test(invalid_nesting, X == true) :-
     py_call(demo:test_invalid_nesting(), X).
@@ -262,13 +262,13 @@ test(ex) :-
 
 :- begin_tests(xsb_call).
 
-test(reverse, X == :([py{a:py{b:c}}, :(mytuple), 3, 2, 1], 1)) :-
+test(reverse, X == -([py{a:py{b:c}}, -(mytuple), 3, 2, 1], 1)) :-
     py_call(janus:px_qdet(lists, reverse,
-			  [1,2,3,:(mytuple),py{a:py{b:c}}]),
+			  [1,2,3,-(mytuple),py{a:py{b:c}}]),
 	    X).
-test(px_comp, X == [:(1):1,:(2):1]) :-
+test(px_comp1, X == [-(1)-1,-(2)-1]) :-
     py_call(janus:px_comp(user, between, 1, 2), X).
-test(px_comp, X == [:(1),:(2)]) :-
+test(px_comp2, X == [-(1),-(2)]) :-
     py_call(janus:px_comp(user, between, 1, 2, truth_vals=none), X).
 
 :- end_tests(xsb_call).

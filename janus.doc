@@ -120,7 +120,7 @@ List    & $\longrightarrow$     & List & \\
 List    & $\longleftarrow$      & Sequence & \\
 List    & $\longleftarrow$      & Generator & \\
 pySet(List) & $\Longleftrightarrow$ & Set & When converting to Prolog, the set is emptied \\
-:(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples \\
+-(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples \\
 Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
 py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
