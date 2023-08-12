@@ -88,17 +88,27 @@ test(dict, Z == py{name:bob, age:42}) :-
     py_call(janus:echo(py({name:bob, age:42})), Z).
 test(dict, Z == py{name:"bob", age:42}) :-
     py_call(janus:echo(py{name:bob, age:42}), Z, [py_string_as(string)]).
+test(nodict, Z == {}) :-
+    py_call(janus:echo({}), Z).
+test(nodict, Z == @true) :-
+    py_call(demo:isstr({}), Z).
+test(bool, Z == @true) :-
+    py_call(janus:echo(@true), Z).
+test(bool, Z == @false) :-
+    py_call(janus:echo(@false), Z).
 test(bool, Z == true) :-
     py_call(janus:echo(true), Z).
 test(bool, Z == false) :-
     py_call(janus:echo(false), Z).
+test(none, Z == @none) :-
+    py_call(janus:echo(@none), Z).
 test(none, Z == 'None') :-
     py_call(janus:echo('None'), Z).
-test(bool, Z == true) :-
+test(bool, Z == "true") :-
     py_call(janus:echo(true), Z, [py_string_as(string)]).
-test(bool, Z == false) :-
+test(bool, Z == "false") :-
     py_call(janus:echo(false), Z, [py_string_as(string)]).
-test(none, Z == 'None') :-
+test(none, Z == "None") :-
     py_call(janus:echo('None'), Z, [py_string_as(string)]).
 test(set, Set == [1, a, false]) :- % True canot be in a Python set??
     py_call(janus:echo(pySet([1,a,false])), pySet(List)),
@@ -220,7 +230,7 @@ test(iter, Sum == 10011) :-             % Check we didn't mess up the Prolog sta
 test(undef, Result == py{status:'Undefined'}) :-
     py_call(janus:once(undefined), Result).
 test(russel, List == [py{'X':barber,'Y':barber,status:'Undefined'},
-		      py{'X':barber,'Y':mayor,status:true}]) :-
+		      py{'X':barber,'Y':mayor,status: @true}]) :-
     py_call(demo:shaves(), List0),
     sort('Y', @=<, List0, List).
 test(py_double, Tuples == [1-1,2-1,3-1,
@@ -228,7 +238,7 @@ test(py_double, Tuples == [1-1,2-1,3-1,
                            1-3,2-3,3-3,
                            1-4,2-4,3-4]) :-
     py_call(demo:double_iter(3,4), Tuples).
-test(invalid_nesting, X == true) :-
+test(invalid_nesting, X == @true) :-
     py_call(demo:test_invalid_nesting(), X).
 :- if((py_call(sys:hexversion, V), V >= 0x03080000)).
 test(while, X == [1,2,3]) :-

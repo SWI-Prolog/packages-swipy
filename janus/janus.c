@@ -43,7 +43,7 @@
 #include <Python.h>
 #include <assert.h>
 
-static atom_t ATOM_None;
+static atom_t ATOM_none;
 static atom_t ATOM_false;
 static atom_t ATOM_true;
 static atom_t ATOM_pydict;
@@ -66,6 +66,7 @@ static functor_t FUNCTOR_key_value2;
 static functor_t FUNCTOR_py1;
 static functor_t FUNCTOR_pySet1;
 static functor_t FUNCTOR_prolog1;
+static functor_t FUNCTOR_at1;
 
 static int py_initialize_done = FALSE;
 
@@ -76,6 +77,7 @@ static void py_yield(void);
 static void py_resume(void);
 static PyObject *py_record(term_t t);
 static int py_unify_record(term_t t, PyObject *rec);
+static int py_unify_constant(term_t t, atom_t c);
 static int py_is_record(PyObject *rec);
 static PyObject *py_free_record(PyObject *rec);
 
@@ -391,9 +393,9 @@ check_error(PyObject *obj)
          PL_unify_chars(av+0, PL_ATOM|REP_UTF8, (size_t)-1,
 			PyUnicode_AsUTF8AndSize(tname, NULL)) &&
 	 (value ? py_unify(av+1, value, 0)
-		: PL_unify_atom(av+1, ATOM_None)) &&
+		: py_unify_constant(av+1, ATOM_none)) &&
 	 (stack ? py_unify(av+2, stack, 0)
-		: PL_unify_atom(av+2, ATOM_None)) &&
+		: py_unify_constant(av+2, ATOM_none)) &&
 	 PL_cons_functor_v(t, FUNCTOR_python_error3, av) &&
 	 PL_put_variable(av+0) &&
 	 PL_cons_functor(t, FUNCTOR_error2, t, av+0) )
@@ -628,6 +630,12 @@ out:
 
 
 static int
+py_unify_constant(term_t t, atom_t c)
+{ return PL_unify_term(t, PL_FUNCTOR, FUNCTOR_at1, PL_ATOM, c);
+}
+
+
+static int
 py_unify(term_t t, PyObject *obj, int flags)
 { if ( !obj )
   { check_error(obj);
@@ -635,9 +643,9 @@ py_unify(term_t t, PyObject *obj, int flags)
   }
 
   if ( obj == Py_None )
-    return PL_unify_atom(t, ATOM_None);
+    return py_unify_constant(t, ATOM_none);
   if ( PyBool_Check(obj) )
-    return PL_unify_bool(t, PyLong_AsLong(obj));
+    return py_unify_constant(t, PyLong_AsLong(obj) ? ATOM_true : ATOM_false);
 
   if ( (flags&PYU_OBJ) )
   { if ( PyLong_CheckExact(obj) )
@@ -767,6 +775,39 @@ py_from_prolog_curl(term_t t, PyObject **obj)
   return TRUE;
 }
 
+
+static int
+py_from_prolog_at1(term_t t, PyObject **obj)
+{ atom_t a;
+  term_t arg = PL_new_term_ref();
+
+  _PL_get_arg(1, t, arg);
+  if ( PL_get_atom(arg, &a) )
+  { int v = -1;
+
+    PL_reset_term_refs(arg);
+
+    if ( a == ATOM_false )
+      v = 0;
+    else if ( a == ATOM_true )
+      v = 1;
+
+    if ( v >= 0 )
+    { *obj = check_error(PyBool_FromLong(v));
+      return !!*obj;
+    }
+
+    if ( a == ATOM_none )
+    { Py_INCREF(Py_None);
+      *obj = Py_None;
+      return TRUE;
+    }
+  }
+
+  return PL_domain_error("py_constant", t);
+}
+
+
 static int
 py_from_prolog(term_t t, PyObject **obj)
 { wchar_t *s;
@@ -817,30 +858,6 @@ py_from_prolog(term_t t, PyObject **obj)
     return FALSE;
   }
 
-  // Special atoms
-  if ( PL_get_atom(t, &a) )
-  { int v = -1;
-
-    if ( a == ATOM_false )
-      v = 0;
-    else if ( a == ATOM_true )
-      v = 1;
-
-    if ( v >= 0 )
-    { *obj = check_error(PyBool_FromLong(v));
-      return !!*obj;
-    }
-
-    if ( a == ATOM_None )
-    { Py_INCREF(Py_None);
-      *obj = Py_None;
-      return TRUE;
-    }
-
-    if ( a == ATOM_curl )
-      return py_empty_dict(obj);
-  }
-
   // Normal text representations.  Note that [] does not qualify
   // in SWI-Prolog as an atom
   if ( PL_get_wchars(t, &len, &s, CVT_ATOM|CVT_STRING) )
@@ -871,6 +888,9 @@ py_from_prolog(term_t t, PyObject **obj)
 
   int ign = PL_get_functor(t, &funct);
   (void)ign;
+
+  if ( funct == FUNCTOR_at1 )
+    return py_from_prolog_at1(t, obj);
 
   if ( funct == FUNCTOR_pySet1 )
   { term_t tail = PL_new_term_ref();
@@ -1427,7 +1447,7 @@ py_call3(term_t Call, term_t result, term_t options)
 	  { if ( PyObject_SetAttrString(py_target, attr, py_val) == -1 )
 	      rc = !!check_error(NULL);
 	    if ( rc && result )
-	      rc = PL_unify_atom(result, ATOM_None);
+	      rc = py_unify_constant(result, ATOM_none);
 	  }
 	  Py_CLEAR(py_val);
 	}
@@ -1742,7 +1762,7 @@ py_resume(void)
 
 install_t
 install_janus(void)
-{ MKATOM(None);
+{ MKATOM(none);
   MKATOM(false);
   MKATOM(true);
   MKATOM(atom);
@@ -1763,6 +1783,7 @@ install_janus(void)
   FUNCTOR_comma2     = PL_new_functor(PL_new_atom(","), 2);
   FUNCTOR_curl1      = PL_new_functor(PL_new_atom("{}"), 1);
   FUNCTOR_pySet1     = PL_new_functor(PL_new_atom("pySet"), 1);
+  FUNCTOR_at1        = PL_new_functor(PL_new_atom("@"), 1);
   FUNCTOR_key_value2 = FUNCTOR_module2;
   MKFUNCTOR(prolog, 1);
 

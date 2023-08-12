@@ -7,8 +7,15 @@ from janus import *
 def int():
     return 42;
 
-def str():
+def hello_world():
     return "Hello World"
+
+def isstr(s):
+    """Boolean test whether s is a string"""
+    if isinstance(s, str):
+        return True
+    else:
+        return False
 
 def dict1():
     return {"a":1, 2:2}

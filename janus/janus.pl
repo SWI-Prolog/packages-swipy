@@ -69,7 +69,8 @@
             add_py_lib_dir/1,           % +Dir
             add_py_lib_dir/2,           % +Dir,+Where
 
-            op(50,  fx,  #)             % #Value
+            op(200, fy, @),             % @constant
+            op(50,  fx, #)              % #Value
           ]).
 :- use_module(library(apply_macros), []).
 :- autoload(library(lists), [append/3, member/2]).
@@ -187,10 +188,7 @@ py_version :-
 %     - py_string_as(+Type)
 %       If Type is `atom` (default), translate a Python String into a
 %       Prolog atom.  If Type is `string`, translate into a Prolog string.
-%       Note that by using a string we can distinguish the Python ``Bool``
-%       ``True`` and ``False`` as well as Python ``None`` from the
-%       Python strings ``"true"``, ``"false"`` and ``"None"``.  Strings
-%       are also more efficient if they are short lived.
+%	Strings are more efficient if they are short lived.
 %     - py_object(Boolean)
 %       It `true` (default `false`), translate the return as a Python
 %       object reference unless it is `None`, a boolean or a number.
@@ -567,8 +565,8 @@ py_connect_io :-
 
 non_file_stream(Expect-Stream, Bool) :-
     (   stream_property(Stream, file_no(Expect))
-    ->  Bool = false
-    ;   Bool = true
+    ->  Bool = @false
+    ;   Bool = @true
     ).
 
 		 /*******************************
@@ -647,7 +645,7 @@ py_call_string(M:String, Input, Dict) :-
     VInput = Input,
     (   call(M:Goal)
     *-> bind_status(Status)
-    ;   Status = false,
+    ;   Status = @false,
 	maplist(bind_none, OutVars)
     ).
 
@@ -657,11 +655,11 @@ not_in_projection(Input, Name=Value) :-
     ;   sub_atom(Name, 0, _, _, '_')
     ).
 
-bind_none('None').
+bind_none(@none).
 
 bind_status(Status) :-
     (   '$tbl_delay_list'([])
-    ->  Status = true
+    ->  Status = @true
     ;   Status = "Undefined"
     ).
 
@@ -719,7 +717,7 @@ px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
     compound_name_arguments(OTempl0, -, Out),
     tv_goal_and_template(TV, Module:Goal, FGoal, OTempl0, OTempl),
     findall(OTempl, FGoal, Ret0),
-    (   Set == true
+    (   Set == @true
     ->  sort(Ret0, Ret)
     ;   Ret = Ret0
     ).

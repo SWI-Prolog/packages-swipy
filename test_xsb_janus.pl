@@ -69,12 +69,12 @@ test(data_conversion) :- setConvTest.
 test(data_conversion) :- tupleConvTest.
 test(data_conversion) :- dictConvTest.
 test(data_conversion) :-
-    pyfunc(returnVal,return_None(),'None').
+    pyfunc(returnVal,return_None(),@none).
 test(data_conversion) :-
-    pyfunc(returnVal,return_True(),true).
+    pyfunc(returnVal,return_True(),@true).
 %   pyfunc(returnVal,return_True(),1).
 test(data_conversion) :-
-    pyfunc(returnVal,return_False(),false).
+    pyfunc(returnVal,return_False(),@false).
 %   pyfunc(returnVal,return_False(),0).
 test(json1) :- json_test_1.
 test(json2) :- json_test_2.

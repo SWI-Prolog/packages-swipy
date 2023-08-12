@@ -108,9 +108,9 @@ that py_call/3 and py_iiter/3 provide the option
 Variable& $\longrightarrow$     & -        & (instantiation error) \\
 Integer & $\Longleftrightarrow$ & Integer  & Supports big integers \\
 Rational& $\longrightarrow$     & -        & (type error) May be supported later \\
-'None'  & $\Longleftrightarrow$ & None     & \\
-true    & $\Longleftrightarrow$ & True     & \\
-false   & $\Longleftrightarrow$ & False    & \\
+@(none) & $\Longleftrightarrow$ & None     & \\
+@(true) & $\Longleftrightarrow$ & True     & \\
+@(false) & $\Longleftrightarrow$ & False    & \\
 Atom    & $\longleftrightarrow$ & String   & Except the above reserved three atoms \\
 String  & $\longrightarrow$     & String   & \\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
