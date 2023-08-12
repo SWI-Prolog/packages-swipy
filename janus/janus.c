@@ -266,20 +266,25 @@ compare_python_object(atom_t a, atom_t b)
 static int
 write_python_object(IOSTREAM *s, atom_t symbol, int flags)
 { PyObject *obj = PL_blob_data(symbol, NULL, NULL);
-  PyObject *cls = NULL;
-  PyObject *cname = NULL;
-  const char *name;
 
-  if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
-       (cname=PyObject_GetAttrString(cls, "__name__")) )
-    name = PyUnicode_AsUTF8AndSize(cname, NULL);
-  else
-    name = "noclass";
+  if ( obj )
+  { PyObject *cls = NULL;
+    PyObject *cname = NULL;
+    const char *name;
 
-  Sfprintf(s, "<py_%Us>(%p)", name, obj);
+    if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
+	 (cname=PyObject_GetAttrString(cls, "__name__")) )
+      name = PyUnicode_AsUTF8AndSize(cname, NULL);
+    else
+      name = "noclass";
 
-  Py_CLEAR(cls);
-  Py_CLEAR(cname);
+    Sfprintf(s, "<py_%Us>(%p)", name, obj);
+
+    Py_CLEAR(cls);
+    Py_CLEAR(cname);
+  } else
+  { Sfprintf(s, "<py_FREED>(0x0)");
+  }
 
   return TRUE;
 }
@@ -1071,18 +1076,16 @@ py_unify_record(term_t t, PyObject *rec)
 
 static PyObject *
 py_free_record(PyObject *rec)
-{ PyObject *r = PyObject_GetAttrString(rec, "_record");
-  int rc = FALSE;
+{ int rc = FALSE;
 
-  if ( r && PyLong_Check(r) )
-  { long long v = PyLong_AsLongLong(r);
+  if ( PyLong_Check(rec) )
+  { long long v = PyLong_AsLongLong(rec);
 
     if ( v )
       PL_erase((record_t)v);
     rc = TRUE;
   }
 
-  Py_CLEAR(r);
   if ( rc )
     Py_RETURN_NONE;
 
@@ -1219,8 +1222,9 @@ py_eval(PyObject *obj, term_t func)
     if ( obj )
     { py_func = check_error(PyObject_GetAttrString(obj, PL_atom_chars(fname)));
     } else
-    { PyObject *builtins = PyEval_GetBuiltins(); /* borrowed reference */
+    { PyObject *builtins = PyEval_GetBuiltins();
       py_func = PyDict_GetItemString(builtins , PL_atom_chars(fname));
+      /* Both builtins and py_func are borrowed references */
       if ( !py_func )
       { term_t fn;
 
@@ -1228,6 +1232,7 @@ py_eval(PyObject *obj, term_t func)
 	     PL_put_atom(fn, fname) )
 	  PL_existence_error("python_builtin", fn);
       }
+      Py_INCREF(py_func);
     }
     if ( !py_func )
       goto out;
@@ -1274,7 +1279,6 @@ py_eval(PyObject *obj, term_t func)
 
 	if ( !py_from_prolog(arg, &py_arg) )
 	  goto out;
-	Py_INCREF(py_arg);
 	PyTuple_SetItem(py_argv, i, py_arg);
       }
     }
@@ -1454,7 +1458,11 @@ py_call3(term_t Call, term_t result, term_t options)
       } else
 	rc = PL_domain_error("py_attribute", call);
     } else
-    { rc = !!(py_target = py_eval(py_target, call));
+    { PyObject *py_res = py_eval(py_target, call);
+
+      Py_XDECREF(py_target);
+      py_target = py_res;
+      rc = !!py_target;
       if ( rc && result )
 	rc = py_unify(result, py_target, uflags);
     }

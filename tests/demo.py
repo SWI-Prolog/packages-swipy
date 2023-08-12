@@ -144,3 +144,13 @@ def call_except(query, input={}):
     except Exception as ex:
         return ex
     return None
+
+def call_try(n, query, input={}):
+    """Call query `n` times, eating exceptions"""
+    count = 0
+    for i in range(0,n):
+        try:
+            once(query, input)
+        except Exception as ex:
+            count = count+1
+    return count

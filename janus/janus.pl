@@ -448,7 +448,7 @@ import_janus :-
     py_call(sys:hexversion, V),
     V >= 0x030A0000,                    % >= 3.10
     !,
-    py_run("from janus import *", {}, {}, _, []).
+    py_run("from janus import *", py{}, py{}, _, []).
 import_janus :-
     print_message(warning, janus(py_shell(no_janus))).
 

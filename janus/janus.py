@@ -283,7 +283,9 @@ class Term:
                     {"Msg":self})["Str"]
     def __del__(self):
         """Destroy the represented term"""
-        swipl.erase(self)
+        record = self._record;
+        self.record = 0
+        swipl.erase(record)
 
 class PrologError:
     """Represent a Prolog exception

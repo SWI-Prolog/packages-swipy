@@ -70,7 +70,9 @@ Py_SetPrologErrorFromObject(PyObject *obj)
     PyTuple_SetItem(argv, 0, obj);
     PyObject *ex = PyObject_CallObject(constructor, argv);
     if ( ex )
-      PyErr_SetObject(PyExcProlog(), ex);
+    { PyErr_SetObject(PyExcProlog(), ex);
+      Py_DECREF(ex);
+    }
   }
 
   Py_CLEAR(constructor);
@@ -340,15 +342,13 @@ swipl_erase(PyObject *self, PyObject *args)
 
   if ( PyTuple_GET_SIZE(args) != 1 )
     goto error;
-  rec = PyTuple_GetItem(args, 0);
-  if ( py_is_record(rec) )
-    rc = py_free_record(rec);
-  Py_CLEAR(rec);
+  rec = PyTuple_GetItem(args, 0); /* borrowed ref */
+  rc = py_free_record(rec);
   if ( rc )
     return rc;
 
 error:
-  PyErr_SetString(PyExc_TypeError, "swipl.erase(Term) takes a Term");
+  PyErr_SetString(PyExc_TypeError, "swipl.erase(ptr) takes a record");
   return NULL;
 }
 
