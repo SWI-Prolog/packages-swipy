@@ -41,6 +41,7 @@
 	    py_iter/2,			% +Call, -Return
 	    py_iter/3,			% +Call, -Return, +Options
             py_free/1,			% +Obj
+	    py_is_object/1,		% @Term
 	    py_with_gil/1,		% :Goal
 
             pyfunc/3,                   % +Module, +Function, -Return
@@ -66,8 +67,8 @@
 
             py_initialize/3,            % +Program, +Argv, +Options
             py_lib_dirs/1,              % -Dirs
-            add_py_lib_dir/1,           % +Dir
-            add_py_lib_dir/2,           % +Dir,+Where
+            py_add_lib_dir/1,           % +Dir
+            py_add_lib_dir/2,           % +Dir,+Where
 
             op(200, fy, @),             % @constant
             op(50,  fx, #)              % #Value
@@ -247,6 +248,14 @@ py_version :-
 %
 %   @arg Globals is a dict
 %   @arg Locals is a dict
+
+%!  py_is_object(@Term) is semidet.
+%
+%   True when Term is a Python object reference. Fails silently if @Term
+%   is any other Prolog term.
+%
+%   @error existence_error(py_object, Term) is raised of Term is a
+%   Python object, but it has been freed using py_free/1.
 
 %!  py_free(+Obj) is det.
 %
@@ -546,7 +555,7 @@ py_initialize(Program, Argv, Options) :-
     ->  absolute_file_name(library('python/janus.py'), Janus,
 			   [ access(read) ]),
 	file_directory_name(Janus, PythonDir),
-	add_py_lib_dir(PythonDir, first),
+	py_add_lib_dir(PythonDir, first),
 	py_connect_io
     ;   true
     ).
@@ -582,20 +591,20 @@ py_lib_dirs(Dirs) :-
     py_call(sys:path, Dirs0),
     maplist(prolog_to_os_filename, Dirs, Dirs0).
 
-%!  add_py_lib_dir(+Dir) is det.
-%!  add_py_lib_dir(+Dir, +Where) is det.
+%!  py_add_lib_dir(+Dir) is det.
+%!  py_add_lib_dir(+Dir, +Where) is det.
 %
 %   Add a directory to the Python  module   search  path.  In the second
-%   form, Where is one of `first`   or `last`. add_py_lib_dir/1 adds the
+%   form, Where is one of `first`   or `last`. py_add_lib_dir/1 adds the
 %   directory as last.
 %
 %   Dir is in Prolog notation. The added   directory  is converted to an
 %   absolute path using the OS notation.
 
-add_py_lib_dir(Dir) :-
-    add_py_lib_dir(Dir, last).
+py_add_lib_dir(Dir) :-
+    py_add_lib_dir(Dir, last).
 
-add_py_lib_dir(Dir, Where) :-
+py_add_lib_dir(Dir, Where) :-
     absolute_file_name(Dir, AbsDir),
     prolog_to_os_filename(AbsDir, OSDir),
     (   Where == last

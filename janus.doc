@@ -629,14 +629,14 @@ on \verb$%PATH%$ or using the registry and should be fairly independent
 from the Prolog version as long as it is version 9.1.12 or later.
 
 \subsection{Janus on Linux}
-\label{sec:janus-on-windows}
+\label{sec:janus-on-linux}
 
 On Linux systems we bind to the currently installed Prolog and Python
 version.   This should work smoothly from source.  We plan to support
 Janus in the PPA and Docker distributions.
 
 \subsection{Janus on MacOS}
-\label{sec:janus-on-windows}
+\label{sec:janus-on-macos}
 
 The situation on MacOS is less clear.   Compiled from source using
 Macports or Homebrew will probably work.
@@ -711,10 +711,9 @@ The current version of this Janus library must be considered \jargon{alpha}
 code.
 
 \begin{itemize}
-    \item The design is stable
-    \item Testing is not exhaustive.
-    \item Illegal use of either API, typically due to errors
-      sometimes leads to crashes.
+\item The design is stable
+\item Prolog predicates have been agreed upon
+\item Testing is not exhaustive.
 \end{itemize}
 
 

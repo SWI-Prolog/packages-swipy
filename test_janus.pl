@@ -61,7 +61,7 @@ test_janus :-
     source_file(test_janus, File),
     file_directory_name(File, Dir0),
     directory_file_path(Dir0, tests, Dir),
-    add_py_lib_dir(Dir, first).
+    py_add_lib_dir(Dir, first).
 
 :- begin_tests(janus_data).
 

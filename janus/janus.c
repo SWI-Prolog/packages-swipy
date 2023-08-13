@@ -1727,6 +1727,18 @@ py_free(term_t t)
 }
 
 
+static foreign_t
+py_is_object(term_t t)
+{ PyObject *obj = NULL;
+  int rc = get_py_obj(t, &obj, FALSE);
+
+  Py_CLEAR(obj);
+
+  return rc;
+}
+
+
+
 		 /*******************************
 		 *        GIL MANAGEMENT        *
 		 *******************************/
@@ -1806,6 +1818,7 @@ install_janus(void)
   REGISTER("py_iter",         3, py_iter3,       PL_FA_NONDETERMINISTIC);
   REGISTER("py_run",          5, py_run,         0);
   REGISTER("py_free",         1, py_free,        0);
+  REGISTER("py_is_object",    1, py_is_object,   0);
   REGISTER("py_with_gil",     1, py_with_gil,    PL_FA_TRANSPARENT);
   REGISTER("py_str",          2, py_str,         0);
   REGISTER("py_debug",        1, py_debug,       0);

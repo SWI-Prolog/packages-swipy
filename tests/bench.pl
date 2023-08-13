@@ -4,7 +4,7 @@ here.
 :- initialization
     source_file(here, File),
     file_directory_name(File, Dir),
-    add_py_lib_dir(Dir, first).
+    py_add_lib_dir(Dir, first).
 
 bench(N) :-
     py_version,			% Load Python
