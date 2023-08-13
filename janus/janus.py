@@ -65,6 +65,10 @@ except ModuleNotFoundError:     # Loading janus into Python
     else:
          import janus_swi.swipl as swipl
 
+# Undefined
+
+Undefined = "Undefined"
+
 ################################################################
 # Primary high level interface
 
