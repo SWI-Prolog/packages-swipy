@@ -47,7 +47,7 @@ mod_janus(void)
   if ( !janus )
   { PyObject *janus_name = NULL;
 
-    if ( (janus_name=PyUnicode_FromString("janus")) )
+    if ( (janus_name=PyUnicode_FromString("janus_swi")) )
       janus = PyImport_Import(janus_name);
 
     Py_CLEAR(janus_name);
