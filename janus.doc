@@ -228,18 +228,35 @@ Noun = 'a sentence'.
 \section{Calling Prolog from Python}
 \label{sec:janus-call-prolog}
 
-The binding can also call Prolog from Python. This may be used to deal
-with \jargon{call backs}. Future versions will allow this to be used
-from Python using an embedded version of SWI-Prolog.
+The binding can also call Prolog from Python.  This can both be used
+to realize \jargon{call backs}, i.e., the Python system embedded into
+Prolog calls Prolog, or after embedding SWI-Prolog into Python.
 
-The Python module \const{janus} provides some utility functions and
-defines the class \const{Prolog}. The class \const{Query} implements
-the Python \jargon{iterator} protocol.  Below we iterate over the
-solutions of between/3.  It is allowed to use \const{break} the
-Python loop.
+Loading janus into Python is realized using the Python package
+\const{janus-swi}, which defines the module \const{janus_swi}.  We do
+not call this simply \const{janus} to allow coexistence of janus for
+multiple Prolog implementations.  Unless you plan to interact with
+multiple Prolog systems in the same session, we advice to import
+janus for SWI-Prolog as below.
 
-A Prolog goal is constructed from a string and \jargon{input bindings}
-and returns \jargon{output bindings}.  For example
+\begin{code}
+import janus_swi as janus
+\end{code}
+
+If Python is embedded into SWI-Prolog, the Python module may be
+imported both as \const{janus} and \const{janus_swi}.  Using
+\const{janus} allows the same Python code to be used from different
+Prolog systems, while using \const{janus_swi} allows the same code to
+be used both for embedding Python into Prolog and Prolog into Python.
+In the remainder of this section we consider the module to be named
+\const{janus}.
+
+The Python module \const{janus} provides utility functions and defines
+the classes \class{Query}, \class{Term} and \class{PrologError}.  We
+start our discussion by introducing the \funcref{once}{query,inputs}
+function for calling Prolog goals as once/1. A Prolog goal is
+constructed from a string and a dict with \jargon{input bindings} and
+returns \jargon{output bindings} as a dict.  For example
 
 \begin{code}
 >>> from janus import *
@@ -247,22 +264,25 @@ and returns \jargon{output bindings}.  For example
 {'Y': 2, 'status': True}
 \end{code}
 
-Note that the input argument may also be added literally. Below we give
-two examples. It is strongly advised \textbf{not to use string
-interpolation} due to the risk for \jargon{injection attacks}. Also,
-serializing and deserializing the data is generally slower then using
-the input dictionary, especially if the data is large.
+Note that the input argument may also be added literally. Below we
+give two examples. It is strongly advised \textbf{not to use string
+  interpolation} for three reasons.  Firstly, the query strings are
+compiled and cached on the Prolog sided and (thus) we assume a finite
+number of distinct query strings.  Secondly, string interpolation is
+sensitive to \jargon{injection attacks}.  Notably inserting quoted
+strings can easily be misused to create malicious queries.  Thirdly
+and finally, serializing and deserializing the data is generally
+slower then using the input dictionary, especially if the data is
+large. Using a dict for input and output together with a (short)
+string to denote the goal is easy to use and fast.
 
 \begin{code}
 >>> janus.once("Y is 1+1", {})
 {'Y': 2, 'status': True}
 >>> x = 1
->>> janus.once(f"Y is {x}+1", {})
-{'Y': 2, 'status': True}
+>>> janus.once(f"Y is {x}+1", {}) # Do not use this
+{'Y': 2, 'status': True}          # See above
 \end{code}
-
-Using a dict for input and output together with a (short) string to
-denote the goal is easy to use and fast.
 
 The \jargon{output dict} contains all named Prolog variables that (1)
 are not in the input dict and (2) do not start with an underscore. For
@@ -278,12 +298,14 @@ variables or arbitrary compound terms.
 [ 'Kees', 'Klaas' ]
 \end{code}
 
-The class janus.Query() implements a Python \jargon{iterator} that
-iterates over the solutions of a Prolog goal. The iterator may be
-aborted using the Python \exam{break} statement.  As with janus.once(),
-the returned dict contains a \const{status} field.  This field cannot
-be \const{False} though and thus is either \const{True} or the string
-\verb$'Undefined'$.
+While \funcref{once}{} deals with semi-deterministic goals, the class
+\class{Query} implements a Python \jargon{iterator} that iterates over
+the solutions of a Prolog goal. The iterator may be aborted using the
+Python \exam{break} statement.  As with \funcref{janus.once}{}, the
+returned dict contains a \const{status} field.  This field cannot be
+\const{False} though and thus is either \const{True} or the string
+\verb$'Undefined'$.\footnote{The representation of \jargon{Undefined}
+is still under discussion.}
 
 \begin{code}
 from janus import *
@@ -503,7 +525,7 @@ pip install .
 one-liner as below.
 
 \begin{code}
-pip install git+https://github.com/SWI-Prolog/packages-swipy.git#egg=janus
+pip install git+https://github.com/SWI-Prolog/packages-swipy.git#egg=janus_swi
 \end{code}
 
 Installing janus as a Python package requires
@@ -523,7 +545,7 @@ from Python.  For example:
 
 \begin{code}
 python
->>> from janus import *
+>>> from janus_swi import *
 >>> once("writeln('Hello world!')")
 Hello world!
 {'status': True}

@@ -24,18 +24,18 @@ elif ( sys.platform == 'darwin' ):
 elif ( sys.platform == 'win32' ):
     PLLIB="libswipl"
 
-setup(name='janus',
+setup(name='janus_swi',
       version='0.1.0',
       description="Janus library to call SWI-Prolog",
       author="Jan Wielemaker",
       author_email="jan@swi-prolog.org",
       url="http://github.com/SWI-Prolog/packages-swipy",
       license="BSD-2",
-      packages=['janus'],
-      package_dir={"janus":"janus"},
-      package_data={"janus": ['janus.pl']},
+      packages=['janus_swi'],
+      package_dir={"janus_swi":"janus"},
+      package_data={"janus_swi": ['janus.pl']},
       ext_modules= [
-          Extension('janus.swipl',
+          Extension('janus_swi.swipl',
                     ['janus/janus.c'],
                     depends=[
                         'janus/hash.c',

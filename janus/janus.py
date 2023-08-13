@@ -60,10 +60,10 @@ except ModuleNotFoundError:     # Loading janus into Python
          flags = sys.getdlopenflags()
          newflags = (flags & ~os.RTLD_LOCAL|os.RTLD_GLOBAL)
          sys.setdlopenflags(newflags)
-         import janus.swipl as swipl
+         import janus_swi.swipl as swipl
          sys.setdlopenflags(flags)
     else:
-         import janus.swipl as swipl
+         import janus_swi.swipl as swipl
 
 ################################################################
 # Primary high level interface

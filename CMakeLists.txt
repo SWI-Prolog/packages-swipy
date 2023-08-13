@@ -23,7 +23,7 @@ endif()
 
 if(Python_Development.Embed_FOUND)
 
-set(PYTHON_FILES janus.py)
+set(PYTHON_FILES janus.py janus_swi.py)
 prepend(PYTHON_FILES janus/ ${PYTHON_FILES})
 
 if(WIN32)

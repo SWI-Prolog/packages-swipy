@@ -2,7 +2,7 @@ build
 *.so
 *.dll
 *.dylib
-janus.egg-info
+janus_swi.egg-info
 __pycache__
 *~
 .gdbinit

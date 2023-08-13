@@ -82,7 +82,7 @@ in
 
 You can also do this using the one-liner below.
 
-    pip install git+https://github.com/SWI-Prolog/packages-swipy.git#egg=janus
+    pip install git+https://github.com/SWI-Prolog/packages-swipy.git#egg=janus_swi
 
 
 ## Documentation
