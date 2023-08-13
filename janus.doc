@@ -88,14 +88,17 @@ curly-bracket and \arg{k}:\arg{v} to dicts.  Note that
 \term{py}{Term} such that, with \const{py} defined as \jargon{prefix
   operator}, \verb$py{k1:v1, k2:v2}$ is both valid syntax as
 SWI-Prolog dict as as ISO Prolog compliant term and both are
-translated into the same Python dict.
+translated into the same Python dict.  Note that \verb${}$ translates
+to a Python string, while \verb$py({})$ translates into an empty
+Python dict.
 
-Note that by default we translate Python strings into Prolog atoms.
-Given we support strings, this is somewhat dubious.  There are two
-reasons for this choice.  One is the pragmatic reason that Python uses
-strings both for \jargon{identifiers} and arbitrary text.  Ideally
-we'd have the first translated to Prolog atoms and the latter to
-Prolog strings, but this is not possible.  The second is to improve
+By default we translate Python strings into Prolog atoms.  Given we
+support strings, this is somewhat dubious.  There are two reasons for
+this choice.  One is the pragmatic reason that Python uses strings
+both for \jargon{identifiers} and arbitrary text.  Ideally we'd have
+the first translated to Prolog atoms and the latter to Prolog strings,
+but, because we do not know which strings act as identifier and which
+as just text, this is not possible.  The second is to improve
 compatibility with Prolog systems that do not support strings.  Note
 that py_call/3 and py_iiter/3 provide the option
 \term{py_string_as}{string} to obtain a string if this is desirable.
@@ -131,18 +134,15 @@ Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 \end{center}
 
 The conversion \#(Term) allows passing anything as a Python string. If
-\arg{Term} is an atom or string, this is the same as passing the atom or
-string, except that the reserved atoms \const{'None'}, \const{true} and
-\const{false} are also converted to a string. Any other Prolog term is
-converted as defined by write_canonical/1.
-
-The conversion \term{prolog}{Term} creates an instance of
-\class{janus.Term}. This class encapsulates a copy of an arbitrary
-Prolog term. The SWI-Prolog implementation uses the PL_record() and
-PL_recorded() functions to store and retrieve the term. Internally,
-\class{janus.Term} is used to represent Prolog exeptions that are raised
-during the execution of \cfuncref{janus.once}{} or
-\cfuncref{janus.Query}{}.
+\arg{Term} is an atom or string, this is the same as passing the atom
+or string.  Any other Prolog term is converted as defined by
+write_canonical/1.  The conversion \term{prolog}{Term} creates an
+instance of \class{janus.Term}. This class encapsulates a copy of an
+arbitrary Prolog term. The SWI-Prolog implementation uses the
+PL_record() and PL_recorded() functions to store and retrieve the
+term. Internally, \class{janus.Term} is used to represent Prolog
+exeptions that are raised during the execution of
+\cfuncref{janus.once}{} or \cfuncref{janus.Query}{}.
 
 
 \section{Janus by example}
@@ -491,7 +491,7 @@ ERROR:   [10] janus:py_call(nomodule:noattr)
 
 If a call from Python to Prolog raises a Prolog exception, the exception
 is used to create an instance of \class{janus.PrologError} that
-excapsulates the exception using a \class{janus.Term}. The
+encapsulates the exception using a \class{janus.Term}. The
 \cfuncref{__str__}{} method generates a description using
 print_message/2, while \cfuncref{__repr__}{} uses write_canonical/1 to
 return a canonical representation of the Prolog term. The default

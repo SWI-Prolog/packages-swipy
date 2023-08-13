@@ -1,9 +1,9 @@
 # Janus: a bi-directional interface to Python
 
-> This is  _alpha_ software.  This work  is based on Janus  for XSB by
-> Theresa Swift  and Carl  Anderson.  Details of  the current  API may
-> change to  improve the  compatibility with other  implementations of
-> Janus.
+> This is  _beta_ software.  This  work is based  on Janus for  XSB by
+> Theresa  Swift   and  Carl   Anderson.   The  current   API  differs
+> considerably from the original.  We reached agreement on the current
+> API and XSB will implement this.
 >
 > Design  and overall  implementation  structure is  considered to  be
 > robust.   Several  issues  still   need  to  be  addressed,  notably
@@ -50,7 +50,7 @@ This repo my  be installed as a  Python package such that  you can run
 e.g.,
 
     python
-	>>> from janus import *
+	>>> from janus_swi import *
 	>>> once("writeln('Hello world!')")
 	Hello world!
 	{'status': True}

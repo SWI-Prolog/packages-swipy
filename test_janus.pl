@@ -88,6 +88,8 @@ test(dict, Z == py{name:bob, age:42}) :-
     py_call(janus:echo(py({name:bob, age:42})), Z).
 test(dict, Z == py{name:"bob", age:42}) :-
     py_call(janus:echo(py{name:bob, age:42}), Z, [py_string_as(string)]).
+test(nodict, Z == py{}) :-
+    py_call(janus:echo(py({})), Z).
 test(nodict, Z == {}) :-
     py_call(janus:echo({}), Z).
 test(nodict, Z == @true) :-
