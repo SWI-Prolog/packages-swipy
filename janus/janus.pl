@@ -62,8 +62,8 @@
             py_pp/2,                    % +Stream, +Term
             py_pp/3,                    % +Stream, +Term, +Options
 
-            obj_dir/2,                  % +ObjRef,-List
-            obj_dict/2,                 % obj_dict(+ObjRef, -Dict)
+            py_obj_dir/2,               % +ObjRef,-List
+            py_obj_dict/2,              % obj_dict(+ObjRef, -Dict)
 
             py_initialize/3,            % +Program, +Argv, +Options
             py_lib_dirs/1,              % -Dirs
@@ -104,12 +104,22 @@ add_python_dll_dir :-
 
 /** <module> Call Python from Prolog
 
-This library implements calling Python from Prolog.
+This library implements calling Python  from   Prolog.  It  is available
+directly from Prolog if the janus   package is bundled, providing access
+to an _embedded_ Python instance. If  SWI-Prolog is embedded into Python
+using the Python package ``janus-swi``, this  library is provided either
+from Prolog or from the Python package.
+
+Normally,  the  Prolog  user  can  simply  start  calling  Python  using
+py_call/2 or friends. In special cases it   may  be needed to initialize
+Python with options using  py_initialize/3   and  optionally  the Python
+search path may be extended using py_add_lib_dir/1.
 */
 
 %!  py_version is det.
 %
-%   Print version info on the available Python installation
+%   Print version info on the  embedded   Python  installation  based on
+%   Python `sys:version`.
 
 py_version :-
     py_call(sys:version, X),
@@ -500,18 +510,17 @@ opts_kws(Options, Kws) :-
 pair_kws(Name-Value, Name=Value).
 
 
-%!  obj_dir(+ObjRef, -List) is det.
-%!  obj_dict(+ObjRef, -Dict) is det.
+%!  py_obj_dir(+ObjRef, -List) is det.
+%!  py_obj_dict(+ObjRef, -Dict) is det.
 %
-%   Examine attributes of an object. The predicate obj_dir/2 fetches the
-%   names of all attributes,  while  obj_dict/2   gets  a  dict with all
-%   attributes and their values.
+%   Examine attributes of an object.  The predicate py_obj_dir/2 fetches
+%   the names of all attributes, while   py_obj_dict/2  gets a dict with
+%   all attributes and their values.
 
-obj_dir(ObjRef, List) :-
-    py_call(ObjRef:'__dir__'(), List0),
-    maplist(atom_string, List, List0).
+py_obj_dir(ObjRef, List) :-
+    py_call(ObjRef:'__dir__'(), List).
 
-obj_dict(ObjRef, Dict) :-
+py_obj_dict(ObjRef, Dict) :-
     py_call(ObjRef:'__dict__', Dict).
 
 
@@ -750,8 +759,8 @@ ucall(Goal, TV) :-
 		 *          PYTHON I/O          *
 		 *******************************/
 
-%!  py_write(+Stream, -String) is det.
-%!  py_readline(+Stream, +Size, +Prompt, +Line) is det.
+%   py_write(+Stream, -String) is det.
+%   py_readline(+Stream, +Size, +Prompt, +Line) is det.
 %
 %   Called from redefined Python console  I/O   to  write/read using the
 %   Prolog streams.

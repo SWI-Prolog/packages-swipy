@@ -225,6 +225,32 @@ Noun = 'a sentence'.
 
 \input{libjanus.tex}
 
+\subsection{Handling Python errors in Prolog}
+\label{sec:janus-python-errors}
+
+Exceptions are translated into exceptions in the other language both
+ways. A Python exception translates into a Prolog exception of the shape
+below. The library defines a rule for print_message/2 to render these
+errors in a human readable way.
+
+\begin{quote}
+\term{error}{\term{python_error}{ErrorType, Value, Stack}, _}
+\end{quote}
+
+Here, \arg{ErrorType} is the name of the error type, as an atom, e.g.,
+\const{'TypeError'}. \arg{Value} is the exception object represented by
+a Python object reference. \arg{Stack} is either \const{@none} or an
+object that captures the Python stack. The \pllib{janus} defines the
+message formatting, which makes us end up with a message like below.
+
+\begin{code}
+?- py_call(nomodule:noattr).
+ERROR: Python 'ModuleNotFoundError':
+ERROR:   No module named 'nomodule'
+ERROR: In:
+ERROR:   [10] janus:py_call(nomodule:noattr)
+\end{code}
+
 \section{Calling Prolog from Python}
 \label{sec:janus-call-prolog}
 
@@ -298,7 +324,7 @@ variables or arbitrary compound terms.
 [ 'Kees', 'Klaas' ]
 \end{code}
 
-While \funcref{once}{} deals with semi-deterministic goals, the class
+While \funcref{janus.once}{} deals with semi-deterministic goals, the class
 \class{Query} implements a Python \jargon{iterator} that iterates over
 the solutions of a Prolog goal. The iterator may be aborted using the
 Python \exam{break} statement.  As with \funcref{janus.once}{}, the
@@ -401,6 +427,24 @@ undefined/0. For example
 {'status': 'Undefined'}
 \end{code}
 
+    \cfunction{None}{janus.consult}{file}
+Consult the given \arg{file}.  Implemented as
+\exam{janus.once("consult(File)", {"File":file})}.
+
+    \cfunction{None}{janus.prolog}{}
+    Start the interactive Prolog toplevel.  This is the Python equivalent
+    of py_shell/0.
+\end{description}
+
+\subsection{Janus class Query}
+\label{sec:janus-class-query}
+
+Class \class{janus.query} is very similar to the
+\cfuncref{janus.once}{} function, but it returns a Python
+\jargon{iterator} that allows for iterating over the answers to a
+non-deterministic Prolog predicate.
+
+\begin{description}
    \cfunction{Query}{janus.Query}{query, bindings=\{{}\}, keep=False}
    As janus.once(), returning an \jargon{iterator} that provides an
    answer dict as janus.once() for each answer to \arg{query}.  Answers
@@ -415,14 +459,70 @@ undefined/0. For example
    Close the query.  Closing a query is obligatory.  When used as
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
    care of closing the query.
+\end{description}
 
-    \cfunction{None}{janus.consult}{file}
-Consult the given \arg{file}.  Implemented as
-\exam{janus.once("consult(File)", {"File":file})}.
+\subsection{Janus class Term}
+\label{sec:janus-class-term}
 
-    \cfunction{None}{janus.prolog}{}
-    Start the interactive Prolog toplevel.  This is the Python equivalent
-    of py_shell/0.
+Class \class{janus.Term} encapsulates a Prolog term.  Similarly to the
+Python object reference (see py_is_object/1), the class allows Python
+to represent arbitrary Prolog data, typically with the intend to pass
+it back to Prolog.
+
+\begin{description}
+  \cfunction{Term}{janus.Term}{...}
+  Instances are never created explicitly by the user.   An instance is
+  created by handling a term \term{prolog}{Term} tho the data conversion
+  processes.   As a result, we can do
+
+  \begin{code}
+  ?- py_call(janus:echo(prolog(hello(world))), Obj, [py_object(true)]).
+  Obj = <py_Term>(0x7f7a14512050).
+  ?- py_call(print($Obj)).
+  hello(world)
+  Obj = <py_Term>(0x7f7a14512050).
+  \end{code}
+
+  \cfunction{Term}{janus.Term.__str__}{}
+  Return the output of print/1 on the term.  This is what is used by
+  the Python function print().
+  
+  \cfunction{Term}{janus.Term.__repr__}{}
+  Return the output of write_canonical/1 on the term.
+\end{description}
+
+\subsection{Janus class PrologError}
+\label{sec:janus-class-prolog-error}
+
+Class \class{PrologError}, derived from the Python class
+\class{Exception} represents a Prolog exception that typically results
+from calling \cfuncref{janus.once}{} or using
+\cfuncref{janus.Query}{}.  The class either encapsulates a string on a
+Prolog exception term using \class{janus.Term}.  Prolog exceptions are
+used to represent errors raised by Prolog.  Strings are used to
+represent errors from invalid use of the interface.  The default
+behavior gives the expected message:
+
+\begin{code}
+>>> x = janus.once("X is 3.14/0")['X']
+Traceback (most recent call last):
+  ...
+janus.PrologError: //2: Arithmetic: evaluation error: `zero_divisor'
+\end{code}
+
+At this moment we only define a single Python class for representing
+Prolog exceptions.  This suffices for error reporting, but does not
+make it easy to distinguish different Prolog errors.  Future versions
+may improve on that by either subclassing \class{janus.PrologError}
+or provide a method to classify the error more easily.
+
+\begin{description}
+  \cfunction{PrologError}{janus.PrologError}{TermOrString}
+  The constructor may be used explicitly, but this should be very uncommon.
+  \cfunction{String}{janus.PrologError.__str__}{}
+  Return a human readable message for the error using message_to_string/2
+  \cfunction{String}{janus.PrologError.__repr__}{}
+  Return a formal representation of the error by means of write_canonical/1.
 \end{description}
 
 \section{Janus and threads}
@@ -462,53 +562,6 @@ from Prolog on Python. As a result:
     the initializing thread has terminated.
 \end{itemize}
 
-
-\section{Janus error handling}
-\label{sec:janus-errors}
-
-Exceptions are translated into exceptions in the other language both
-ways. A Python exception translates into a Prolog exception of the shape
-below. The library defines a rule for print_message/2 to render these
-errors in a human readable way.
-
-\begin{quote}
-\term{error}{\term{python_error}{ErrorType, Value, Stack}, _}
-\end{quote}
-
-Here, \arg{ErrorType} is the name of the error type, as an atom, e.g.,
-\const{'TypeError'}. \arg{Value} is the exception object represented by
-a Python object reference. \arg{Stack} is either \const{'None'} or an
-object that captures the Python stack. The \pllib{janus} defines the
-message formatting, which makes us end up with a message like below.
-
-\begin{code}
-?- py_call(nomodule:noattr).
-ERROR: Python 'ModuleNotFoundError':
-ERROR:   No module named 'nomodule'
-ERROR: In:
-ERROR:   [10] janus:py_call(nomodule:noattr)
-\end{code}
-
-If a call from Python to Prolog raises a Prolog exception, the exception
-is used to create an instance of \class{janus.PrologError} that
-encapsulates the exception using a \class{janus.Term}. The
-\cfuncref{__str__}{} method generates a description using
-print_message/2, while \cfuncref{__repr__}{} uses write_canonical/1 to
-return a canonical representation of the Prolog term. The default
-behavior gives the expected message:
-
-\begin{code}
->>> x = janus.once("X is 3.14/0")['X']
-Traceback (most recent call last):
-  ...
-janus.PrologError: //2: Arithmetic: evaluation error: `zero_divisor'
-\end{code}
-
-At this moment we only define a single Python class for representing
-Prolog exceptions.  This suffices for error reporting, but does not
-make it easy to distinguish different Prolog errors.  Future versions
-may improve on that by either subclassing \class{janus.PrologError}
-or provide a method to classify the error more easily.
 
 \section{Janus as a Python package}
 \label{sec:janus-python-package}
