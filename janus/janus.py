@@ -291,7 +291,7 @@ class Term:
         self.record = 0
         swipl.erase(record)
 
-class PrologError:
+class PrologError(Exception):
     """Represent a Prolog exception
 
     This class is used when calling Prolog from Python to represent that
