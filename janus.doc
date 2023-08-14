@@ -768,14 +768,30 @@ from the Prolog version as long as it is version 9.1.12 or later.
 \label{sec:janus-on-linux}
 
 On Linux systems we bind to the currently installed Prolog and Python
-version.   This should work smoothly from source.  We plan to support
-Janus in the PPA and Docker distributions.
+version.  This should work smoothly from source.  Janus is included in
+the \href{https://www.swi-prolog.org/build/PPA.html}{PPA distribution}
+for Ubuntu as well as in the
+\href{https://www.swi-prolog.org/Docker.html}{Docker images}.   It is
+currently not part of the SNAP distribution.
+
+See \secref{janus-python-package} for for building the \const{janus_swi}
+Python package.
 
 \subsection{Janus on MacOS}
 \label{sec:janus-on-macos}
 
-The situation on MacOS is less clear.   Compiled from source using
-Macports or Homebrew will probably work.
+Unfortunately MacOS versions of Python do not ship with the equivalent
+of \file{python3.dll} found on Windows.  This implies we can only compile
+our binaries against a specific version of Python.  We will use the
+default Python binary for that, which is installed in
+\file{/Library/Frameworks/Python.framework/}
+
+The Macports version is also linked against an explicit version of
+Python, in this case provided by Macports.
+
+The Python package \const{janus_swi} may be compiled against any version
+of Python selected by \program{pip}.  See \secref{janus-python-package}
+for details.
 
 
 \section{Compatibility to the XSB Janus implementation}
