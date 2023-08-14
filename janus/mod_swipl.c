@@ -292,6 +292,7 @@ swipl_next_solution(PyObject *self, PyObject *args)
       Py_SetPrologError(PL_exception(qid));
       PL_cut_query(qid);
       done = TRUE;
+      break;
     case PL_S_NOT_INNER:
       Py_SetPrologErrorFromChars("swipl.next_solution(): not inner query");
       return NULL;
