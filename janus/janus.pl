@@ -461,13 +461,13 @@ comma_dict_items(Key:Value, Keys) =>
 
 py_shell :-
     import_janus,
-    py_call(janus:interact(), _).
+    py_call(janus_swi:interact(), _).
 
 import_janus :-
     py_call(sys:hexversion, V),
     V >= 0x030A0000,                    % >= 3.10
     !,
-    py_run("from janus import *", py{}, py{}, _, []).
+    py_run("from janus_swi import *", py{}, py{}, _, []).
 import_janus :-
     print_message(warning, janus(py_shell(no_janus))).
 
@@ -579,7 +579,7 @@ py_connect_io :-
 	    [0-user_input, 1-user_output, 2-user_error],
 	    NonFiles),
     Call =.. [connect_io|NonFiles],
-    py_call(janus:Call).
+    py_call(janus_swi:Call).
 
 non_file_stream(Expect-Stream, Bool) :-
     (   stream_property(Stream, file_no(Expect))
