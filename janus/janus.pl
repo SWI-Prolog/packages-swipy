@@ -788,6 +788,24 @@ py_add_history(Line) :-
 
 
 		 /*******************************
+		 *          COMPILING           *
+		 *******************************/
+
+%   py_consult(+File, +Data, +Module) is det.
+%
+%   Support janus.consult(file, data=None, module='user').
+
+:- public py_consult/3.
+py_consult(File, @none, Module) =>
+    consult(Module:File).
+py_consult(File, Data, Module) =>
+    setup_call_cleanup(
+	open_string(Data, In),
+	load_files(Module:File, [stream(In)]),
+	close(In)).
+
+
+		 /*******************************
 		 *           MESSAGES		*
 		 *******************************/
 

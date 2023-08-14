@@ -129,11 +129,24 @@ def once(query, inputs={}, keep=False):
     """
     return swipl.call(query, inputs, keep)
 
-def consult(file):
+def consult(file, data=None, module='user'):
     """
     Consult a Prolog file.
+
+    Parameters
+    ----------
+    file: str
+        Name of the file to consult.
+    data: str=None
+        If provided, do not read a file, but compile the Prolog text
+        from the given string.
+    module: str='user'
+        Target module.  This is where the code is loaded if the file
+        (or data) does not define a module or where the exports of the
+        loaded module are imported into.
     """
-    once("consult(File)", {"File":file})
+    once("janus:py_consult(File, Data, Module)",
+         {"File":file, "Data":data, "Module":module})
 
 def echo(v):
     """
@@ -311,8 +324,10 @@ class PrologError(Exception):
         """Create an instance from a Term or str"""
         if ( isinstance(msg, Term) ):
             self.term = msg
+            self.message = None
         else:
             self.message = msg
+            self.term = None
     def __str__(self):
         """Return the output of message_to_string/2 on the term"""
         if ( self.term ):
@@ -324,7 +339,9 @@ class PrologError(Exception):
         if ( self.term ):
             return once("with_output_to(string(Str),write_canonical(Msg))",
                          {"Msg":self.term})["Str"]
-        return self.message
+        else:
+            return self.message
+
 
 ################################################################
 # Rebind I/O
