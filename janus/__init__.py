@@ -2,7 +2,7 @@ import os
 import sys
 
 if ( sys.platform == "win32" ):
-    from janus._find_swipl import swipl_properties 
+    from janus_swi._find_swipl import swipl_properties
     props = swipl_properties()
     if ( props ):
         if ( int(props["PLVERSION"]) < 90112 ):
