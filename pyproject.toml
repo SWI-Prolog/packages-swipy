@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "janus_swi"
+authors = [
+  {name = "Jan Wielemaker", email = "jan@swi-prolog.org"},
+]
+description = "Janus library to call SWI-Prolog"
+readme = "README.md"
+requires-python = ">=3.6"
+keywords = ["prolog", "logic"]
+license = {text = "BSD-2-Clause"}
+dependencies = [
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://www.swi-prolog.org"
+Documentation = "https://www.swi-prolog.org/pldoc/package/janus"
+Repository = "https://github.com/SWI-Prolog/packages-swipy.git"
