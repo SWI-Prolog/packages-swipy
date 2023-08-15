@@ -4,7 +4,6 @@ SWIPL="swipl"
 PLLIB="swipl"
 
 from setuptools import setup, Extension
-import subprocess
 import sys
 sys.path.append("janus")
 from _find_swipl import swipl_properties
@@ -25,11 +24,11 @@ elif ( sys.platform == 'win32' ):
     PLLIB="libswipl"
 
 setup(name='janus_swi',
-      version='0.1.0',
+      version='0.8.0',
       description="Janus library to call SWI-Prolog",
       author="Jan Wielemaker",
       author_email="jan@swi-prolog.org",
-      url="http://github.com/SWI-Prolog/packages-swipy",
+      url="https://github.com/SWI-Prolog/packages-swipy",
       license="BSD-2",
       packages=['janus_swi'],
       package_dir={"janus_swi":"janus"},
