@@ -82,6 +82,7 @@
 
 :- if(\+current_predicate(py_call/1)).
 :- if(current_prolog_flag(windows, true)).
+:- use_module(library(shlib), [win_add_dll_directory/1]).
 % Just having the Python dir in PATH seems insufficient. We also need to
 % add the directory to the DLL search path.
 add_python_dll_dir :-
