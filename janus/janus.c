@@ -1254,18 +1254,24 @@ py_eval(PyObject *obj, term_t func)
 	term_t k = PL_new_term_ref();
 	term_t v = PL_new_term_ref();
 
+	if ( py_argv )
+	{
 #if HAVE__PYTUPLE_RESIZE
-	if ( _PyTuple_Resize(&py_argv, i) == -1 )
-	{ check_error(py_argv);
-	  goto out;
-	}
+	  if ( _PyTuple_Resize(&py_argv, i) == -1 )
+	  { check_error(py_argv);
+	    goto out;
+	  }
 #else
-	PyObject *slice = check_error(PyTuple_GetSlice(py_argv, 0, i));
-	if ( !slice )
-	  goto out;
-	Py_CLEAR(py_argv);
-	py_argv = slice;
+	  PyObject *slice = check_error(PyTuple_GetSlice(py_argv, 0, i));
+	  if ( !slice )
+	    goto out;
+	  Py_CLEAR(py_argv);
+	  py_argv = slice;
 #endif
+	} else
+	{ if ( !(py_argv=check_error(PyTuple_New(0))) )
+	    goto out;
+	}
 
 	for(; i<arity; i++)
 	{ _PL_get_arg(i+1, func, arg);

@@ -55,6 +55,9 @@ def sumlist3(X,Y):
 def kwd(a, b, c=3):
     return {"a":a, "b":b, "c":c}
 
+def kwd_all(a=1, b=2, c=3):
+    return {"a":a, "b":b, "c":c}
+
 # Demo for dealing with iterators
 
 def bench_iter(n):

@@ -173,6 +173,12 @@ test(arg, R == py{a:1,b:a,c:3}) :-
     py_call(demo:kwd(1,b=a), R).
 test(arg, R == py{a:1,b:a,c:x}) :-
     py_call(demo:kwd(1,c=x,b=a), R).
+test(arg, R == py{a:1,b:2,c:3}) :-
+    py_call(demo:kwd_all(), R).
+test(arg, R == py{a:1,b:a,c:3}) :-
+    py_call(demo:kwd_all(b=a), R).
+test(arg, R == py{a:a,b:b,c:c}) :-
+    py_call(demo:kwd_all(c=c,b=b,a=a), R).
 
 :- end_tests(janus_params).
 
