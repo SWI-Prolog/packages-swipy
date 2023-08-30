@@ -26,20 +26,22 @@ if(Python_Development.Embed_FOUND)
 set(PYTHON_FILES janus.py janus_swi.py)
 prepend(PYTHON_FILES janus/ ${PYTHON_FILES})
 
-if(WIN32)
-  string(REGEX REPLACE "3[.0-9]+\\." "3." Python3_LIB ${Python_LIBRARIES})
+# For some reason linking to python3.lib claims python311.lib does
+# not exist when using MSVC.   The link command seems correct.
+if(WIN32 AND NOT MSVC)
+  get_target_property(implib Python::Python IMPORTED_IMPLIB)
+  string(REGEX REPLACE "3[.0-9]+\\." "3." Python3_LIB ${implib})
+  message("Using Python3 compatibility library ${Python3_LIB}")
+  set_property(TARGET Python::Python PROPERTY
+	       IMPORTED_IMPLIB ${Python3_LIB})
   set(PYTHON3_COMPAT 1)
-else()
-  set(Python3_LIB ${Python_LIBRARIES})
 endif()
-
 
 swipl_plugin(
     janus
     MODULE janus
     C_SOURCES janus/janus.c
-    C_LIBS ${Python3_LIB}
-    C_INCLUDE_DIR ${Python_INCLUDE_DIRS}
+    C_LIBS Python::Python
     PL_LIBS janus/janus.pl
     PL_LIB_SUBDIR python
         PL_LIBS ${PYTHON_FILES})

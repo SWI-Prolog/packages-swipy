@@ -1155,11 +1155,17 @@ py_initialize_(term_t prog, term_t Argv, term_t options)
   }
 
 #if !HAVE_PYCONFIG
+#ifdef _MSC_VER
+#pragma warning(disable : 4996)
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   Py_SetProgramName(pname);
   Py_Initialize();
+#ifndef _MSC_VER
 #pragma GCC diagnostic pop
+#endif
 #else
   PyConfig config;
 
