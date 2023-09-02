@@ -6,3 +6,6 @@ class Dog:
 
     def add_trick(self, trick):
         self.tricks.append(trick)
+
+    def self(self):
+        return self

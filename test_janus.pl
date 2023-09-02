@@ -156,6 +156,9 @@ test(echo, Term =@= Copy) :-
 
 :- begin_tests(janus_obj).
 
+test(self, Self == Dog) :-
+    py_call(dog:'Dog'('Fido'), Dog),
+    py_call(Dog:self(), Self).
 test(dog, Tricks == ['roll over']) :-
     py_call(dog:'Dog'('Fido'), Dog),
     py_call(Dog:add_trick('roll over'), _),
