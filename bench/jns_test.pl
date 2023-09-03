@@ -1,45 +1,54 @@
-:- compiler_options([xpp_on]).
+:- module(jns_test,
+          [ zero_ary_true/0,instan/1,
+            zero_ary_undef/0, win/1, one_ary_undef/1,
+            zero_ary_fail/0,
+            one_ary_fail/1,p/1,
+            throw_an_error/2,
+            simple_call/2,
+            simple_cmd/1,
+            nondet_query/1,
+            prolog_makelist/2,
+            table_comp/1,test_comp/1,
+            test_copy/2,test_copy/3,
+            test_copy_1/2,
+            tc_rep_max/0,
+            prolog_paths/1,
+            append_prolog_paths/1,
+            table_comp/2,
+            test_comp/2,
+            test_empty_set/1,
+            return_term/1,
+            return_tuple/1,
+            return_null/1,
+            qdet_variadic/4,
+            anti_member/2,
+            am_3/3,
+            det_bind_test/7,
+            bind_test/7
+          ]).
+:- use_module(library(janus)).
 
-:- export zero_ary_true/0,instan/1,
-   zero_ary_undef/0, win/1, one_ary_undef/1,
-   zero_ary_fail/0,one_ary_fail/1,p/1,
-   throw_an_error/2.
-% for stress tests
-:- export simple_call/2,simple_cmd/1,
-   nondet_query/1, prolog_makelist/2.
-:- export table_comp/1,test_comp/1.
-:- export test_copy/2,test_copy/3.
-:- export test_copy_1/2.
+here.
+:- initialization
+    source_file(here, File),
+    file_directory_name(File, Dir),
+    py_add_lib_dir(Dir, first).
+
 
 test_copy(X,X).
 test_copy(_,X,X).
 
 test_copy_1([X],X).
 
-   
-% interrupt tests
-:- export tc_rep_max/0.
-% Utils.
-:- export prolog_paths/1,append_prolog_paths/1.
-:- export test_callback_1/1.
-    
-:- import timed_call/2 from standard.
-:- import add_lib_dir/1 from consult.
-
-%%:- import pyfunc/3 from xsbpy.
-%?- [xsbpy].
-
-%test_callback_1(Paths):-
-%    pyfunc(xp_utils,python_paths(),Paths).
-    
 prolog_paths(Dirs):-
     findall(Dir,usermod:library_directory(Dir),Dirs).
 
 append_prolog_paths(Paths):-
-    add_lib_dir(Paths).
+    forall(member(Path, Paths),
+           assertz(user:file_search_path(library, Path))).
 
 throw_an_error(Message,_Out):-
-    abort(Message).
+    throw(error(janus_error(Message), _)).
 
 instan(a).
 
@@ -52,12 +61,12 @@ win(X):- tnot(win(X)).
 :- table zero_ary_undef/0.
 zero_ary_undef :- tnot(zero_ary_undef).
 
-zero_ary_fail():- fail.
+zero_ary_fail :- fail.
 
 one_ary_fail(_):- fail.
 one_ary_undef(b):- zero_ary_undef.
 
-p(a).   
+p(a).
 
 simple_call(N,N1):- N1 is N + 1.
 simple_cmd(N):- _N1 is N + 1.
@@ -72,11 +81,13 @@ prolog_makelist(0,[]):-!.
 prolog_makelist(N,[N|T]):-
     N1 is N - 1,
     prolog_makelist(N1,T).
-    
-    
-tc_rep_max:- catch(timed_call( jns_test:loop,
-			      [repeating(100,jns_test:myrep_3),max(500,jns_test:mymax_3)]),_,
-		   writeln(finished_tc_rep_max)).
+
+
+tc_rep_max :-
+    catch(timed_call(jns_test:loop,
+                     [repeating(100,jns_test:myrep_3),max(500,jns_test:mymax_3)]),
+          _,
+          writeln(finished_tc_rep_max)).
 
 myrep_3:- writeln('tc_rep_max interrupt').
 
@@ -99,15 +110,13 @@ test_comp(d).
 test_comp(e):- unk(something).
 test_comp(e):- unk(something_else).
 
-:- export table_comp/2,test_comp/2.
-
 test_comp(a,1).
 test_comp(b,2).
 test_comp(c,3).
 test_comp(d,4).
 test_comp(e,5):- unk(something).
 test_comp(e,5):- unk(something_else).
-   
+
 :- table table_comp/2.
 table_comp(a,1).
 table_comp(b,2).
@@ -119,34 +128,22 @@ table_comp(e,5):- unk(something_else).
 :- table unk/1.
 unk(X):- tnot(unk(X)).
 
-:- export test_empty_set/1.
 test_empty_set([]).
 
-:- export return_term/1.
 return_term(p([1],a,f(a),g(b))).
 
-:- export return_tuple/1.
 return_tuple('-'([1,a,'-'(a)],'-'(b,c,d),'-'())).
 
-:- export return_null/1.
 return_null([]).
-
-:- export qdet_variadic/4.
 
 qdet_variadic(a,b,c,d).
 
-:- import member/2 from basics.
-
-:- export anti_member/2.
 anti_member(List,Elt):- member(Elt,List).
 
-:- export am_3/3.
 am_3(_Tag,List,Elt):- member(Elt,List).
 
-:- export det_bind_test/7.
    det_bind_test(foo,1, 3.14 ,[foo,1,3.14],-(t1,t2),{foo:bar,bar:baz},pySet([1,2,3])).
 
-:- export bind_test/7.
    bind_test(foo,1, 3.14 ,[foo,1,3.14],-(t1,t2),{foo:bar,bar:baz},pySet([1,2,3])).
    bind_test(pySet([1,2,3]),foo,1, 3.14 ,[foo,1,3.14],-(t1,t2),{foo:bar,bar:baz}).
    bind_test({foo:bar,bar:baz},pySet([1,2,3]),foo,1, 3.14 ,[foo,1,3.14],-(t1,t2)).
