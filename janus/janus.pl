@@ -83,6 +83,10 @@
 :- if(\+current_predicate(py_call/1)).
 :- if(current_prolog_flag(windows, true)).
 :- use_module(library(shlib), [win_add_dll_directory/1]).
+:- autoload(library(prolog_code), [comma_list/2]).
+:- autoload(library(readutil), [read_line_to_string/2]).
+:- autoload(library(wfs), [call_delays/2]).
+
 % Just having the Python dir in PATH seems insufficient. We also need to
 % add the directory to the DLL search path.
 add_python_dll_dir :-
@@ -741,13 +745,18 @@ px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
     ;   Ret = Ret0
     ).
 
+:- meta_predicate
+    call_delays_py(0, -).
+
 tv_goal_and_template(plain,  Goal, ucall(Goal, TV), Templ, -(Templ,TV)) :- !.
-tv_goal_and_template(delays, Goal, call_delays(Goal, TV), Templ, -(Templ,TV)) :- !.
+tv_goal_and_template(delays, Goal, call_delays_py(Goal, TV), Templ, -(Templ,TV)) :- !.
 tv_goal_and_template(none,   Goal, Goal, Templ, Templ) :- !.
 tv_goal_and_template(Mode, _, _, _, _) :-
     domain_error("px_comp() truth_vals", Mode).
 
-:- public ucall/2.
+:- public
+    ucall/2,
+    call_delays_py/2.
 
 ucall(Goal, TV) :-
     call(Goal),
@@ -755,6 +764,15 @@ ucall(Goal, TV) :-
     ->  TV = 1
     ;   TV = 2
     ).
+
+call_delays_py(Goal, PyDelays) :-
+    call_delays(Goal, Delays),
+    (   Delays == true
+    ->  PyDelays = []
+    ;   comma_list(Delays, Array),
+        maplist(term_string, Array, PyDelays)
+    ).
+
 
 		 /*******************************
 		 *          PYTHON I/O          *
