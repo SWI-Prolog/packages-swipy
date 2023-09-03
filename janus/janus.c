@@ -819,6 +819,7 @@ py_from_prolog(term_t t, PyObject **obj)
   size_t len;
   atom_t a;
   functor_t funct = 0;
+  int done = FALSE;
 
   // #(Term) --> stringify
   if ( PL_is_functor(t, FUNCTOR_hash1) )
@@ -865,10 +866,14 @@ py_from_prolog(term_t t, PyObject **obj)
 
   // Normal text representations.  Note that [] does not qualify
   // in SWI-Prolog as an atom
+  PL_STRINGS_MARK();
   if ( PL_get_wchars(t, &len, &s, CVT_ATOM|CVT_STRING) )
   { *obj = PyUnicode_FromWideChar(s, len);
-    return TRUE;
+    done = TRUE;
   }
+  PL_STRINGS_RELEASE();
+  if ( done )
+    return TRUE;
 
   if ( PL_skip_list(t, 0, &len) == PL_LIST )
   { term_t tail = PL_copy_term_ref(t);
