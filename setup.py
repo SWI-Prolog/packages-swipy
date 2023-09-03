@@ -34,7 +34,7 @@ setup(name='janus_swi',
       package_dir={"janus_swi":"janus"},
       package_data={"janus_swi": ['janus.pl']},
       ext_modules= [
-          Extension('janus_swi.swipl',
+          Extension('janus_swi._swipl',
                     ['janus/janus.c'],
                     depends=[
                         'janus/hash.c',

@@ -13,14 +13,14 @@ if ( sys.platform == "win32" ):
         raise RuntimeError("Could not find SWI-Prolog in %PATH% or registry")
 
 from janus_swi.janus import *
-import janus_swi.swipl
+import janus_swi._swipl
 
-janus_swi.swipl.initialize("swipl",
-                           "-g", "true",
-                           "--no-signals")
+_swipl.initialize("swipl",
+                  "-g", "true",
+                  "--no-signals")
 
 # Get library(janus) for calling Python from Prolog.  If this library is
 # already part of Prolog, use it, else add this directory to the library
 # search path.
-swipl.call("(exists_source(library(janus))->true;asserta(user:file_search_path(library, Here)))",
-           {"Here":os.path.dirname(__file__)})
+_swipl.call("(exists_source(library(janus))->true;asserta(user:file_search_path(library, Here)))",
+            {"Here":os.path.dirname(__file__)})

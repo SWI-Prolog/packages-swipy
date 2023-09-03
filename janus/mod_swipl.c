@@ -426,14 +426,14 @@ static PyMethodDef swiplMethods[] =
 
 static struct PyModuleDef swipl_module =
 { PyModuleDef_HEAD_INIT,
-  "swipl",   /* name of module */
-  NULL,      /* module documentation, may be NULL */
+  "_swipl",  /* name of module */
+  "Internal module providing access to SWI-Prolog.",
   -1,        /* size of per-interpreter state of the module,
 		or -1 if the module keeps state in global variables. */
   swiplMethods
 };
 
 PyMODINIT_FUNC
-PyInit_swipl(void)
+PyInit__swipl(void)
 { return PyModule_Create(&swipl_module);
 }

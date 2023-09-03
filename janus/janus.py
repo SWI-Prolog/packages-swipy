@@ -52,7 +52,7 @@ janus`.   The module provides three groups of support:
 # There must be a cleaner way ...
 
 try:
-    import swipl	        # Loading janus into Prolog
+    import _swipl	        # Loading janus into Prolog
 except ModuleNotFoundError:     # Loading janus into Python
     import sys
     if ( hasattr(sys, "getdlopenflags") ):
@@ -60,10 +60,13 @@ except ModuleNotFoundError:     # Loading janus into Python
          flags = sys.getdlopenflags()
          newflags = (flags & ~os.RTLD_LOCAL|os.RTLD_GLOBAL)
          sys.setdlopenflags(newflags)
-         import janus_swi.swipl as swipl
+         import janus_swi._swipl as _swipl
          sys.setdlopenflags(flags)
     else:
-         import janus_swi.swipl as swipl
+         import janus_swi._swipl as _swipl
+
+if not hasattr(_swipl, 'call'):
+    raise RuntimeError(f"Loaded wrong module '_swipl' from {_swipl.__file__}")
 
 # Undefined
 
@@ -86,30 +89,30 @@ class Query:
     """
     def __init__(self, query, inputs={}):
         """Create from query and inputs as janus.once()"""
-        self.state = swipl.open_query(query, inputs)
+        self.state = _swipl.open_query(query, inputs)
     def __iter__(self):
         """Implement iter protocol"""
         return self
     def __next__(self):
         """Implement iter protocol.  Returns a dict as janus.once()"""
-        rc = swipl.next_solution(self.state)
+        rc = _swipl.next_solution(self.state)
         if rc == False or rc["status"] == False:
             raise StopIteration()
         else:
             return rc
     def __del__(self):
         """Close the Prolog query"""
-        swipl.close_query(self.state)
+        _swipl.close_query(self.state)
     def next(self):
         """Allow for explicit enumeration,  Returns None or a dict"""
-        rc = swipl.next_solution(self.state)
+        rc = _swipl.next_solution(self.state)
         if rc == False or rc["status"] == False:
             return None
         else:
             return rc
     def close(self):
         """Explicitly close the query."""
-        swipl.close_query(self.state)
+        _swipl.close_query(self.state)
 
 def once(query, inputs={}, keep=False):
     """
@@ -127,7 +130,7 @@ def once(query, inputs={}, keep=False):
         be used to preserve changes to global variables using
         `b_setval/2`.
     """
-    return swipl.call(query, inputs, keep)
+    return _swipl.call(query, inputs, keep)
 
 def consult(file, data=None, module='user'):
     """
@@ -302,7 +305,7 @@ class Term:
         """Destroy the represented term"""
         record = self._record;
         self.record = 0
-        swipl.erase(record)
+        _swipl.erase(record)
 
 class PrologError(Exception):
     """Represent a Prolog exception

@@ -1835,7 +1835,7 @@ install_janus(void)
   REGISTER("py_str",          2, py_str,         0);
   REGISTER("py_debug",        1, py_debug,       0);
 
-  if ( PyImport_AppendInittab("swipl", PyInit_swipl) == -1 )
+  if ( PyImport_AppendInittab("_swipl", PyInit__swipl) == -1 )
     Sdprintf("Failed to add module swipl to Python");
 }
 
