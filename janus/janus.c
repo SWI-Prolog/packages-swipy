@@ -823,8 +823,7 @@ py_from_prolog_at1(term_t t, PyObject **obj)
 
 static int
 py_from_prolog(term_t t, PyObject **obj)
-{ wchar_t *s;
-  size_t len;
+{ size_t len;
   functor_t funct = 0;
   int done = FALSE;
 
@@ -833,11 +832,16 @@ py_from_prolog(term_t t, PyObject **obj)
   { term_t arg = PL_new_term_ref();
     _PL_get_arg(1, t, arg);
 
-    if ( PL_get_wchars(arg, &len, &s, CVT_ALL|CVT_WRITE_CANONICAL) )
-    { PL_reset_term_refs(arg);
-      *obj = PyUnicode_FromWideChar(s, len);
-      return TRUE;
+    PL_STRINGS_MARK();
+    char *s;
+    if ( PL_get_nchars(arg, &len, &s, REP_UTF8|CVT_ALL|CVT_WRITE_CANONICAL) )
+    { *obj = PyUnicode_FromStringAndSize(s, len);
+      done = TRUE;
     }
+    PL_reset_term_refs(arg);
+    PL_STRINGS_RELEASE();
+    if ( done )
+      return !!*obj;
   }
 
   if ( PL_is_integer(t) )
@@ -874,13 +878,14 @@ py_from_prolog(term_t t, PyObject **obj)
   // Normal text representations.  Note that [] does not qualify
   // in SWI-Prolog as an atom
   PL_STRINGS_MARK();
-  if ( PL_get_wchars(t, &len, &s, CVT_ATOM|CVT_STRING) )
-  { *obj = PyUnicode_FromWideChar(s, len);
+  char *s;
+  if ( PL_get_nchars(t, &len, &s, REP_UTF8|CVT_ATOM|CVT_STRING) )
+  { *obj = check_error(PyUnicode_FromStringAndSize(s, len));
     done = TRUE;
   }
   PL_STRINGS_RELEASE();
   if ( done )
-    return TRUE;
+    return !!*obj;
 
   if ( PL_skip_list(t, 0, &len) == PL_LIST )
   { term_t tail = PL_copy_term_ref(t);
