@@ -54,6 +54,7 @@ static atom_t ATOM_string;
 static atom_t ATOM_file;
 static atom_t ATOM_eval;
 static atom_t ATOM_single;
+static atom_t ATOM_built_in;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
@@ -356,6 +357,13 @@ get_py_module(term_t name, PyObject **mod)
 
   if ( PL_get_atom(name, &id) )
   { PyObject *obj;
+
+    if ( id == ATOM_built_in )
+    { PyObject *builtins = PyEval_GetBuiltins();
+      Py_INCREF(builtins);
+      *mod = builtins;
+      return TRUE;
+    }
 
     if ( !py_module_table )
       py_module_table = py_new_hashmap();
@@ -1209,6 +1217,41 @@ succeeded:
 }
 
 
+/* Get the initial target to work on
+ */
+
+static int
+get_py_initial_target(term_t t, PyObject **py_target, int error)
+{ if ( get_py_obj(t, py_target, error) ||
+       get_py_module(t, py_target) )
+    return TRUE;
+
+  if ( error )
+    PL_type_error("py_target", t);
+
+  return FALSE;
+}
+
+static PyObject*
+builtin_function(PyObject *builtins, atom_t fname)
+{ if ( !builtins )
+    builtins = PyEval_GetBuiltins(); /* borrowed reference */
+
+  /* py_func has borrowed reference */
+  PyObject *py_func = PyDict_GetItemString(builtins, PL_atom_chars(fname));
+  if ( !py_func )
+  { term_t fn;
+
+    if ( (fn=PL_new_term_ref()) &&
+	 PL_put_atom(fn, fname) )
+      PL_existence_error("python_builtin", fn);
+  } else
+    Py_INCREF(py_func);
+
+  return py_func;
+}
+
+
 /* Evaluate func on obj.  If obj = NULL, evaluate a builtin function
  * Return value: New Reference
  */
@@ -1220,7 +1263,7 @@ py_eval(PyObject *obj, term_t func)
   size_t arity;
   PyObject *py_res = NULL;
 
-  if ( !obj && get_py_obj(func, &py_res, FALSE) )
+  if ( !obj && get_py_initial_target(func, &py_res, FALSE) )
     return py_res;
 
   if ( obj && PL_get_chars(func, &attr, CVT_ATOM) )
@@ -1230,20 +1273,12 @@ py_eval(PyObject *obj, term_t func)
     PyObject *py_argv = NULL;
     PyObject *py_kws  = NULL;
 
-    if ( obj )
+    if ( obj == PyEval_GetBuiltins() )
+    { py_func = builtin_function(obj, fname);
+    } else if ( obj )
     { py_func = check_error(PyObject_GetAttrString(obj, PL_atom_chars(fname)));
     } else
-    { PyObject *builtins = PyEval_GetBuiltins();
-      py_func = PyDict_GetItemString(builtins , PL_atom_chars(fname));
-      /* Both builtins and py_func are borrowed references */
-      if ( !py_func )
-      { term_t fn;
-
-	if ( (fn=PL_new_term_ref()) &&
-	     PL_put_atom(fn, fname) )
-	  PL_existence_error("python_builtin", fn);
-      }
-      Py_INCREF(py_func);
+    { py_func = builtin_function(NULL, fname);
     }
     if ( !py_func )
       goto out;
@@ -1337,11 +1372,8 @@ unchain(term_t call, PyObject **py_target)
     _PL_get_arg(2, call, call);
 
     if ( !*py_target )
-    { if ( !get_py_obj(on, py_target, FALSE) &&
-	   !get_py_module(on, py_target) )
-      { rc = PL_type_error("py_target", on);
+    { if ( !(rc=get_py_initial_target(on, py_target, FALSE)) )
 	break;
-      }
     } else
     { PyObject *next = py_eval(*py_target, on);
 
@@ -1807,6 +1839,7 @@ install_janus(void)
   MKATOM(file);
   MKATOM(eval);
   MKATOM(single);
+  MKATOM(built_in);
   ATOM_tuple  = PL_new_atom("-");
   ATOM_pydict = PL_new_atom("py");
   ATOM_curl   = PL_new_atom("{}");

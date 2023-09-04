@@ -154,6 +154,9 @@ py_version :-
 %       % call a built-in
 %	?- py_call(print("Hello World!\n")).
 %	true.
+%       % call a built-in (alternative)
+%	?- py_call(built_in:print("Hello World!\n")).
+%	true.
 %	% call function in a module
 %	?- py_call(sys:getsizeof([1,2,3]), Size).
 %	Size = 80.
@@ -198,6 +201,16 @@ py_version :-
 %          py_call(Doc:owner, Owner).
 %       Dog = <py_Dog>(0x7ffff7112170),
 %       Owner = "Bob".
+%
+%   If the principal term of the   first  argument is not `Target:Func`,
+%   The argument is evaluated as the initial target, i.e., it must be an
+%   object reference or a module.   For example:
+%
+%       ?- py_call(dog:'Dog'("Fido"), Dog),
+%          py_call(Dog, X).
+%          Dog = X, X = <py_Dog>(0x7fa8cbd12050).
+%       ?- py_call(sys, S).
+%          S = <py_module>(0x7fa8cd582390).
 %
 %   Options processed:
 %
