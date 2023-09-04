@@ -825,7 +825,6 @@ static int
 py_from_prolog(term_t t, PyObject **obj)
 { wchar_t *s;
   size_t len;
-  atom_t a;
   functor_t funct = 0;
   int done = FALSE;
 
@@ -904,116 +903,117 @@ py_from_prolog(term_t t, PyObject **obj)
     return rc;
   }
 
-  int ign = PL_get_functor(t, &funct);
-  (void)ign;
+  if ( PL_get_functor(t, &funct) )
+  { if ( funct == FUNCTOR_at1 )
+      return py_from_prolog_at1(t, obj);
 
-  if ( funct == FUNCTOR_at1 )
-    return py_from_prolog_at1(t, obj);
+    if ( funct == FUNCTOR_pySet1 )
+    { term_t tail = PL_new_term_ref();
 
-  if ( funct == FUNCTOR_pySet1 )
-  { term_t tail = PL_new_term_ref();
+      _PL_get_arg(1, t, tail);
+      if ( PL_skip_list(tail, 0, NULL) == PL_LIST )
+      { term_t head = PL_new_term_ref();
+	PyObject *set = check_error(PySet_New(NULL));
+	int rc = TRUE;
 
-    _PL_get_arg(1, t, tail);
-    if ( PL_skip_list(tail, 0, NULL) == PL_LIST )
-    { term_t head = PL_new_term_ref();
-      PyObject *set = check_error(PySet_New(NULL));
-      int rc = TRUE;
-
-      if ( !set )
-	return FALSE;
-
-      while(PL_get_list(tail, head, tail))
-      { PyObject *el;
-
-	if ( (rc=py_from_prolog(head, &el)) )
-	{ int r = PySet_Add(set, el);
-	  Py_CLEAR(el);
-	  if ( r )
-	  { check_error(NULL);
-	    rc = FALSE;
-	    break;
-	  }
-	} else
-	  break;
-      }
-      if ( rc )
-	*obj = set;
-      else
-	Py_CLEAR(set);
-
-      return rc;
-    } else
-      return PL_type_error("pySet", t);
-  }
-
-  if ( PL_is_dict(t) )
-  { PyObject *py_dict = check_error(PyDict_New());
-
-    if ( !py_dict )
-      return FALSE;
-    if ( PL_for_dict(t, py_add_to_dict, py_dict, 0) != 0 )
-    { Py_CLEAR(py_dict);
-      return FALSE;
-    }
-    *obj = py_dict;
-    return TRUE;
-  }
-  if ( funct == FUNCTOR_py1 )
-  { term_t a = PL_new_term_ref();
-    atom_t c;
-    int rc;
-
-    _PL_get_arg(1, t, a);
-
-    if ( PL_is_functor(a, FUNCTOR_curl1) )
-    { rc = py_from_prolog_curl(a, obj);
-    } else if ( PL_get_atom(a, &c) && c == ATOM_curl )
-    { rc = py_empty_dict(obj);
-    } else
-      goto error;
-
-    PL_reset_term_refs(a);
-    return rc;
-  }
-  if ( funct == FUNCTOR_curl1 )
-    return py_from_prolog_curl(t, obj);
-
-  /* prolog(Term) --> record */
-  if ( funct == FUNCTOR_prolog1 )
-  { term_t a = PL_new_term_ref();
-    PyObject *r;
-    _PL_get_arg(1, t, a);
-    if ( (r=py_record(a)) )
-    { PL_reset_term_refs(a);
-      *obj = r;
-      return TRUE;
-    }
-    return FALSE;
-  }
-
-  /* :(a,b,...) --> Python tuple  */
-  if ( PL_get_name_arity(t, &a, &len) && a == ATOM_tuple )
-  { PyObject *tp = check_error(PyTuple_New(len));
-
-    if ( tp )
-    { term_t arg = PL_new_term_ref();
-
-      for(size_t i=0; i<len; i++)
-      { PyObject *py_arg;
-
-	_PL_get_arg(i+1, t, arg);
-	if ( !py_from_prolog(arg, &py_arg) )
-	{ Py_DECREF(tp);
+	if ( !set )
 	  return FALSE;
+
+	while(PL_get_list(tail, head, tail))
+	{ PyObject *el;
+
+	  if ( (rc=py_from_prolog(head, &el)) )
+	  { int r = PySet_Add(set, el);
+	    Py_CLEAR(el);
+	    if ( r )
+	    { check_error(NULL);
+	      rc = FALSE;
+	      break;
+	    }
+	  } else
+	    break;
 	}
-	Py_INCREF(py_arg);
-	PyTuple_SetItem(tp, i, py_arg);
+	if ( rc )
+	  *obj = set;
+	else
+	  Py_CLEAR(set);
+
+	return rc;
+      } else
+	return PL_type_error("pySet", t);
+    }
+
+    if ( PL_is_dict(t) )
+    { PyObject *py_dict = check_error(PyDict_New());
+
+      if ( !py_dict )
+	return FALSE;
+      if ( PL_for_dict(t, py_add_to_dict, py_dict, 0) != 0 )
+      { Py_CLEAR(py_dict);
+	return FALSE;
       }
-      PL_reset_term_refs(arg);
-      *obj = tp;
+      *obj = py_dict;
       return TRUE;
     }
+    if ( funct == FUNCTOR_py1 )
+    { term_t a = PL_new_term_ref();
+      atom_t c;
+      int rc;
+
+      _PL_get_arg(1, t, a);
+
+      if ( PL_is_functor(a, FUNCTOR_curl1) )
+      { rc = py_from_prolog_curl(a, obj);
+      } else if ( PL_get_atom(a, &c) && c == ATOM_curl )
+      { rc = py_empty_dict(obj);
+      } else
+	goto error;
+
+      PL_reset_term_refs(a);
+      return rc;
+    }
+    if ( funct == FUNCTOR_curl1 )
+      return py_from_prolog_curl(t, obj);
+
+    /* prolog(Term) --> record */
+    if ( funct == FUNCTOR_prolog1 )
+    { term_t a = PL_new_term_ref();
+      PyObject *r;
+      _PL_get_arg(1, t, a);
+      if ( (r=py_record(a)) )
+      { PL_reset_term_refs(a);
+	*obj = r;
+	return TRUE;
+      }
+      return FALSE;
+    }
+
+    /* -(a,b,...) --> Python tuple  */
+    if ( funct && PL_functor_name(funct) == ATOM_tuple )
+    { size_t arity = PL_functor_arity(funct);
+      PyObject *tp = check_error(PyTuple_New(arity));
+
+      if ( tp )
+      { term_t arg = PL_new_term_ref();
+
+	for(size_t i=0; i<arity; i++)
+	{ PyObject *py_arg;
+
+	  _PL_get_arg(i+1, t, arg);
+	  if ( !py_from_prolog(arg, &py_arg) )
+	  { Py_DECREF(tp);
+	    return FALSE;
+	  }
+	  Py_INCREF(py_arg);
+	  PyTuple_SetItem(tp, i, py_arg);
+	}
+	PL_reset_term_refs(arg);
+	*obj = tp;
+	return TRUE;
+      }
+    }
   }
+
   if ( get_py_obj(t, obj, FALSE) )
     return TRUE;
 
