@@ -33,6 +33,14 @@ def echo_v(d):
 def tuple():
     return (1,2)
 
+# Unicode support
+
+def воздуха():
+    return "воздуха"
+
+def schloß():
+    return "schloß"
+
 # Simple function calls
 
 def multiply(a,b):

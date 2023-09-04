@@ -44,6 +44,7 @@
 :- use_module(library(lists), [numlist/3]).
 :- use_module(library(statistics), [time/1]).
 :- use_module('tests/russel', []).
+:- encoding(utf8).
 
 test_janus :-
     run_tests([ janus_data,
@@ -54,6 +55,7 @@ test_janus :-
 		python_call_prolog,
 		janus_iter,
 		janus_errors,
+		janus_unicode,
 		xsb_call
               ]).
 
@@ -280,6 +282,15 @@ test(ex) :-
     assertion(sub_string(Str,_,_,_,'Unknown procedure: foo/0')).
 
 :- end_tests(janus_errors).
+
+:- begin_tests(janus_unicode).
+
+test(cyrillic, R == воздуха) :-
+    py_call(demo:воздуха(), R).
+test(iso_latin_1, R == schloß) :-
+    py_call(demo:schloß(), R).
+
+:- end_tests(janus_unicode).
 
 :- begin_tests(xsb_call).
 

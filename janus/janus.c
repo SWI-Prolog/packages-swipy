@@ -1222,7 +1222,7 @@ succeeded:
 
 static int
 get_py_initial_target(term_t t, PyObject **py_target, int error)
-{ if ( get_py_obj(t, py_target, error) ||
+{ if ( get_py_obj(t, py_target, FALSE) ||
        get_py_module(t, py_target) )
     return TRUE;
 
@@ -1236,13 +1236,19 @@ static PyObject*
 builtin_function(PyObject *builtins, atom_t fname)
 { if ( !builtins )
     builtins = PyEval_GetBuiltins(); /* borrowed reference */
+  PyObject *py_func = NULL;
 
-  /* py_func has borrowed reference */
-  PyObject *py_func = PyDict_GetItemString(builtins, PL_atom_chars(fname));
+  PL_STRINGS_MARK();
+  char *fn;
+  if ( PL_atom_mbchars(fname, NULL, &fn, REP_UTF8|CVT_EXCEPTION) )
+    py_func = PyDict_GetItemString(builtins, fn); /* borrowed reference */
+  PL_STRINGS_RELEASE();
+
   if ( !py_func )
   { term_t fn;
 
-    if ( (fn=PL_new_term_ref()) &&
+    if ( !PL_exception(0) &&
+	 (fn=PL_new_term_ref()) &&
 	 PL_put_atom(fn, fname) )
       PL_existence_error("python_builtin", fn);
   } else
@@ -1276,7 +1282,11 @@ py_eval(PyObject *obj, term_t func)
     if ( obj == PyEval_GetBuiltins() )
     { py_func = builtin_function(obj, fname);
     } else if ( obj )
-    { py_func = check_error(PyObject_GetAttrString(obj, PL_atom_chars(fname)));
+    { PL_STRINGS_MARK();
+      char *fn;
+      if ( PL_atom_mbchars(fname, NULL, &fn, REP_UTF8|CVT_EXCEPTION) )
+	py_func = check_error(PyObject_GetAttrString(obj, fn));
+      PL_STRINGS_RELEASE();
     } else
     { py_func = builtin_function(NULL, fname);
     }
@@ -1372,7 +1382,7 @@ unchain(term_t call, PyObject **py_target)
     _PL_get_arg(2, call, call);
 
     if ( !*py_target )
-    { if ( !(rc=get_py_initial_target(on, py_target, FALSE)) )
+    { if ( !(rc=get_py_initial_target(on, py_target, TRUE)) )
 	break;
     } else
     { PyObject *next = py_eval(*py_target, on);
