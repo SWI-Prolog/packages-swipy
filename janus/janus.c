@@ -81,7 +81,8 @@ static int py_unify_record(term_t t, PyObject *rec);
 static int py_unify_constant(term_t t, atom_t c);
 static int py_is_record(PyObject *rec);
 static PyObject *py_free_record(PyObject *rec);
-
+static int unchain(term_t call, PyObject **py_target);
+static PyObject *py_eval(PyObject *obj, term_t func);
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 On Windows,  `python3.dll` provides the  stable C API that  relates to
@@ -960,6 +961,7 @@ py_from_prolog(term_t t, PyObject **obj)
       *obj = py_dict;
       return TRUE;
     }
+
     if ( funct == FUNCTOR_py1 )
     { term_t a = PL_new_term_ref();
       atom_t c;
@@ -977,6 +979,7 @@ py_from_prolog(term_t t, PyObject **obj)
       PL_reset_term_refs(a);
       return rc;
     }
+
     if ( funct == FUNCTOR_curl1 )
       return py_from_prolog_curl(t, obj);
 
@@ -994,7 +997,7 @@ py_from_prolog(term_t t, PyObject **obj)
     }
 
     /* -(a,b,...) --> Python tuple  */
-    if ( funct && PL_functor_name(funct) == ATOM_tuple )
+    if ( PL_functor_name(funct) == ATOM_tuple )
     { size_t arity = PL_functor_arity(funct);
       PyObject *tp = check_error(PyTuple_New(arity));
 
@@ -1006,7 +1009,7 @@ py_from_prolog(term_t t, PyObject **obj)
 
 	  _PL_get_arg(i+1, t, arg);
 	  if ( !py_from_prolog(arg, &py_arg) )
-	  { Py_DECREF(tp);
+	  { Py_CLEAR(tp);
 	    return FALSE;
 	  }
 	  Py_INCREF(py_arg);
@@ -1016,6 +1019,25 @@ py_from_prolog(term_t t, PyObject **obj)
 	*obj = tp;
 	return TRUE;
       }
+
+      return FALSE;
+    }
+
+    if ( funct == FUNCTOR_module2 )
+    { term_t call = PL_copy_term_ref(t);
+      PyObject *py_target = NULL;
+
+      if ( unchain(call, &py_target) )
+      { PyObject *py_res = py_eval(py_target, call);
+	Py_XDECREF(py_target);
+	if ( py_res )
+	{ *obj = py_res;
+	  return TRUE;
+	}
+      }
+
+      Py_CLEAR(py_target);
+      return FALSE;
     }
   }
 

@@ -133,6 +133,8 @@ pySet(List) & $\Longleftrightarrow$ & Set & When converting to Prolog, the set i
 Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
 py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
+Obj:Method & $\Longrightarrow$ Object & Evaluate method \\
+Module:Function & $\Longrightarrow$ Object & Evaluate function \\
 \const{py_obj} blob & $\Longleftrightarrow$ & Object & Used for any Python object not above \\
 Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 \hline
