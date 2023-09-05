@@ -54,7 +54,7 @@ static atom_t ATOM_string;
 static atom_t ATOM_file;
 static atom_t ATOM_eval;
 static atom_t ATOM_single;
-static atom_t ATOM_built_in;
+static atom_t ATOM_builtins;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
@@ -359,7 +359,7 @@ get_py_module(term_t name, PyObject **mod)
   if ( PL_get_atom(name, &id) )
   { PyObject *obj;
 
-    if ( id == ATOM_built_in )
+    if ( id == ATOM_builtins )
     { PyObject *builtins = PyEval_GetBuiltins();
       Py_INCREF(builtins);
       *mod = builtins;
@@ -1876,7 +1876,7 @@ install_janus(void)
   MKATOM(file);
   MKATOM(eval);
   MKATOM(single);
-  MKATOM(built_in);
+  MKATOM(builtins);
   ATOM_tuple  = PL_new_atom("-");
   ATOM_pydict = PL_new_atom("py");
   ATOM_curl   = PL_new_atom("{}");

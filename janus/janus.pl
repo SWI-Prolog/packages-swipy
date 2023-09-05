@@ -155,7 +155,7 @@ py_version :-
 %	?- py_call(print("Hello World!\n")).
 %	true.
 %       % call a built-in (alternative)
-%	?- py_call(built_in:print("Hello World!\n")).
+%	?- py_call(builtins:print("Hello World!\n")).
 %	true.
 %	% call function in a module
 %	?- py_call(sys:getsizeof([1,2,3]), Size).
