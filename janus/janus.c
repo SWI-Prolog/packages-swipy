@@ -662,20 +662,21 @@ py_unify(term_t t, PyObject *obj, int flags)
   if ( PyBool_Check(obj) )
     return py_unify_constant(t, PyLong_AsLong(obj) ? ATOM_true : ATOM_false);
 
-  if ( (flags&PYU_OBJ) )
+  if ( (flags&PYU_OBJ) )	/* py_object(true) effective */
   { if ( PyLong_CheckExact(obj) )
       return py_unify_long(t, obj);
     if ( PyFloat_CheckExact(obj) )
       return PL_unify_float(t, PyFloat_AsDouble(obj));
+    if ( PyUnicode_CheckExact(obj) )
+      return py_unify_unicode(t, obj, flags);
+    if ( PyTuple_CheckExact(obj) )
+      return py_unify_tuple(t, obj, flags);
   } else
   { if ( PyLong_Check(obj) )
       return py_unify_long(t, obj);
     if ( PyFloat_Check(obj) )
       return PL_unify_float(t, PyFloat_AsDouble(obj));
-  }
-
-  if ( !(flags&PYU_OBJ) )
-  { if ( PyUnicode_Check(obj) )
+    if ( PyUnicode_Check(obj) )
       return py_unify_unicode(t, obj, flags);
     if ( PyTuple_Check(obj) )
       return py_unify_tuple(t, obj, flags);

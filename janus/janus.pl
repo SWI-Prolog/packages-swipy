@@ -219,10 +219,12 @@ py_version :-
 %       Prolog atom.  If Type is `string`, translate into a Prolog string.
 %	Strings are more efficient if they are short lived.
 %     - py_object(Boolean)
-%       It `true` (default `false`), translate the return as a Python
-%       object reference unless it is `None`, a boolean or a number.
-%       If the number class is subclassed, we return the object rather
-%       than the number.
+%       If `true` (default `false`), translate the return as a Python
+%       object reference. Some objects are _always_ translated to
+%       Prolog, regardless of this flag.  These are the Python constants
+%       ``None``, ``True`` and ``False`` as well as instances of the
+%       Python base classes long, float, string or tuple.  Instances of
+%       sub classes of these base classes are controlled by this option.
 
 %!  py_iter(+Iterator, -Value) is nondet.
 %!  py_iter(+Iterator, -Value, +Options) is nondet.

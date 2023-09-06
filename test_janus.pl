@@ -53,6 +53,7 @@ test_janus :-
                 janus_prolog_data,
                 janus_eval,
                 janus_obj,
+                janus_py_object,
                 janus_params,
                 janus_gc,
 		python_call_prolog,
@@ -178,6 +179,29 @@ test(dog, Tricks == ['roll over']) :-
     py_call(Dog:tricks, Tricks).
 
 :- end_tests(janus_obj).
+
+:- begin_tests(janus_py_object).
+
+test(int, X == @none) :-
+    py_call(janus:echo(@none), X, [py_object(true)]).
+test(int, X == @true) :-
+    py_call(janus:echo(@true), X, [py_object(true)]).
+test(int, X == @false) :-
+    py_call(janus:echo(@false), X, [py_object(true)]).
+test(int, X == 42) :-
+    py_call(janus:echo(42), X, [py_object(true)]).
+test(int, X =:= 3.14) :-
+    py_call(janus:echo(3.14), X, [py_object(true)]).
+test(int, X == 'a string') :-
+    py_call(janus:echo('a string'), X, [py_object(true)]).
+test(int, X == a-1) :-
+    py_call(janus:echo(a-1), X, [py_object(true)]).
+
+test(int) :-
+    py_call(baseclasses:myint(42), X, [py_object(true)]),
+    assertion(py_is_object(X)).
+
+:- end_tests(janus_py_object).
 
 :- begin_tests(janus_params).
 
