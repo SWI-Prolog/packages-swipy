@@ -130,9 +130,9 @@ listConvTest:-
 
 setConvTest:-
     pyfunc('returnVal',returnSet( ) ,F ),
-    F = ['"foo"','''bar''',pySet(S)],
+    F = ['"foo"','''bar''',py_set(S)],
     length(S,3),
-    pyfunc('returnVal', returnVal(pySet([a,b,c])), R1 ),
+    pyfunc('returnVal', returnVal(py_set([a,b,c])), R1 ),
     arg(1,R1,A), length(A,3),!.
 
 tupleConvTest:-

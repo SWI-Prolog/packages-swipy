@@ -115,7 +115,7 @@ test(bool, Z == "false") :-
 test(none, Z == "None") :-
     py_call(janus:echo('None'), Z, [py_string_as(string)]).
 test(set, Set == [1, a, false]) :- % True canot be in a Python set??
-    py_call(janus:echo(pySet([1,a,false])), pySet(List)),
+    py_call(janus:echo(py_set([1,a,false])), py_set(List)),
     sort(List, Set).
 test(attr, Val = 42) :-
     py_call(demo:test_attr = 42),

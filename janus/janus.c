@@ -65,7 +65,7 @@ static functor_t FUNCTOR_comma2;
 static functor_t FUNCTOR_curl1;
 static functor_t FUNCTOR_key_value2;
 static functor_t FUNCTOR_py1;
-static functor_t FUNCTOR_pySet1;
+static functor_t FUNCTOR_py_set1;
 static functor_t FUNCTOR_prolog1;
 static functor_t FUNCTOR_at1;
 
@@ -560,7 +560,7 @@ py_unify_set(term_t t, PyObject *obj, int flags)
     term_t tail = PL_new_term_ref();
     term_t head = PL_new_term_ref();
 
-    if ( !(rc=PL_unify_functor(t, FUNCTOR_pySet1)) )
+    if ( !(rc=PL_unify_functor(t, FUNCTOR_py_set1)) )
       goto out;
     _PL_get_arg(1, t, tail);
 
@@ -913,7 +913,7 @@ py_from_prolog(term_t t, PyObject **obj)
   { if ( funct == FUNCTOR_at1 )
       return py_from_prolog_at1(t, obj);
 
-    if ( funct == FUNCTOR_pySet1 )
+    if ( funct == FUNCTOR_py_set1 )
     { term_t tail = PL_new_term_ref();
 
       _PL_get_arg(1, t, tail);
@@ -946,7 +946,7 @@ py_from_prolog(term_t t, PyObject **obj)
 
 	return rc;
       } else
-	return PL_type_error("pySet", t);
+	return PL_type_error("py_set", t);
     }
 
     if ( PL_is_dict(t) )
@@ -1889,7 +1889,7 @@ install_janus(void)
   FUNCTOR_hash1      = PL_new_functor(PL_new_atom("#"), 1);
   FUNCTOR_comma2     = PL_new_functor(PL_new_atom(","), 2);
   FUNCTOR_curl1      = PL_new_functor(PL_new_atom("{}"), 1);
-  FUNCTOR_pySet1     = PL_new_functor(PL_new_atom("pySet"), 1);
+  FUNCTOR_py_set1    = PL_new_functor(PL_new_atom("py_set"), 1);
   FUNCTOR_at1        = PL_new_functor(PL_new_atom("@"), 1);
   FUNCTOR_key_value2 = FUNCTOR_module2;
   MKFUNCTOR(prolog, 1);
