@@ -182,24 +182,30 @@ test(dog, Tricks == ['roll over']) :-
 
 :- begin_tests(janus_py_object).
 
-test(int, X == @none) :-
+test(baseclass, X == @none) :-
     py_call(janus:echo(@none), X, [py_object(true)]).
-test(int, X == @true) :-
+test(baseclass, X == @true) :-
     py_call(janus:echo(@true), X, [py_object(true)]).
-test(int, X == @false) :-
+test(baseclass, X == @false) :-
     py_call(janus:echo(@false), X, [py_object(true)]).
-test(int, X == 42) :-
+test(baseclassdint, X == 42) :-
     py_call(janus:echo(42), X, [py_object(true)]).
-test(int, X =:= 3.14) :-
+test(baseclass, X =:= 3.14) :-
     py_call(janus:echo(3.14), X, [py_object(true)]).
-test(int, X == 'a string') :-
+test(baseclass, X == 'a string') :-
     py_call(janus:echo('a string'), X, [py_object(true)]).
-test(int, X == a-1) :-
+test(baseclass, X == a-1) :-
     py_call(janus:echo(a-1), X, [py_object(true)]).
 
-test(int) :-
+test(list, List = [1,2,3]) :-
+    py_call(janus:echo([1,2,3]), X, [py_object(true)]),
+    assertion(py_is_object(X)),
+    py_call(X, List).
+
+test(subclass, V == 42) :-
     py_call(baseclasses:myint(42), X, [py_object(true)]),
-    assertion(py_is_object(X)).
+    assertion(py_is_object(X)),
+    py_call(X, V).
 
 :- end_tests(janus_py_object).
 
