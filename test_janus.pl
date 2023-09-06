@@ -44,11 +44,14 @@
 :- use_module(library(lists), [numlist/3]).
 :- use_module(library(statistics), [time/1]).
 :- use_module('tests/russel', []).
+:- use_module(library(error), [must_be/2]).
+
 :- encoding(utf8).
 
 test_janus :-
     run_tests([ janus_data,
                 janus_prolog_data,
+                janus_eval,
                 janus_obj,
                 janus_params,
                 janus_gc,
@@ -155,6 +158,14 @@ test(echo, Term =@= Copy) :-
     term_string(Copy, Str).
 
 :- end_tests(janus_prolog_data).
+
+:- begin_tests(janus_eval).
+
+test(eval) :-
+    py_call(janus:echo(eval(sys:path)), Path),
+    must_be(list(atom), Path).
+
+:- end_tests(janus_eval).
 
 :- begin_tests(janus_obj).
 

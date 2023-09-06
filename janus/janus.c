@@ -68,6 +68,7 @@ static functor_t FUNCTOR_py1;
 static functor_t FUNCTOR_py_set1;
 static functor_t FUNCTOR_prolog1;
 static functor_t FUNCTOR_at1;
+static functor_t FUNCTOR_eval1;
 
 static int py_initialize_done = FALSE;
 
@@ -1023,12 +1024,15 @@ py_from_prolog(term_t t, PyObject **obj)
       return FALSE;
     }
 
-    if ( funct == FUNCTOR_module2 )
-    { term_t call = PL_copy_term_ref(t);
+    if ( funct == FUNCTOR_eval1 )
+    { term_t call;
       PyObject *py_target = NULL;
 
-      if ( unchain(call, &py_target) )
+      if ( (call = PL_new_term_ref()) &&
+	   PL_get_arg(1, t, call) &&
+	   unchain(call, &py_target) )
       { PyObject *py_res = py_eval(py_target, call);
+	PL_reset_term_refs(call);
 	Py_XDECREF(py_target);
 	if ( py_res )
 	{ *obj = py_res;
@@ -1891,6 +1895,7 @@ install_janus(void)
   FUNCTOR_curl1      = PL_new_functor(PL_new_atom("{}"), 1);
   FUNCTOR_py_set1    = PL_new_functor(PL_new_atom("py_set"), 1);
   FUNCTOR_at1        = PL_new_functor(PL_new_atom("@"), 1);
+  FUNCTOR_eval1      = PL_new_functor(PL_new_atom("eval"), 1);
   FUNCTOR_key_value2 = FUNCTOR_module2;
   MKFUNCTOR(prolog, 1);
 
