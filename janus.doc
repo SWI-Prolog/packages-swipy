@@ -820,7 +820,7 @@ items/2, values/3, key/2 and items/2.
 Both implementations will provide a low-level and more high level
 interface.  The high level interface is realized by py_call/2 and
 py_iter/2 from Prolog and janus.once() and janus.Query() from Python.
-We realize the low level interfaces pyfunc/[3,4,5] and pydot/[4,5] on
+We realize the low level interfaces py_func/[3,4,5] and py_dot/[4,5] on
 top of py_call/2 and the Python functions px_cmd(), px_qdet() and
 px_comp() on top of janus.once().  Emulation of the Prolog predicates
 is shallow and has little impact on performance.  Emulation of the

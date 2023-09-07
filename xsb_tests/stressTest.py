@@ -37,7 +37,7 @@ def gclen():
 def get_garbage():
     return(gc.garbage)
 
-#pyfunc(gc,get_stats(),F).
+#py_func(gc,get_stats(),F).
 
 class StressClass:
     def __init__(self):

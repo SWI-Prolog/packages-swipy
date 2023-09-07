@@ -39,5 +39,5 @@ test_stress :-
     assertion(List == List2).
 
 testClassList(N,Out):-
-    pyfunc(stressTest,'StressClass'(),Obj),
-    pydot(stressTest,Obj,func0(N),Out).
+    py_func(stressTest,'StressClass'(),Obj),
+    py_dot(stressTest,Obj,func0(N),Out).
