@@ -45,10 +45,9 @@
 	    py_with_gil/1,		% :Goal
 
             py_func/3,                  % +Module, +Func, -Return
-            py_func/4,                  % +Module, +Func, +Kwargs, -Return
-            py_func/5,                  % +Module, +Func, +Kwargs, +Opts, -Ret
+            py_func/4,                  % +Module, +Func, -Return, +Options
             py_dot/4,                   % +Module, +ObjRef, +Meth, ?Ret
-            py_dot/5,                   % +Module, +ObjRef, +Meth, +Opts, -Ret
+            py_dot/5,                   % +Module, +ObjRef, +Meth, -Ret, +Options
 
             values/3,                   % +Dict, +Path, ?Val
             keys/2,                     % +Dict, ?Keys
@@ -99,6 +98,19 @@ add_python_dll_dir :-
 :- endif.
 
 :- meta_predicate py_with_gil(0).
+
+:- predicate_options(py_call/3, 3,
+                     [ py_object(boolean),
+                       py_string_as(oneof([string,atom]))
+                     ]).
+:- predicate_options(py_func/4, 4,
+                     [ sizecheck(boolean),
+                       pass_to(py_call/3, 3)
+                     ]).
+:- predicate_options(py_dot/5, 5,
+                     [ sizecheck(boolean),
+                       pass_to(py_call/3, 3)
+                     ]).
 
 :- public
     py_initialize/0,
@@ -301,7 +313,7 @@ py_version :-
 %!  py_with_gil(:Goal) is semidet.
 %
 %   Run Goal as  once(Goal)  while  holding   the  Phyton  GIL  (_Global
-%   Interpreter Lock). Note that py_call/1,2 also   locks  the GIL. This
+%   Interpreter Lock_). Note that py_call/1,2 also   locks the GIL. This
 %   predicate is only required if we  wish   to  make  multiple calls to
 %   Python while keeping the GIL. The GIL is a _recursive_ lock and thus
 %   calling py_call/1,2 while holding the GIL does not _deadlock_.
@@ -312,40 +324,32 @@ py_version :-
 		 *******************************/
 
 %!  py_func(+Module, +Function, -Return) is det.
-%!  py_func(+Module, +Function, +Kwargs, -Return) is det.
-%!  py_func(+Module, +Function, +Kwargs, +Prolog_Opts, -Return) is det.
+%!  py_func(+Module, +Function, -Return, +Options) is det.
 %
 %   XSB  compatible  wrappers  for  py_call/2.  Note  that  the  wrapper
-%   supports more call patterns.
+%   supports more call patterns.  Options
 %
-%   @arg Prolog_Opts is ignored. We may   add that to provide compatible
-%   return data.
+%     - sizecheck(+Boolean)
+%       Used by XSB for memory management.  Ignored in SWI-Prolog.
+%     - py_object(+Boolean)
+%       Passed to py_call/3.
 
 py_func(Module, Function, Return) :-
     py_call(Module:Function, Return).
-py_func(Module, Function, Kwargs, Return) :-
-    py_func(Module, Function, Kwargs, _Prolog_Opts, Return).
-
-py_func(Module, Function, [], _Prolog_Opts, Return) =>
-    py_call(Module:Function, Return).
-py_func(Module, Function, Kwargs, _Prolog_Opts, Return) =>
-    compound_name_arguments(Function, Name, PosArgs),
-    append(PosArgs, Kwargs, AllArgs),
-    compound_name_arguments(Final, Name, AllArgs),
-    py_call(Module:Final, Return).
+py_func(Module, Function, Return, Options) :-
+    py_call(Module:Function, Return, Options).
 
 %!  py_dot(+Module, +ObjRef, +MethAttr, -Ret) is det.
-%!  py_dot(+Module, +ObjRef, +MethAttr, +Prolog_Opts, -Ret) is det.
+%!  py_dot(+Module, +ObjRef, +MethAttr, -Ret, +Options) is det.
 %
 %   XSB compatible wrappers for py_call/2.
 %
 %   @arg Module is ignored (why do we need that if we have ObjRef?)
-%   @arg Prolog_Opts is ignored.  See py_func/5.
 
 py_dot(_Module, ObjRef, MethAttr, Ret) :-
     py_call(ObjRef:MethAttr, Ret).
-py_dot(_Module, ObjRef, MethAttr, _Prolog_Opts, Ret) :-
-    py_call(ObjRef:MethAttr, Ret).
+py_dot(_Module, ObjRef, MethAttr, Ret, Options) :-
+    py_call(ObjRef:MethAttr, Ret, Options).
 
 
 		 /*******************************
@@ -496,7 +500,8 @@ import_janus :-
 %   keyword arguments passed to pprint.pformat().  For example:
 %
 %   ```
-%   ?- py_pp(py{a:1, l:[1,2,3], size:1000000}, [underscore_numbers(true)]).
+%   ?- py_pp(py{a:1, l:[1,2,3], size:1000000},
+%            [underscore_numbers(true)]).
 %   {'a': 1, 'l': [1, 2, 3], 'size': 1_000_000}
 %   ```
 
@@ -619,6 +624,21 @@ py_lib_dirs(Dirs) :-
 %
 %   Dir is in Prolog notation. The added   directory  is converted to an
 %   absolute path using the OS notation.
+%
+%   A flexible way to add the directory  holding the current Prolog file
+%   to the Python search path is  in   the  template below. The `here/0`
+%   predicate can be replaced by  any   predicate  defined  in the file,
+%   either above or below the initializing/1   directive.  A simple name
+%   like here/0 is good style when this code is part of a Prolog module.
+%
+%   ```
+%   here.
+%   :- initialization
+%       (   source_file(here, File),
+%           file_directory_name(File, Dir),
+%           py_add_lib_dir(Dir, first)
+%       ).
+%   ```
 
 py_add_lib_dir(Dir) :-
     py_add_lib_dir(Dir, last).

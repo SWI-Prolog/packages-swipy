@@ -49,8 +49,9 @@ done.  However, developing an interface typically requires programming
 in C or C++, a skill that is not widely available everywhere. Being
 able to access Python effortlessly from Prolog puts us in a much
 better position because Python experience is widely available in our
-target audience. This solution was proposed in \cite{janus}, initially
-developed for XSB.
+target audience. This solution was proposed in
+\cite{DBLP:series/lncs-0001S23,DBLP:journals/corr/abs-2308-15893},
+initially developed for XSB.
 
 Janus provides a bi-directional interface between Prolog and Python
 using the low-level C API of both languages.  This makes using Python
@@ -133,7 +134,7 @@ py_set(List) & $\Longleftrightarrow$ & Set & When converting to Prolog, the set 
 Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
 py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
-eval(Term) & $\Longrightarrow$ Object & Evaluate Term as first argument of py_call/2 \\
+eval(Term) & $\Longrightarrow$ & Object & Evaluate Term as first argument of py_call/2 \\
 \const{py_obj} blob & $\Longleftrightarrow$ & Object & Used for any Python object not above \\
 Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 \hline
@@ -192,9 +193,10 @@ english(NLP) :-
 
 Calling \term{english}{X} results in \arg{X} =
 \verb$<py_English>(0x7f703c24f430)$.  This object implements the
-Python \jargon{callable} protocol.  Calling the model with a string
-results in a parsed document.   We can use this from Prolog using
-the built-in \const{__call__} method:
+Python \jargon{callable} protocol, i.e., it behaves as a function with
+additional properties and methods.  Calling the model with a string
+results in a parsed document.  We can use this from Prolog using the
+built-in \const{__call__} method:
 
 \begin{code}
 ?- english(NLP),
@@ -371,7 +373,7 @@ representation of \jargon{Undefined} is still under discussion.}
 import janus_swi as janus
 
 def printRange(from, to):
-    for d in janus.Query("between(From,To,X)", {"From":from, "To":to})
+    for d in janus.Query("between(F,T,X)", {"F":from, "T":to})
         print(d["X"])
 \end{code}
 
@@ -390,8 +392,7 @@ def double_iter(w,h):
 After this, we may run
 
 \begin{code}
->>>
-demo.double_iter(2,3)
+>>> demo.double_iter(2,3)
 [(1, 1), (2, 1), (1, 2), (2, 2), (1, 3), (2, 3)]
 \end{code}
 
@@ -489,7 +490,8 @@ undefined/0. For example
     train('Amsterdam', 'Schiphol').
     """)
 
-    print([d['Tuple'] for d in janus.Query("train(_From,_To),Tuple=_From-_To")])
+    print([d['Tuple'] for d in
+           janus.Query("train(_From,_To),Tuple=_From-_To")])
     \end{code}
 
     \cfunction{None}{janus.prolog}{}
@@ -537,13 +539,14 @@ it back to Prolog.
   created by handling a term \term{prolog}{Term} tho the data conversion
   processes.   As a result, we can do
 
-  \begin{code}
-  ?- py_call(janus:echo(prolog(hello(world))), Obj, [py_object(true)]).
-  Obj = <py_Term>(0x7f7a14512050).
-  ?- py_call(print($Obj)).
-  hello(world)
-  Obj = <py_Term>(0x7f7a14512050).
-  \end{code}
+\begin{code}
+?- py_call(janus:echo(prolog(hello(world))), Obj,
+           [py_object(true)]).
+Obj = <py_Term>(0x7f7a14512050).
+?- py_call(print($Obj)).
+hello(world)
+Obj = <py_Term>(0x7f7a14512050).
+\end{code}
 
   \cfunction{Term}{janus.Term.__str__}{}
   Return the output of print/1 on the term.  This is what is used by
@@ -818,9 +821,9 @@ both SWI-Prolog dicts and the above Prolog representation.  See
 items/2, values/3, key/2 and items/2.
 
 Both implementations will provide a low-level and more high level
-interface.  The high level interface is realized by py_call/2 and
-py_iter/2 from Prolog and janus.once() and janus.Query() from Python.
-We realize the low level interfaces py_func/[3,4,5] and py_dot/[4,5] on
+interface.  The high level interface is realized by py_call/[2,3] and
+py_iter/[2,3] from Prolog and janus.once() and janus.Query() from Python.
+We realize the low level interfaces py_func/[3,4] and py_dot/[4,5] on
 top of py_call/2 and the Python functions px_cmd(), px_qdet() and
 px_comp() on top of janus.once().  Emulation of the Prolog predicates
 is shallow and has little impact on performance.  Emulation of the
@@ -828,28 +831,10 @@ Python functions on top of janus.once() is more expensive.  Future
 versions of the SWI-Prolog implementation may opt for a more low-level
 implementation.
 
-While we are discussing to minimize the differences we highlight the
-remaining issues below.
-
-\begin{itemize}
-   \item We translate all Python list-like results into Prolog
-     lists.  To be precise, we translate Python objects that
-     implement one of these protocols: \const{PyList}, \const{PyIter}
-     and \const{PySequence}.   XSB translates only class \class{list}
-     or one of its subclasses into a Prolog list.  Other list-like
-     objects are returned as object reference.
-
-   \item Python dicts are translated to Prolog dicts and visa versa.
-     Note that Prolog dicts can only have atoms and small integers
-     as keys.  Other Python dicts result in a representation error.
-     XSB plans on using \term{py}{\{k:v, \ldots\}}.\footnote{Still
-     under discussion.}
-
-   \item Python objects that are not translated by any of the above
-     are translated to a SWI-Prolog \jargon{blob}.  This makes
-     identifying them robust and provides garbage collection.
-     XSB uses a term \arg{pyObj}{Ref} and requires py_free/1.
-\end{itemize}
+We are discussing to minimize the differences.  The current
+implementation reflects the almost complete agreement calling Python
+from Prolog.  Discussing calling Prolog from Python is work in
+progress.
 
 \subsection{Writing portable Janus modules}
 \label{sec:janus-portable-code}
@@ -867,7 +852,7 @@ This section will be written after the dust has settled.   Topics
 \section{Status of Janus}
 \label{sec:janus-status}
 
-The current version of this Janus library must be considered \jargon{alpha}
+The current version of this Janus library must be considered \jargon{beta}
 code.
 
 \begin{itemize}
@@ -878,6 +863,9 @@ code.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{name}
+\bibliography{pl}
+
 \printindex
 
 \end{document}
