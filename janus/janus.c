@@ -856,14 +856,21 @@ py_from_prolog(term_t t, PyObject **obj)
     } else
     { char *s;
       int rc;
+#ifdef CVT_XINTEGER		/* SWI-Prolog 9.1.16 */
+#define BASE 16
+#else
+#define BASE 10
+#define CVT_XINTEGER CVT_INTEGER
+#endif
 
       PL_STRINGS_MARK();
-      if ( (rc=PL_get_chars(t, &s, CVT_INTEGER)) ) /* TBD: use hexadecimal exchange */
-	*obj = PyLong_FromString(s, NULL, 10);
+      if ( (rc=PL_get_chars(t, &s, CVT_XINTEGER)) ) /* TBD: use hexadecimal exchange */
+	*obj = PyLong_FromString(s, NULL, BASE);
       PL_STRINGS_RELEASE();
 
       return rc;
     }
+#undef BASE
 
     return FALSE;
   }

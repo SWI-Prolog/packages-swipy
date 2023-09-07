@@ -82,7 +82,7 @@ test(json2) :- json_test_2.
 %test(pyc, X == 2) :-
 %    py_func('numpexamp',go(),X).
 test(kwargs, Ret == [foo,-(bar,1),-(baz,2)]) :-
-    py_func(kwargs,kwargs_append(foo),[bar=1,baz=2],Ret).
+    py_func(kwargs,kwargs_append(foo,bar=1,baz=2),Ret).
 test(error) :-
     error_test(no_module,foo(1),
                ['ModuleNotFoundError', 'no_module']).
