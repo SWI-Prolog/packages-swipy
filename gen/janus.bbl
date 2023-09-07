@@ -1,0 +1,16 @@
+\begin{thebibliography}{Swift \& Andersen, 2023}
+
+\bibitem[Andersen \& Swift, 2023]{DBLP:series/lncs-0001S23}
+Carl Andersen and Theresa Swift.
+\newblock The janus system: {A} bridge to new prolog applications.
+\newblock In David~Scott Warren, Ver{\'{o}}nica Dahl, Thomas Eiter, Manuel~V.
+  Hermenegildo, Robert~A. Kowalski, and Francesca Rossi, editors, {\em Prolog:
+  The Next 50 Years}, volume 13900 of {\em Lecture Notes in Computer Science},
+  pages 93--104. Springer, 2023.
+
+\bibitem[Swift \& Andersen, 2023]{DBLP:journals/corr/abs-2308-15893}
+Theresa Swift and Carl Andersen.
+\newblock The janus system: Multi-paradigm programming in prolog and python.
+\newblock {\em CoRR}, abs/2308.15893, 2023.
+
+\end{thebibliography}
