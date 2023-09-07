@@ -281,7 +281,7 @@ write_python_object(IOSTREAM *s, atom_t symbol, int flags)
     else
       name = "noclass";
 
-    Sfprintf(s, "<py_%Us>(%p)", name, obj);
+    SfprintfX(s, "<py_%Us>(%p)", name, obj);
 
     Py_CLEAR(cls);
     Py_CLEAR(cname);

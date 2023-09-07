@@ -32,6 +32,14 @@ achieved using
 
     apt install python3 libpython3-dev
 
+If you need to build Python, the following command is suggested
+(assuming you wish to install it in `$HOME/.local/bin`). You may also
+need the option `--enable-shared`.
+
+    CFLAGS='-fPIC' CCSHARED='-fPIC' ./configure --prefix=$HOME/.local --enable-optimizations
+    make -j8   # change "8" to the number of CPUs on your machine
+    make install
+
 On __MacOS__,  these files are  included in the Homebrew  and Macports
 versions of Python
 
