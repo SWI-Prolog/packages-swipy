@@ -78,6 +78,11 @@ test(multiply, Z == 6) :-
 test(bigint, Z == Big) :-
     Big is 1<<1000,
     py_call(janus:echo(Big), Z).
+test(rational, Z == 1r3) :-
+    py_call(janus:echo(1r3), Z).
+test(rational, Z == A) :-
+    A is rdiv(random(1<<1000), random(1<<1000)),
+    py_call(janus:echo(A), Z).
 test(multiply, Z == 6.8) :-
     py_call(demo:multiply(2,3.4), Z).
 test(concat, Z == 'aapnoot') :-
@@ -144,6 +149,12 @@ test(dict, error(representation_error(py_dict_key))) :-
     py_call(demo:dict2(), _).
 test(iterator, L == [1,2,3,4]) :-          % An iterator checks as a sequence
     py_call(range(1,5), L).
+test(set, Ordered == [1,2,3]) :-
+    py_call(janus:echo(py_set([1,2,3])), Obj, [py_object(true)]),
+    py_call(Obj, py_set(Set)),
+    sort(Set, Ordered),
+    py_call(Obj, Set2),
+    assertion(Set2 == py_set(Set)).
 
 :- end_tests(janus_data).
 

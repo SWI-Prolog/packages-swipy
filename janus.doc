@@ -116,8 +116,9 @@ that py_call/3 and py_iter/3 provide the option
 \textbf{Prolog} & & \textbf{Python} & \textbf{Notes} \\
 \hline
 Variable& $\longrightarrow$     & -        & (instantiation error) \\
-Integer & $\Longleftrightarrow$ & Integer  & Supports big integers \\
-Rational& $\longrightarrow$     & -        & (type error) May be supported later \\
+Integer & $\Longleftrightarrow$ & int      & Supports big integers \\
+Rational& $\Longleftrightarrow$ & fractions.Fraction() & \\
+Float   & $\Longleftrightarrow$ & float    & \\
 @(none) & $\Longleftrightarrow$ & None     & \\
 @(true) & $\Longleftrightarrow$ & True     & \\
 @(false) & $\Longleftrightarrow$ & False    & \\
@@ -128,8 +129,8 @@ prolog(Term) & $\longrightarrow$ & \cfuncref{janus.Term}{} & Represent any Prolo
 Term    & $\longleftarrow$      & \cfuncref{janus.Term}{} & \\
 List    & $\longrightarrow$     & List & \\
 List    & $\longleftarrow$      & Sequence & \\
-List    & $\longleftarrow$      & Generator & \\
-py_set(List) & $\Longleftrightarrow$ & Set & When converting to Prolog, the set is emptied \\
+List    & $\longleftarrow$      & Iterator & Note that a \jargon{Generator} is an \jargon{Iterator} \\
+py_set(List) & $\Longleftrightarrow$ & Set & \\
 -(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples \\
 Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
@@ -140,6 +141,15 @@ Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 \hline
 \end{tabular}
 \end{center}
+
+The interface supports unbounded integers and rational numbers.  Large
+integers ($> 64$ bits) are converted using a hexadecimal string as
+intermediate.  SWI-Prolog rational numbers are mapped to the Python
+class \class{fractions:Fraction}.  Currently the mapping rational
+numbers uses an intermediate decimal string and is therefore
+relatively slow.  Mapping from Python to Prolog relies on the
+\cfuncref(__str__)() method of the instance returning +/-<num>/<den>
+where <num> and <den> are decimal numbers.
 
 The conversion \#(Term) allows passing anything as a Python string. If
 \arg{Term} is an atom or string, this is the same as passing the atom
@@ -161,6 +171,7 @@ implement array semantics, cannot represent empty tuples and cannot
 disambiguate tuples with one element from the element itself.  We
 settled with compound terms using the \const{-} as functor to make
 the common binary tuple map to a Prolog \jargon{pair}.
+
 
 \section{Janus by example}
 \label{sec:janus-examples}

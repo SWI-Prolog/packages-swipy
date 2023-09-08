@@ -423,6 +423,67 @@ check_error(PyObject *obj)
 }
 
 
+static PyObject *
+func_Fraction(void)
+{ static PyObject *func = NULL;
+
+  if ( !func )
+  { PyObject *mod_name = NULL;
+    PyObject *mod = NULL;
+
+    if ( (mod_name=check_error(PyUnicode_FromString("fractions"))) &&
+         (mod=check_error(PyImport_Import(mod_name))) )
+      func = check_error(PyObject_GetAttrString(mod, "Fraction"));
+
+    Py_CLEAR(mod_name);
+    Py_CLEAR(mod);
+  }
+
+  return func;
+}
+
+
+static int
+py_unify_fraction(term_t t, PyObject *obj)
+{ PyObject *str = check_error(PyObject_Str(obj));
+
+  if ( str )
+  { const char *s;
+    ssize_t len;
+    int rc;
+
+    if ( (s=PyUnicode_AsUTF8AndSize(str, &len)) )
+    { term_t tmp;
+      int rc2=TRUE;
+
+      char *sep = strchr(s, '/');
+      if ( sep )
+	*sep = 'r';
+      rc = ((tmp = PL_new_term_ref()) &&
+	    PL_put_term_from_chars(tmp, REP_UTF8|CVT_EXCEPTION, len, s) &&
+	    (rc2=PL_is_rational(tmp)) &&
+	    PL_unify(t, tmp));
+      if ( sep )
+	*sep = '/';
+
+      if ( tmp )
+	PL_reset_term_refs(tmp);
+      if ( !rc2 )
+	rc = PL_type_error("rational", tmp);
+
+    } else
+    { rc = !!check_error((void*)0);
+    }
+
+    Py_CLEAR(str);
+
+    return rc;
+  }
+
+  return FALSE;
+}
+
+
 static int
 py_unify_long(term_t t, PyObject *obj)
 { int overflow;
@@ -487,7 +548,6 @@ py_unify_unicode(term_t t, PyObject *obj, int flags)
   PL_STRINGS_RELEASE();
   return rc;
 }
-
 
 static int
 py_unify_tuple(term_t t, PyObject *obj, int flags)
@@ -676,6 +736,8 @@ py_unify(term_t t, PyObject *obj, int flags)
       return py_unify_long(t, obj);
     if ( PyFloat_Check(obj) )
       return PL_unify_float(t, PyFloat_AsDouble(obj));
+    if ( PyObject_IsInstance(obj, func_Fraction()) )
+      return py_unify_fraction(t, obj);
     if ( PyUnicode_Check(obj) )
       return py_unify_unicode(t, obj, flags);
     if ( PyTuple_Check(obj) )
@@ -825,6 +887,51 @@ py_from_prolog_at1(term_t t, PyObject **obj)
 
 
 static int
+fix_ration_sep(char *s)
+{ char *sep;
+
+  if ( (sep=strchr(s, 'r')) )
+  { *sep = '/';
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+
+static int
+py_fraction_from_rational(term_t t, PyObject **obj)
+{ int rc = FALSE;
+
+  PL_STRINGS_MARK();
+  char *s;
+  PyObject *constructor;
+  PyObject *argv = NULL;
+  PyObject *str  = NULL;
+
+  if ( (constructor=func_Fraction()) &&
+       PL_get_chars(t, &s, CVT_RATIONAL|CVT_EXCEPTION) &&
+       fix_ration_sep(s) &&
+       (argv=check_error(PyTuple_New(1))) &&
+       (str=check_error(PyUnicode_FromString(s))) )
+  { PyObject *f = NULL;
+
+    PyTuple_SetItem(argv, 0, str);
+    f = check_error(PyObject_CallObject(constructor, argv));
+    if ( f )
+    { *obj = f;
+      rc = TRUE;
+    }
+  }
+  Py_CLEAR(argv);
+
+  PL_STRINGS_RELEASE();
+
+  return rc;
+}
+
+
+static int
 py_from_prolog(term_t t, PyObject **obj)
 { size_t len;
   functor_t funct = 0;
@@ -847,8 +954,11 @@ py_from_prolog(term_t t, PyObject **obj)
       return !!*obj;
   }
 
-  if ( PL_is_integer(t) )
+  if ( PL_is_rational(t) )
   { int64_t i;
+
+    if ( !PL_is_integer(t) )
+      return py_fraction_from_rational(t, obj);
 
     if ( PL_get_int64(t, &i) )
     { *obj = PyLong_FromLongLong(i);
