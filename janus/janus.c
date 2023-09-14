@@ -176,6 +176,7 @@ static pthread_mutex_t py_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define PYU_STRING 0x0001		/* Unify text as Prolog string */
 #define PYU_OBJ    0x0002		/* Unify as object */
+#define PYU_ERROR  0x0004		/* Inside check_error() */
 
 #ifndef HAVE_PYGILSTATE_CHECK
 static _Thread_local int have_gil;
@@ -407,9 +408,9 @@ check_error(PyObject *obj)
     if ( (tname=PyObject_GetAttrString(type, "__name__")) &&
          PL_unify_chars(av+0, PL_ATOM|REP_UTF8, (size_t)-1,
 			PyUnicode_AsUTF8AndSize(tname, NULL)) &&
-	 (value ? py_unify(av+1, value, 0)
+	 (value ? py_unify(av+1, value, PYU_ERROR)
 		: py_unify_constant(av+1, ATOM_none)) &&
-	 (stack ? py_unify(av+2, stack, 0)
+	 (stack ? py_unify(av+2, stack, PYU_ERROR)
 		: py_unify_constant(av+2, ATOM_none)) &&
 	 PL_cons_functor_v(t, FUNCTOR_python_error3, av) &&
 	 PL_put_variable(av+0) &&
@@ -736,7 +737,8 @@ py_unify(term_t t, PyObject *obj, int flags)
       return py_unify_long(t, obj);
     if ( PyFloat_Check(obj) )
       return PL_unify_float(t, PyFloat_AsDouble(obj));
-    if ( PyObject_IsInstance(obj, func_Fraction()) )
+    if ( !(flags&PYU_ERROR) &&	/* cannot be called with error around */
+	 PyObject_IsInstance(obj, func_Fraction()) )
       return py_unify_fraction(t, obj);
     if ( PyUnicode_Check(obj) )
       return py_unify_unicode(t, obj, flags);
@@ -750,7 +752,8 @@ py_unify(term_t t, PyObject *obj, int flags)
       return py_unify_sequence(t, obj, flags);
     if ( PySet_Check(obj) )
       return py_unify_set(t, obj, flags);
-    if ( py_is_record(obj) )
+    if ( !(flags&PYU_ERROR) &&	/* cannot be called with error around */
+	 py_is_record(obj) )
       return py_unify_record(t, obj);
   }
 
