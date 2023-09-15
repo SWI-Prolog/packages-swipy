@@ -424,6 +424,37 @@ check_error(PyObject *obj)
 }
 
 
+static int py_unify_unicode(term_t t, PyObject *obj, int flags);
+
+static int
+PyEnum_Check(PyObject *obj)
+{ static PyObject *constructor = NULL;
+
+  if ( !constructor )
+  { PyObject *mod_name = NULL;
+    PyObject *mod = NULL;
+
+    if ( (mod_name=check_error(PyUnicode_FromString("enum"))) &&
+         (mod=check_error(PyImport_Import(mod_name))) )
+      constructor = check_error(PyObject_GetAttrString(mod, "Enum"));
+
+    Py_CLEAR(mod_name);
+    Py_CLEAR(mod);
+  }
+
+  return PyObject_IsInstance(obj, constructor);
+}
+
+
+static int
+py_unify_enum(term_t t, PyObject *obj)
+{ PyObject *name = PyObject_GetAttrString(obj, "name");
+  return py_unify_unicode(t, name, 0);
+}
+
+
+/* Returns the fractions.Fraction constructor */
+
 static PyObject *
 func_Fraction(void)
 { static PyObject *func = NULL;
@@ -737,9 +768,6 @@ py_unify(term_t t, PyObject *obj, int flags)
       return py_unify_long(t, obj);
     if ( PyFloat_Check(obj) )
       return PL_unify_float(t, PyFloat_AsDouble(obj));
-    if ( !(flags&PYU_ERROR) &&	/* cannot be called with error around */
-	 PyObject_IsInstance(obj, func_Fraction()) )
-      return py_unify_fraction(t, obj);
     if ( PyUnicode_Check(obj) )
       return py_unify_unicode(t, obj, flags);
     if ( PyTuple_Check(obj) )
@@ -752,9 +780,14 @@ py_unify(term_t t, PyObject *obj, int flags)
       return py_unify_sequence(t, obj, flags);
     if ( PySet_Check(obj) )
       return py_unify_set(t, obj, flags);
-    if ( !(flags&PYU_ERROR) &&	/* cannot be called with error around */
-	 py_is_record(obj) )
-      return py_unify_record(t, obj);
+    if ( !(flags&PYU_ERROR) )	/* cannot be called with error around */
+    { if ( PyObject_IsInstance(obj, func_Fraction()) )
+	return py_unify_fraction(t, obj);
+      if ( PyEnum_Check(obj) )
+	return py_unify_enum(t, obj);
+      if ( py_is_record(obj) )
+	return py_unify_record(t, obj);
+    }
   }
 
   return unify_py_obj(t, obj);

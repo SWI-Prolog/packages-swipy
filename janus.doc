@@ -122,6 +122,7 @@ Float   & $\Longleftrightarrow$ & float    & \\
 @(none) & $\Longleftrightarrow$ & None     & \\
 @(true) & $\Longleftrightarrow$ & True     & \\
 @(false) & $\Longleftrightarrow$ & False    & \\
+Atom    & $\longleftarrow$      & \cfuncref{enum.Enum}{} & Name of Enum instance \\ 
 Atom    & $\longleftrightarrow$ & String   & Except the above reserved three atoms \\
 String  & $\longrightarrow$     & String   & \\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
