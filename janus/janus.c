@@ -1360,6 +1360,7 @@ py_initialize_(term_t prog, term_t Argv, term_t options)
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
   Py_SetProgramName(pname);
+  PySys_SetArgv(argc, argv);
   Py_Initialize();
 #ifndef _MSC_VER
 #pragma GCC diagnostic pop
