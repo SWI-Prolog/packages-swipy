@@ -139,7 +139,11 @@ search path may be extended using py_add_lib_dir/1.
 
 py_version :-
     py_call(sys:version, X),
-    print_message(information, janus(version(X))).
+    print_message(information, janus(version(X))),
+    (   py_venv(VEnvDir, EnvSiteDir)
+    ->  print_message(informational, janus(venv(VEnvDir, EnvSiteDir)))
+    ;   true
+    ).
 
 
 %!  py_call(+Call) is det.
@@ -543,14 +547,54 @@ py_obj_dict(ObjRef, Dict) :-
 		 *            INIT		*
 		 *******************************/
 
+:- dynamic py_venv/2 as volatile.
+
 %   py_initialize is det.
 %
 %   Used as a callback from C for lazy initialization of Python.
 
 py_initialize :-
+    getenv('VIRTUAL_ENV', VEnv),
+    prolog_to_os_filename(VEnvDir, VEnv),
+    atom_concat(VEnvDir, '/pyvenv.cfg', Cfg),
+    access_file(Cfg, read),
+    !,
+    current_prolog_flag(executable, Program),
+    py_initialize(Program, ['-I'], []),
+    py_call(sys:prefix = VEnv),
+    venv_update_path(VEnvDir).
+py_initialize :-
     current_prolog_flag(executable, Program),
     current_prolog_flag(argv, Argv),
     py_initialize(Program, Argv, []).
+
+venv_update_path(VEnvDir) :-
+    py_call(sys:version_info, Info),    % Tuple
+    Info =.. [_,Major,Minor|_],
+    format(string(EnvSiteDir),
+           '~w/lib/python~w.~w/site-packages',
+           [VEnvDir, Major, Minor]),
+    prolog_to_os_filename(EnvSiteDir, PyEnvSiteDir),
+    (   exists_directory(EnvSiteDir)
+    ->  true
+    ;   print_message(warning,
+                      janus(venv(no_site_package_dir(VEnvDir, EnvSiteDir))))
+    ),
+    py_call(sys:path, Path0),
+    exclude(is_site_dir, Path0, Path1),
+    append(Path1, [PyEnvSiteDir], Path),
+    py_call(sys:path = Path),
+    print_message(silent, janus(venv(VEnvDir, EnvSiteDir))),
+    asserta(py_venv(VEnvDir, EnvSiteDir)).
+
+is_site_dir(OsDir) :-
+    prolog_to_os_filename(PlDir, OsDir),
+    file_base_name(PlDir, Dir0),
+    downcase_atom(Dir0, Dir),
+    no_env_dir(Dir).
+
+no_env_dir('site-packages').
+no_env_dir('dist-packages').
 
 %!  py_initialize(+Program, +Argv, +Options) is det.
 %
@@ -864,9 +908,16 @@ prolog:error_message(python_error(Class, Value, _Stack)) -->
       '  ~w'-[Message]
     ].
 
-prolog:message(janus(version(V))) -->
+prolog:message(janus(Msg)) -->
+    message(Msg).
+
+message(version(V)) -->
     [ 'Janus embeds Python ~w'-[V] ].
-prolog:message(janus(py_shell(no_janus))) -->
+message(venv(Dir, _EnvSiteDir)) -->
+    [ 'Janus: using venv from ~p'-[Dir] ].
+message(venv(no_site_package_dir(VEnvDir, Dir))) -->
+    [ 'Janus: venv dirrectory ~p does not contain ~p'-[VEnvDir, Dir] ].
+message(py_shell(no_janus)) -->
     [ 'Janus: py_shell/0: Importing janus into the Python shell requires Python 3.10 or later.', nl,
       'Run "', ansi(code, 'from janus import *', []), '" in the Python shell to import janus.'
     ].
