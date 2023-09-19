@@ -134,14 +134,15 @@ search path may be extended using py_add_lib_dir/1.
 
 %!  py_version is det.
 %
-%   Print version info on the  embedded   Python  installation  based on
-%   Python `sys:version`.
+%   Print version  info on the  embedded Python installation  based on
+%   Python `sys.version`.  If a Python _virtual environment_ (venv) is
+%   active, indicate this with the location of this environment found.
 
 py_version :-
     py_call(sys:version, X),
     print_message(information, janus(version(X))),
     (   py_venv(VEnvDir, EnvSiteDir)
-    ->  print_message(informational, janus(venv(VEnvDir, EnvSiteDir)))
+    ->  print_message(information, janus(venv(VEnvDir, EnvSiteDir)))
     ;   true
     ).
 

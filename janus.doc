@@ -281,6 +281,38 @@ ERROR: In:
 ERROR:   [10] janus:py_call(nomodule:noattr)
 \end{code}
 
+\subsection{Janus and virtual environments (venv)}
+\label{sec:janus-venv}
+
+An embedded Python system does not automatically pick up Python
+virtual environments.  It is supposed to setup its own environment.
+Janus is sensitive to Python \program{venv} environments.  Running
+under such as environment is assumed if the environment variable
+\const{VIRTUAL_ENV} points at a directory that holds a file
+\file{pyvenv.cfg}.  If the virtual environment is detected, the
+actions in the list below are taken.\footnote{This is based on
+observing how Python 3.10 on Linux responds to being used inside a
+virtual environment.  We do not know whether this covers all platforms
+and versions.}
+
+\begin{itemize}
+\item Initialize Python using the \const{-I} flag to indicate
+  \jargon{isolation}.
+\item Set \const{sys.prefix} to the value of the \const{VIRTUAL_ENV}
+  environment variable.
+\item Remove all directories with base name \file{site-packages} or
+  \file{dist-packages} from \const{sys.path}.\footnote{Note that
+  \const{-I} only removes the personal packages directory, while
+  the Python executable removes all, so we do the same.}
+\item Add \file{$VIRTUAL_ENV/lib/pythonX.Y/site-packages} to
+  \const{sys.path}, where \arg{X} and \arg{Y} are the major and minor
+  version numbers of the embedded Python library.  If this directory
+  does not exist we print a diagnostic warning.
+\item Add a message to py_version/0 that indicates we are using
+  a virtual environment and from which directory.
+\end{itemize}
+
+
 \section{Calling Prolog from Python}
 \label{sec:janus-call-prolog}
 
