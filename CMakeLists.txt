@@ -51,7 +51,7 @@ configure_file(config.h.cmake config.h)
 test_libs(
     janus xsb_janus
     PACKAGES plunit
-    TEST_DIRS tests)
+    TEST_DIRS tests xsb_tests)
 
 pkg_doc(janus
 	SOURCE janus/janus.pl libjanus.tex)
