@@ -61,7 +61,7 @@ e.g.,
 	>>> from janus_swi import *
 	>>> once("writeln('Hello world!')")
 	Hello world!
-	{'status': True}
+	{'truth': True}
 	>>>
 
 To install  the package you  need `pip` with  a C compiler.   On Linux

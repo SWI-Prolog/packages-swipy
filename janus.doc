@@ -350,7 +350,7 @@ a dict with \jargon{input bindings} and returns \jargon{output
 \begin{code}
 >>> import janus_swi as janus
 >>> janus.once("Y is X+1", {"X":1})
-{'Y': 2, 'status': True}
+{'Y': 2, 'truth': True}
 \end{code}
 
 Note that the input argument may also be passed literally. Below we
@@ -367,10 +367,10 @@ string to denote the goal is easy to use and fast.
 
 \begin{code}
 >>> janus.once("Y is 1+1", {})	     # Ok for "static" queries
-{'Y': 2, 'status': True}
+{'Y': 2, 'truth': True}
 >>> x = 1
 >>> janus.once(f"Y is {x}+1", {})    # Do not use this
-{'Y': 2, 'status': True}             # See above
+{'Y': 2, 'truth': True}             # See above
 \end{code}
 
 The \jargon{output dict} contains all named Prolog variables that (1)
@@ -388,19 +388,19 @@ variables or arbitrary compound terms.
 \end{code}
 
 In addition to the variable bindings the dict contains a key
-\const{status}\footnote{Note that variable bindings always start with
+\const{truth}\footnote{Note that variable bindings always start with
 an uppercase latter.}  that represents the truth value of evaluating
 the query.  In normal Prolog this is a Python Boolean.  In systems
 that implement \jargon{Well Founded Semantics}, this may also be the
 string \const{'Undefined'}.  If evaluation of the query failed, all
 variable bindings are bound to the Python constant \const{None} and
-the \const{status} key is \const{False}.  The following Python
+the \const{truth} key is \const{False}.  The following Python
 function returns \const{True} if the Prolog system supports unbounded
 integers and \const{False} otherwise.
 
 \begin{code}
 def hasBigIntegers():
-    janus.once("current_prolog_flag(bounded,false)")['status']
+    janus.once("current_prolog_flag(bounded,false)")['truth']
 \end{code}
 
 
@@ -408,7 +408,7 @@ While \cfuncref{janus.once}{} deals with semi-deterministic goals, the
 class \cfuncref{janus.Query}{} implements a Python \jargon{iterator}
 that iterates over the solutions of a Prolog goal. The iterator may be
 aborted using the Python \exam{break} statement.  As with
-\cfuncref{janus.once}{}, the returned dict contains a \const{status}
+\cfuncref{janus.once}{}, the returned dict contains a \const{truth}
 field.  This field cannot be \const{False} though and thus is either
 \const{True} or the string \verb$'Undefined'$.\footnote{The
 representation of \jargon{Undefined} is still under discussion.}
@@ -463,14 +463,14 @@ this using the sequence below.
 >>> q1 = Query("between(1,3,X)")
 >>> q2 = Query("between(1,3,X)")
 >>> q2.next()
-{'status': True, 'X': 1}
+{'truth': True, 'X': 1}
 >>> q1.next()
 Traceback (most recent call last):
 ...
 swipl.Error: swipl.next_solution(): not inner query
 >>> q2.close()
 >>> q1.next()
-{'status': True, 'X': 1}
+{'truth': True, 'X': 1}
 >>> q1.close()
 \end{code}
 
@@ -490,14 +490,14 @@ are lost.  Using \const{True}, such changes are preserved.
 
 \begin{code}
 >>> once("b_setval(a, 1)", keep=True)
-{'status': 'True'}
+{'truth': 'True'}
 >>> once("b_getval(a, X)")
-{'status': 'True', 'X': 1}
+{'truth': 'True', 'X': 1}
 \end{code}
 
 If \arg{query} fails, the variables of the query are bound to the Python
 constant \const{None}. The \arg{bindings} object includes a key
-\const{status}\footnote{As this name is not a valid Prolog variable
+\const{truth}\footnote{As this name is not a valid Prolog variable
 name, this cannot be ambiguous.} that has the value \const{False} (query
 failed, all bindings are \const{None}), \const{True} (query succeeded,
 variables are bound to the result converting Prolog data to Python) or
@@ -508,7 +508,7 @@ undefined/0. For example
 \begin{code}
 >>> import janus_swi as janus
 >>> janus.once("undefined")
-{'status': 'Undefined'}
+{'truth': 'Undefined'}
 \end{code}
 
     \cfunction{None}{janus.consult}{file, data=None, module='user'}
@@ -555,7 +555,7 @@ non-deterministic Prolog predicate.
    \cfunction{Query}{janus.Query}{query, bindings=\{{}\}, keep=False}
    As \cfuncref{janus.once}{}, returning an \jargon{iterator} that
    provides an answer dict as \cfuncref{janus.once}{} for each answer
-   to \arg{query}.  Answers never have \const{status} \const{False}.
+   to \arg{query}.  Answers never have \const{truth} \const{False}.
    See discussion above.
 
    \cfunction{dict{|}None}{janus.Query.next}{}
@@ -710,7 +710,7 @@ python
 >>> from janus_swi import *
 >>> once("writeln('Hello world!')")
 Hello world!
-{'status': True}
+{'truth': True}
 >>> [a["D"] for a in Query("between(1,6,D)")]
 [1, 2, 3, 4, 5, 6]
 >>> prolog()

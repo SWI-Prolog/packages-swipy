@@ -292,10 +292,10 @@ test(iter, Sum == 10011) :-
     py_call(demo:abort_iter(1000), Sum).
 test(iter, Sum == 10011) :-             % Check we didn't mess up the Prolog stack
     py_call(demo:abort_iter(1000), Sum).
-test(undef, Result == py{status:'Undefined'}) :-
+test(undef, Result == py{truth:'Undefined'}) :-
     py_call(janus:once(undefined), Result).
-test(russel, List == [py{'X':barber,'Y':barber,status:'Undefined'},
-		      py{'X':barber,'Y':mayor,status: @true}]) :-
+test(russel, List == [py{'X':barber,'Y':barber,truth:'Undefined'},
+		      py{'X':barber,'Y':mayor,truth: @true}]) :-
     py_call(demo:shaves(), List0),
     sort('Y', @=<, List0, List).
 test(py_double, Tuples == [1-1,2-1,3-1,
@@ -353,7 +353,7 @@ test(reverse, X == -([py{a:py{b:c}}, -(mytuple), 3, 2, 1], 1)) :-
 test(px_comp1, X == [-(1)-1,-(2)-1]) :-
     py_call(janus:px_comp(user, between, 1, 2), X).
 test(px_comp2, X == [-(1),-(2)]) :-
-    py_call(janus:px_comp(user, between, 1, 2, truth_vals=none), X).
+    py_call(janus:px_comp(user, between, 1, 2, truth=none), X).
 
 :- end_tests(xsb_call).
 

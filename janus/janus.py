@@ -96,7 +96,7 @@ class Query:
     def __next__(self):
         """Implement iter protocol.  Returns a dict as janus.once()"""
         rc = _swipl.next_solution(self.state)
-        if rc == False or rc["status"] == False:
+        if rc == False or rc["truth"] == False:
             raise StopIteration()
         else:
             return rc
@@ -106,7 +106,7 @@ class Query:
     def next(self):
         """Allow for explicit enumeration,  Returns None or a dict"""
         rc = _swipl.next_solution(self.state)
-        if rc == False or rc["status"] == False:
+        if rc == False or rc["truth"] == False:
             return None
         else:
             return rc
@@ -197,10 +197,10 @@ def px_cmd(module, pred, *args):
     """Run module:pred(arg ...)"""
     once("janus:px_cmd(M,P,Args)", {"M":module, "P":pred, "Args":args})
 
-def _xsb_tv(status):
-    if status == True:
+def _xsb_tv(truth):
+    if truth == True:
         return 1
-    elif status == False:
+    elif truth == False:
         return 0
     else:
         return 2
@@ -223,19 +223,19 @@ def px_qdet(module, pred, *args):
 
     Returns
     -------
-    result: (Return,Status)
+    result: (Return,Truth)
         A tuple holding the converted value of the last argument of pred
-        and the success status.  `0` means failure, `1`, success and `2`
+        and the success truth.  `0` means failure, `1`, success and `2`
         _undefined_ (success with delays)
     """
     d = once("janus:px_qdet(M,P,Args,Ret)", {"M":module, "P":pred, "Args":args})
-    return (d["Ret"], _xsb_tv(d["status"]))
+    return (d["Ret"], _xsb_tv(d["truth"]))
 
 PLAIN_TRUTHVALS="plain"
 DELAY_LISTS="delays"
 NO_TRUTHVALS="none"
 
-def px_comp(module, pred, *args, vars=1, set_collect=False, truth_vals=PLAIN_TRUTHVALS):
+def px_comp(module, pred, *args, vars=1, set_collect=False, truth=PLAIN_TRUTHVALS):
     """Call non-deterministic predicate
 
 
@@ -251,9 +251,9 @@ def px_comp(module, pred, *args, vars=1, set_collect=False, truth_vals=PLAIN_TRU
         Number of "output" variables that appear after `args`.
     set_collect : Bool=False
         When True, return a _set_ of answers rather than a _list_.
-    truth_vals : (PLAIN_TRUTHVALS|DELAY_LISTS|NO_TRUTHVALS)=PLAIN_TRUTHVALS
+    truth : (PLAIN_TRUTHVALS|DELAY_LISTS|NO_TRUTHVALS)=PLAIN_TRUTHVALS
         When `NO_TRUTHVALS`, answers are no tuples.  Otherwise each answer
-        is a tuple `(Value,Status)`.  Using `PLAIN_TRUTHVALS`, Status is
+        is a tuple `(Value,Truth)`.  Using `PLAIN_TRUTHVALS`, Truth is
         one of 1 or 2 (undefined).  Using `DELAY_LISTS`, the delay list
         as returned by call_delays/2 is returned.
 
@@ -271,7 +271,7 @@ def px_comp(module, pred, *args, vars=1, set_collect=False, truth_vals=PLAIN_TRU
                "Args":args,
                "Vars":vars,
                "Set":set_collect,
-               "TV":truth_vals
+               "TV":truth
               })
     return d["Ret"]
 

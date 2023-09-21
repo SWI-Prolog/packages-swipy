@@ -467,7 +467,7 @@ comma_dict_items(Key:Value, Keys) =>
 %       ...
 %       >>> once("writeln(X)", {"X":"Hello world"})
 %       Hello world
-%       {'status': True}
+%       {'truth': True}
 %
 %   If possible, we enable command line   editing using the GNU readline
 %   library.
@@ -713,32 +713,32 @@ py_add_lib_dir(Dir, Where) :-
 %   term. Next, all variables from the goal   term that appear in DictIn
 %   are bound to the value from  this   dict.  Dict  is created from the
 %   remaining variables, unless they  start   with  an underscore (e.g.,
-%   `_Time`) and the key `status. On   success,  the Dict values contain
-%   the bindings from the  answer  and   `status`  is  either  `true` or
+%   `_Time`) and the key `truth. On   success,  the Dict values contain
+%   the bindings from the  answer  and   `truth`  is  either  `true` or
 %   `Undefined`. On failure, the Dict values are bound to `None` and the
-%   `status` is `false`.
+%   `truth` is `false`.
 %
 %   Parsing and distributing the variables over the two dicts is cached.
 
 py_call_string(M:String, Input, Dict) :-
-    py_call_cache(String, Input, M, Goal, Dict, Status, OutVars),
+    py_call_cache(String, Input, M, Goal, Dict, Truth, OutVars),
     !,
     (   call(M:Goal)
-    *-> bind_status(Status)
-    ;   Status = false,
+    *-> bind_status(Truth)
+    ;   Truth = false,
 	maplist(bind_none, OutVars)
     ).
 py_call_string(M:String, Input, Dict) :-
     term_string(Goal, String, [variable_names(Map)]),
     unbind_dict(Input, VInput),
     exclude(not_in_projection(VInput), Map, OutBindings),
-    dict_create(Dict, bindings, [status=Status|OutBindings]),
+    dict_create(Dict, bindings, [truth=Truth|OutBindings]),
     maplist(arg(2), OutBindings, OutVars),
-    asserta(py_call_cache(String, VInput, M, Goal, Dict, Status, OutVars)),
+    asserta(py_call_cache(String, VInput, M, Goal, Dict, Truth, OutVars)),
     VInput = Input,
     (   call(M:Goal)
-    *-> bind_status(Status)
-    ;   Status = @false,
+    *-> bind_status(Truth)
+    ;   Truth = @false,
 	maplist(bind_none, OutVars)
     ).
 
@@ -750,10 +750,10 @@ not_in_projection(Input, Name=Value) :-
 
 bind_none(@none).
 
-bind_status(Status) :-
+bind_status(Truth) :-
     (   '$tbl_delay_list'([])
-    ->  Status = @true
-    ;   Status = "Undefined"
+    ->  Truth = @true
+    ;   Truth = "Undefined"
     ).
 
 unbind_dict(Dict0, Dict) :-
@@ -822,7 +822,7 @@ tv_goal_and_template(plain,  Goal, ucall(Goal, TV), Templ, -(Templ,TV)) :- !.
 tv_goal_and_template(delays, Goal, call_delays_py(Goal, TV), Templ, -(Templ,TV)) :- !.
 tv_goal_and_template(none,   Goal, Goal, Templ, Templ) :- !.
 tv_goal_and_template(Mode, _, _, _, _) :-
-    domain_error("px_comp() truth_vals", Mode).
+    domain_error("px_comp() truth", Mode).
 
 :- public
     ucall/2,
