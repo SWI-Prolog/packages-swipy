@@ -73,7 +73,7 @@ developed for the WASM (Web Assembly) version.  That is
 
 \item A non-deterministic Prolog predicate py_iter/2 to
   enumerate a Python \jargon{iterator}.
-  
+
 \item A Python function \cfuncref{janus.once}{} to call a Prolog
   predicate as once/1, providing input to Prolog variables using
   a Python dict and return a Python dict with bindings for each
@@ -122,7 +122,7 @@ Float   & $\Longleftrightarrow$ & float    & \\
 @(none) & $\Longleftrightarrow$ & None     & \\
 @(true) & $\Longleftrightarrow$ & True     & \\
 @(false) & $\Longleftrightarrow$ & False    & \\
-Atom    & $\longleftarrow$      & \cfuncref{enum.Enum}{} & Name of Enum instance \\ 
+Atom    & $\longleftarrow$      & \cfuncref{enum.Enum}{} & Name of Enum instance \\
 Atom    & $\longleftrightarrow$ & String   & Except the above reserved three atoms \\
 String  & $\longrightarrow$     & String   & \\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
@@ -595,7 +595,7 @@ Obj = <py_Term>(0x7f7a14512050).
   \cfunction{Term}{janus.Term.__str__}{}
   Return the output of print/1 on the term.  This is what is used by
   the Python function print().
-  
+
   \cfunction{Term}{janus.Term.__repr__}{}
   Return the output of write_canonical/1 on the term.
 \end{description}

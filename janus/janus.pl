@@ -77,13 +77,13 @@
 :- autoload(library(error), [must_be/2, domain_error/2]).
 :- autoload(library(dicts), [dict_keys/2]).
 :- autoload(library(option), [dict_options/2]).
+:- autoload(library(prolog_code), [comma_list/2]).
+:- autoload(library(readutil), [read_line_to_string/2]).
+:- autoload(library(wfs), [call_delays/2, delays_residual_program/2]).
 
 :- if(\+current_predicate(py_call/1)).
 :- if(current_prolog_flag(windows, true)).
 :- use_module(library(shlib), [win_add_dll_directory/1]).
-:- autoload(library(prolog_code), [comma_list/2]).
-:- autoload(library(readutil), [read_line_to_string/2]).
-:- autoload(library(wfs), [call_delays/2]).
 
 % Just having the Python dir in PATH seems insufficient. We also need to
 % add the directory to the DLL search path.
@@ -703,7 +703,7 @@ py_add_lib_dir(Dir, Where) :-
 		 *           CALLBACK		*
 		 *******************************/
 
-:- dynamic py_call_cache/7 as volatile.
+:- dynamic py_call_cache/8 as volatile.
 
 :- meta_predicate py_call_string(:, +, -).
 
@@ -721,23 +721,41 @@ py_add_lib_dir(Dir, Where) :-
 %   Parsing and distributing the variables over the two dicts is cached.
 
 py_call_string(M:String, Input, Dict) :-
-    py_call_cache(String, Input, M, Goal, Dict, Truth, OutVars),
+    py_call_cache(String, Input, TV, M, Goal, Dict, Truth, OutVars),
     !,
-    (   call(M:Goal)
-    *-> bind_status(Truth)
-    ;   Truth = false,
-	maplist(bind_none, OutVars)
-    ).
+    py_call(TV, M:Goal, Truth, OutVars).
 py_call_string(M:String, Input, Dict) :-
     term_string(Goal, String, [variable_names(Map)]),
     unbind_dict(Input, VInput),
     exclude(not_in_projection(VInput), Map, OutBindings),
     dict_create(Dict, bindings, [truth=Truth|OutBindings]),
     maplist(arg(2), OutBindings, OutVars),
-    asserta(py_call_cache(String, VInput, M, Goal, Dict, Truth, OutVars)),
+    TV = Input.get(truth, 'PLAIN_TRUTHVALS'),
+    asserta(py_call_cache(String, VInput, TV, M, Goal, Dict, Truth, OutVars)),
     VInput = Input,
+    py_call(TV, M:Goal, Truth, OutVars).
+
+py_call('NO_TRUTHVALS', M:Goal, Truth, OutVars) =>
     (   call(M:Goal)
-    *-> bind_status(Truth)
+    *-> bind_status_no_no_truthvals(Truth)
+    ;   Truth = @false,
+	maplist(bind_none, OutVars)
+    ).
+py_call('PLAIN_TRUTHVALS', M:Goal, Truth, OutVars) =>
+    (   call(M:Goal)
+    *-> bind_status_plain_truthvals(Truth)
+    ;   Truth = @false,
+	maplist(bind_none, OutVars)
+    ).
+py_call('DELAY_LISTS', M:Goal, Truth, OutVars) =>
+    (   call_delays(M:Goal, Delays)
+    *-> bind_status_delay_lists(Delays, Truth)
+    ;   Truth = @false,
+	maplist(bind_none, OutVars)
+    ).
+py_call('RESIDUAL_PROGRAM', M:Goal, Truth, OutVars) =>
+    (   call_delays(M:Goal, Delays)
+    *-> bind_status_residual_program(Delays, Truth)
     ;   Truth = @false,
 	maplist(bind_none, OutVars)
     ).
@@ -750,18 +768,38 @@ not_in_projection(Input, Name=Value) :-
 
 bind_none(@none).
 
-bind_status(Truth) :-
+bind_status_no_no_truthvals(@true).
+
+bind_status_plain_truthvals(Truth) =>
     (   '$tbl_delay_list'([])
     ->  Truth = @true
-    ;   Truth = "Undefined"
+    ;   py_undefined(Truth)
     ).
+
+bind_status_delay_lists(true, Truth) =>
+    Truth = @true.
+bind_status_delay_lists(Delays, Truth) =>
+    py_call(janus:'Undefined'(prolog(Delays)), Truth).
+
+bind_status_residual_program(true, Truth) =>
+    Truth = @true.
+bind_status_residual_program(Delays, Truth) =>
+    delays_residual_program(Delays, Program),
+    py_call(janus:'Undefined'(prolog(Program)), Truth).
+
+py_undefined(X) :-
+    py_call(janus:undefined, X).
 
 unbind_dict(Dict0, Dict) :-
     dict_pairs(Dict0, Tag, Pairs0),
     maplist(unbind, Pairs0, Pairs),
     dict_pairs(Dict, Tag, Pairs).
 
-unbind(Name-_, Name-_).
+unbind(Name-_, Name-_) :-
+    sub_atom(Name, 0, 1, _, Char1),
+    char_type(Char1, prolog_var_start),
+    !.
+unbind(NonVar, NonVar).
 
 
 		 /*******************************
@@ -818,9 +856,13 @@ px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
 :- meta_predicate
     call_delays_py(0, -).
 
-tv_goal_and_template(plain,  Goal, ucall(Goal, TV), Templ, -(Templ,TV)) :- !.
-tv_goal_and_template(delays, Goal, call_delays_py(Goal, TV), Templ, -(Templ,TV)) :- !.
-tv_goal_and_template(none,   Goal, Goal, Templ, Templ) :- !.
+% 0,1,2: TruthVal(Enum) from janus.py
+tv_goal_and_template('NO_TRUTHVALS',
+                     Goal, Goal, Templ, Templ) :- !.
+tv_goal_and_template('PLAIN_TRUTHVALS',
+                     Goal, ucall(Goal, TV), Templ, -(Templ,TV)) :- !.
+tv_goal_and_template('DELAY_LISTS',
+                     Goal, call_delays_py(Goal, TV), Templ, -(Templ,TV)) :- !.
 tv_goal_and_template(Mode, _, _, _, _) :-
     domain_error("px_comp() truth", Mode).
 

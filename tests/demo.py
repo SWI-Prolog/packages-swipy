@@ -109,8 +109,8 @@ def squares(start, stop):
 
 # Test for WFS
 
-def shaves():
-    return [*Query("russel:shaves(X,Y)")]
+def shaves(truth=PLAIN_TRUTHVALS):
+    return [*Query("russel:shaves(X,Y)", truth=truth)]
 
 # Benchmarking support
 

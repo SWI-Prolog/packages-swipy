@@ -68,9 +68,59 @@ except ModuleNotFoundError:     # Loading janus into Python
 if not hasattr(_swipl, 'call'):
     raise RuntimeError(f"Loaded wrong module '_swipl' from {_swipl.__file__}")
 
-# Undefined
+import enum
 
-Undefined = "Undefined"
+################################################################
+# Truth representation
+
+class Undefined:
+    """
+    Class `Undefined` represents undefined answers according to the
+    Well Founded Semantics.  Generic undefined answers are represented
+    by a unique instance of this class that is available as the property
+    `janus.undefined`.
+
+    Parameters
+    ----------
+    term: Term
+        Term representing the delay list or residual program.  Defaults
+        to `None` for the generic undefined truth.
+
+    """
+    def __init__(self, term=None):
+        self.term = term
+    def __str__(self):
+        if self.term == None:
+            return "Undefined"
+        else:
+            return self.term.__str__()
+    def __repr__(self):
+        if self.term == None:
+            return "Undefined"
+        else:
+            return self.term.__repr__()
+
+# Truth value constants
+
+false = False
+true = True
+undefined = Undefined()
+
+# Ask for specific representations of WFS undefined results.
+# Using StrEnum would be more practical, but this is not in
+# older Python versions (introduced in 3.11?)
+
+# @enum.global_enum		(not in 3.10)
+class TruthVal(enum.Enum):
+    NO_TRUTHVALS     = 0
+    PLAIN_TRUTHVALS  = 1
+    DELAY_LISTS      = 2
+    RESIDUAL_PROGRAM = 3
+
+NO_TRUTHVALS     = TruthVal.NO_TRUTHVALS
+PLAIN_TRUTHVALS  = TruthVal.PLAIN_TRUTHVALS
+DELAY_LISTS      = TruthVal.DELAY_LISTS
+RESIDUAL_PROGRAM = TruthVal.RESIDUAL_PROGRAM
 
 ################################################################
 # Primary high level interface
@@ -86,9 +136,15 @@ class Query:
     inputs: dict
         Bind variables of the goal on input with the converted
         Python data from this dict.
+    truth : (PLAIN_TRUTHVALS|DELAY_LISTS|RESIDUAL_PROGRAM)=PLAIN_TRUTHVALS
+        How to represent Undefined.  Using `PLAIN_TRUTHVALS` undefined
+        results use `janus.undefined`.  Using `DELAY_LISTS` an instance
+        of `janus.Undefined` is created from the delay condition.
+
     """
-    def __init__(self, query, inputs={}):
+    def __init__(self, query, inputs={}, truth=TruthVal.PLAIN_TRUTHVALS):
         """Create from query and inputs as janus.once()"""
+        inputs['truth'] = truth
         self.state = _swipl.open_query(query, inputs)
     def __iter__(self):
         """Implement iter protocol"""
@@ -231,11 +287,7 @@ def px_qdet(module, pred, *args):
     d = once("janus:px_qdet(M,P,Args,Ret)", {"M":module, "P":pred, "Args":args})
     return (d["Ret"], _xsb_tv(d["truth"]))
 
-PLAIN_TRUTHVALS="plain"
-DELAY_LISTS="delays"
-NO_TRUTHVALS="none"
-
-def px_comp(module, pred, *args, vars=1, set_collect=False, truth=PLAIN_TRUTHVALS):
+def px_comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TRUTHVALS):
     """Call non-deterministic predicate
 
 
