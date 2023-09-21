@@ -80,6 +80,9 @@ class Undefined:
     by a unique instance of this class that is available as the property
     `janus.undefined`.
 
+    Instances of this class are created by once() and Query() and should
+    never be created by the user.
+
     Parameters
     ----------
     term: Term
@@ -88,13 +91,16 @@ class Undefined:
 
     """
     def __init__(self, term=None):
+        "Create from a Prolog term or `None` for _generic_ undefined"
         self.term = term
     def __str__(self):
+        "Either "Undefined" (generic) or __str__() of the `.term`"
         if self.term == None:
             return "Undefined"
         else:
             return self.term.__str__()
     def __repr__(self):
+        "Either "Undefined" (generic) or __repr__() of the `.term`"
         if self.term == None:
             return "Undefined"
         else:
@@ -112,10 +118,35 @@ undefined = Undefined()
 
 # @enum.global_enum		(not in 3.10)
 class TruthVal(enum.Enum):
+    """
+    Enum constants for asking for the Well Founded Semantics
+    details on undefined results.   These are used by once()
+    and Query() and affect the value of the `truth` key in
+    results.  Values
+
+      - `NO_TRUTHVALS`
+        Undefined results are not reported.  This is quite
+        pointless in the current design and this may go.
+      - `PLAIN_TRUTHVALS`
+        Return undefined results as `janus.undefined`, a
+        unique instance of the class `Undefined`.
+      - `DELAY_LISTS`
+        Return undefined results as an instance of class
+        `Undefined` thats holds the delay list in Prolog
+        native representation.
+      - `RESIDUAL_PROGRAM`
+        Return undefined results as an instance of class
+        `Undefined` thats holds the _residual program_,
+        i.e., a small inconsistent program that forms the
+        justification of why the result is undefined.
+    """
     NO_TRUTHVALS     = 0
     PLAIN_TRUTHVALS  = 1
     DELAY_LISTS      = 2
     RESIDUAL_PROGRAM = 3
+
+# Make the enum available as  `janus.NO_TRUTHVALS`, etc.  As of Python
+# 3.11 this can be done using `@enum.global_enum`
 
 NO_TRUTHVALS     = TruthVal.NO_TRUTHVALS
 PLAIN_TRUTHVALS  = TruthVal.PLAIN_TRUTHVALS
@@ -170,7 +201,7 @@ class Query:
         """Explicitly close the query."""
         _swipl.close_query(self.state)
 
-def once(query, inputs={}, keep=False):
+def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
     """
     Call a Prolog predicate as `once/1`
 
@@ -185,7 +216,10 @@ def once(query, inputs={}, keep=False):
         It `True` (default `False`), do not _backtrack_.  May
         be used to preserve changes to global variables using
         `b_setval/2`.
+    truth: enum(TruthVal) = TruthVal.PLAIN_TRUTHVALS
+        How to deal with _Well Founded Semantics_ undefined results.
     """
+    inputs['truth'] = truth
     return _swipl.call(query, inputs, keep)
 
 def consult(file, data=None, module='user'):

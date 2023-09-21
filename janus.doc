@@ -480,7 +480,8 @@ crash the process}.  Future versions may improve on that.
 
 
 \begin{description}
-    \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False}
+  \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
+			       truth=TruthVals.PLAIN_TRUTHVALS}
 Call \arg{query} using \arg{bindings} as once/1, returning a dict with
 the resulting bindings. If \arg{bindings} is omitted, no variables are
 bound. The \arg{keep} parameter determines whether or not Prolog
@@ -501,14 +502,14 @@ constant \const{None}. The \arg{bindings} object includes a key
 name, this cannot be ambiguous.} that has the value \const{False} (query
 failed, all bindings are \const{None}), \const{True} (query succeeded,
 variables are bound to the result converting Prolog data to Python) or
-\verb$'Undefined'$, a Python string that indicates the answer is
-undefined according to the \jargon{Well Founded Semantics}. See e.g.,
-undefined/0. For example
+an instance of the class \cfuncref{janus.Undefined}{}.  The information
+carried by this instance is determined by the \const{truth} parameter.
+Below is an example.  See \secref{janus-truth} for details.
 
 \begin{code}
 >>> import janus_swi as janus
 >>> janus.once("undefined")
-{'truth': 'Undefined'}
+{'truth': Undefined}
 \end{code}
 
     \cfunction{None}{janus.consult}{file, data=None, module='user'}
@@ -568,6 +569,114 @@ non-deterministic Prolog predicate.
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
    care of closing the query.
 \end{description}
+
+\subsection{Janus and Prolog truth}
+\label{sec:janus-truth}
+
+In traditional Prolog, queries \jargon{succeed} or \jargon{fail}.
+Systems that implement tabling with \jargon{Well Founded Semantics}
+such as XSB and SWI-Prolog define a third truth value typically called
+\jargon{undefined}.  Undefined results may have two reasons; (1) the
+program is logically inconsistent or (2) \jargon{restraints} have been
+applied in the derivation.
+
+Because classical Prolog truth is dominant, we represent the success
+of a query using the Python booleans \const{True} and \const{False}.
+For undefined answers we define a class \cfuncref{janus.Undefined}{}
+that may represent different levels of detail on why the result is
+undefined.  The notion of \jargon{generic undefined} is represented by
+a unique instance of this class.  The three truth values are
+accessible as properties of the \const{janus} module.
+
+\begin{description}
+  \definition{janus.true}
+This property has the Python boolean \const{True}
+  \definition{janus.false}
+This property has the Python boolean \const{False}
+  \definition{janus.undefined}
+This property holds a unique instance of class
+\cfuncref{janus.Undefined}{}
+\end{description}
+
+\subsubsection{Janus classed Undefined and TruthVal}
+\label{sec:janus-class-undefined}
+
+The class \cfuncref{janus.Undefined}{} represents an undefined result
+under the \jargon{Well Founded Semantics}.
+
+\begin{description}
+  \cfunction{Undefined}{janus.Undefined}{term=None}
+  Instances are never created explicitly by the user.  They are
+  created by the calls to Prolog initiated from \cfuncref{janus.once}{}
+  and \cfuncref{janus.Query}{}.
+
+  The class has a single property class \const{term} that represents
+  either the \jargon{delay list} or the \jargon{residual program}.  See
+  \cfuncref{janus.TruthVal}{} for details.
+
+  \cfunction{Enum}{janus.TruthVal}{}
+  This class is a Python \jargon{enumeration}.  Its values are passed
+  as the optional \arg{truth} parameter to \cfuncref{janus.once}{} and
+  \cfuncref{janus.Query}{}.   The defined instances are
+
+  \begin{description}
+    \definition{NO_TRUTHVALS}
+    Undefined results are reported as \const{True}.  This is quite
+    pointless in the current design and this may go.
+    \definition{PLAIN_TRUTHVALS}
+    Return undefined results as \const{janus.undefined}, a
+    unique instance of the class \cfuncref{janus.Undefined}{}.
+    \definition{DELAY_LISTS}
+    Return undefined results as an instance of class
+    \cfuncref{janus.Undefined}{}. thats holds the delay list
+    in Prolog native representation.  See call_delays/2.
+    \definition{RESIDUAL_PROGRAM}
+    Return undefined results as an instance of class
+    \cfuncref{janus.Undefined}{}. thats holds the \jargon{residual
+    program} in Prolog native representation.  See
+    call_residual_program/2.
+  \end{description}
+
+  The instances of this enumeration are available as attributed of
+  the \const{janus} module.
+\end{description}
+
+For example, given Russel's paradox defined in Prolog as below.
+
+\begin{code}
+:- module(russel, [shaves/2]).
+
+:- table shaves/2.
+
+shaves(barber,P) :- person(P),  tnot(shaves(P,P)).
+person(barber).
+person(mayor).
+\end{code}
+
+From Python, we may ask who shaves the barber in four ways as
+illustrated below.  Note that the Prolog representations for
+\const{janus.DELAY_LISTS} and \const{janus.RESIDUAL_PROGRAM}
+use the write_canonical/1 notation.  They may later be changed
+to use a more human friendly notation.
+
+\begin{code}
+# Using NO_TRUTHVALS
+>>> janus.once("russel:shaves(barber, X)", truth=janus.NO_TRUTHVALS)
+{'truth': True, 'X': 'barber'}
+
+# Using default PLAIN_TRUTHVALS (default)
+>>> janus.once("russel:shaves(barber, X)")
+{'truth': Undefined, 'X': 'barber'}
+
+# Using default DELAY_LISTS
+>>> janus.once("russel:shaves(barber, X)", truth=janus.DELAY_LISTS)
+{'truth': :(russel,shaves(barber,barber)), 'X': 'barber'}
+
+# Using default RESIDUAL_PROGRAM
+>>> janus.once("russel:shaves(barber, X)", truth=janus.RESIDUAL_PROGRAM)
+{'truth': [:-(:(russel,shaves(barber,barber)),tnot(:(russel,shaves(barber,barber))))], 'X': 'barber'}
+\end{code}
+
 
 \subsection{Janus class Term}
 \label{sec:janus-class-term}
