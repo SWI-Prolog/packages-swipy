@@ -94,13 +94,13 @@ class Undefined:
         "Create from a Prolog term or `None` for _generic_ undefined"
         self.term = term
     def __str__(self):
-        "Either "Undefined" (generic) or __str__() of the `.term`"
+        """Either "Undefined" (generic) or __str__() of the `.term`"""
         if self.term == None:
             return "Undefined"
         else:
             return self.term.__str__()
     def __repr__(self):
-        "Either "Undefined" (generic) or __repr__() of the `.term`"
+        """Either "Undefined" (generic) or __repr__() of the `.term`"""
         if self.term == None:
             return "Undefined"
         else:
