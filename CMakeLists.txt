@@ -31,10 +31,12 @@ prepend(PYTHON_FILES janus/ ${PYTHON_FILES})
 if(WIN32 AND NOT MSVC)
   get_target_property(implib Python::Python IMPORTED_IMPLIB)
   string(REGEX REPLACE "3[.0-9]+\\." "3." Python3_LIB ${implib})
-  message("Using Python3 compatibility library ${Python3_LIB}")
-  set_property(TARGET Python::Python PROPERTY
-	       IMPORTED_IMPLIB ${Python3_LIB})
-  set(PYTHON3_COMPAT 1)
+  if(EXISTS "${Python3_LIB}")
+    message("Using Python3 compatibility library ${Python3_LIB}")
+    set_property(TARGET Python::Python PROPERTY
+		 IMPORTED_IMPLIB ${Python3_LIB})
+    set(PYTHON3_COMPAT 1)
+  endif()
 endif()
 
 swipl_plugin(
