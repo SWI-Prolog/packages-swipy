@@ -128,6 +128,11 @@ swipl_call(PyObject *self, PyObject *args)
     return NULL;
   }
 
+  if ( PL_thread_attach_engine(NULL) < 0 )
+  { Py_SetPrologErrorFromChars("Cannot create thread");
+    return NULL;
+  }
+
   if ( !pred || !user )
   { pred = PL_predicate("py_call_string", 3, "janus");
     user = PL_new_module(PL_new_atom("user"));
@@ -168,6 +173,7 @@ swipl_call(PyObject *self, PyObject *args)
     else
       PL_discard_foreign_frame(fid);
   }
+  PL_thread_destroy_engine();
 
   return out;
 }
@@ -189,6 +195,11 @@ swipl_open_query(PyObject *self, PyObject *args)
 
   if ( arity == 0 || arity > 3 )
   { PyErr_SetString(PyExc_TypeError, "swipl.call(query,bindings,keep) takes 1..3 arguments");
+    return NULL;
+  }
+
+  if ( PL_thread_attach_engine(NULL) < 0 )
+  { Py_SetPrologErrorFromChars("Cannot create thread");
     return NULL;
   }
 
@@ -214,6 +225,7 @@ swipl_open_query(PyObject *self, PyObject *args)
     }
   }
 
+  PL_thread_destroy_engine();
   Py_SetPrologError(PL_exception(0));
   return NULL;
 }
@@ -303,7 +315,9 @@ swipl_next_solution(PyObject *self, PyObject *args)
       PL_close_foreign_frame(fid);
     else
       PL_discard_foreign_frame(fid);
+
     tuple_set_int(1, tp, 0);   /* set qid to 0 */
+    PL_thread_destroy_engine();
   }
 
   return out;
@@ -329,10 +343,39 @@ swipl_close_query(PyObject *self, PyObject *args)
       PL_close_foreign_frame(fid);
     else
       PL_discard_foreign_frame(fid);
+
+    PL_thread_destroy_engine();
     tuple_set_int(1, tp, 0);   /* set qid to 0 */
   }
 
   Py_RETURN_NONE;
+}
+
+
+static PyObject *
+swipl_engine(PyObject *self, PyObject *args)
+{ int tid = PL_thread_self();
+
+  return PyLong_FromLongLong(tid);
+}
+
+static PyObject *
+swipl_attach_engine(PyObject *self, PyObject *args)
+{ int tid = PL_thread_attach_engine(NULL);
+  if ( tid >= 0 )
+    return PyLong_FromLongLong(tid);
+
+  Py_SetPrologErrorFromChars("Cannot create thread");
+  return NULL;
+}
+
+static PyObject *
+swipl_detach_engine(PyObject *self, PyObject *args)
+{ if ( PL_thread_destroy_engine() )
+    Py_RETURN_NONE;
+
+  Py_SetPrologErrorFromChars("No thread to detach");
+  return NULL;
 }
 
 
@@ -415,6 +458,12 @@ static PyMethodDef swiplMethods[] =
    "Compute the next answer."},
   {"close_query", swipl_close_query, METH_VARARGS,
    "Close an open query."},
+  {"engine", swipl_engine, METH_VARARGS,
+   "Return the engine id of the attached Prolog engine."},
+  {"attach_engine", swipl_attach_engine, METH_VARARGS,
+   "Attach a Prolog engine to the current thread."},
+  {"detach_engine", swipl_detach_engine, METH_VARARGS,
+   "Detach the engine from the current thread."},
   {"erase", swipl_erase, METH_VARARGS,
    "Erase a record."},
 #ifdef PYTHON_PACKAGE

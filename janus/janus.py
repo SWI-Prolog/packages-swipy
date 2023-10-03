@@ -222,6 +222,18 @@ def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
     inputs['truth'] = truth
     return _swipl.call(query, inputs, keep)
 
+def engine():
+    """Return the engine id if the attached Prolog engine"""
+    return _swipl.engine()
+
+def attach_engine():
+    """Attach a Prolog engine to the current thread if needed"""
+    return _swipl.attach_engine()
+
+def detach_engine():
+    """Detach the attached Prolog engine"""
+    return _swipl.detach_engine()
+
 def consult(file, data=None, module='user'):
     """
     Consult a Prolog file.

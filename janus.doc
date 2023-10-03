@@ -780,6 +780,37 @@ from Prolog on Python. As a result:
     the initializing thread has terminated.
 \end{itemize}
 
+\subsection{Calling Prolog from a Python thread}
+\label{sec:janus-thread-call-prolog}
+
+Prolog may be called safely from any Prolog thread.  If the calling
+Python thread is not the one that initiated Janus,
+\cfuncref{janus.once}{} and \cfuncref{janus.Query}{} attach and
+detach a temporary Prolog engine using PL_thread_attach_engine()
+and PL_thread_destroy_engine().  This is relatively costly.  In
+addition we allow associating a Prolog engine persistently with
+the calling thread.
+
+\begin{description}
+  \cfunction{int}{janus.engine}{}
+  Return the identifier of the Prolog engine associated to the current thread, -1
+  if no engine is attached or -2 if Prolog does not support engines.
+
+  \cfunction{int}{janus.attach_engine}{}
+  Attach a Prolog engine to the current thread using PL_thread_attach_engine().  On
+  success, return the integer thread id of the created Prolog engine.\footnote{The
+  current implementation passes \const{NULL} to PL_thread_attach_engine().  Future
+  versions may provide access to the creation attributes.}
+
+  If the thread already has an engine the \textit{attach count} is incremented and
+  the current engine id is returned.  The engine is detached after a matching number
+  of calls to \cfuncref{janus.detach_engine}{}
+
+  \cfunction{None}{janus.detach_engine}{}
+  Decrement the \textit{attach count} of the attached Prolog engine.  Destroy the
+  engine if this count drops to zero.  Raises an exception of the calling thread
+  is not attached to a Prolog engine.
+\end{description}
 
 \section{Janus as a Python package}
 \label{sec:janus-python-package}
