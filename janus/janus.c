@@ -75,6 +75,7 @@ static int py_initialize_done = FALSE;
 static PyObject *check_error(PyObject *obj);
 static int py_unify(term_t t, PyObject *obj, int flags);
 static int py_from_prolog(term_t t, PyObject **obj);
+static void py_yield_first(void);
 static void py_yield(void);
 static void py_resume(void);
 static PyObject *py_record(term_t t);
@@ -1377,6 +1378,7 @@ py_initialize_(term_t prog, term_t Argv, term_t options)
 
   PyConfig_Clear(&config);
 #endif
+  py_yield_first();
   py_initialize_done = TRUE;
   rc = TRUE;
   goto succeeded;
@@ -1394,6 +1396,7 @@ failed:
   rc = FALSE;
 
 succeeded:
+
   if ( argv )
     free(argv);
   PL_STRINGS_RELEASE();
@@ -1606,14 +1609,12 @@ py_gil_ensure(PyGILState_STATE *state)
 
 static void
 py_gil_release(PyGILState_STATE state)
-{ if ( state )
-  {
+{ assert(state == PyGILState_LOCKED);
 #ifndef HAVE_PYGILSTATE_CHECK
-    have_gil = FALSE;
+  have_gil = FALSE;
 #endif
-    PyGILState_Release(state);
-    py_yield();
-  }
+  PyGILState_Release(state);
+  py_yield();
 }
 
 
@@ -1990,29 +1991,35 @@ py_is_object(term_t t)
 
 typedef struct
 { PyThreadState *state;
-  int		 yielded;
+  int		 nested;
 } py_state_t;
 
 static _Thread_local py_state_t py_state;
 
 static void
+py_yield_first(void)
+{ py_state.state = PyEval_SaveThread();
+  py_state.nested = 0;
+}
+
+static void
 py_yield(void)
-{ if ( !py_state.yielded && PyGILState_GetThisThreadState() )
+{ if ( --py_state.nested == 0 )
   { DEBUG(1, Sdprintf("Yielding ..."));
     py_state.state = PyEval_SaveThread();
     DEBUG(1, Sdprintf("ok\n"));
-    py_state.yielded = TRUE;
   }
 }
 
 static void
 py_resume(void)
-{ if ( py_state.yielded )
+{ if ( py_state.state )
   { DEBUG(1, Sdprintf("Un yielding ..."));
     PyEval_RestoreThread(py_state.state);
     DEBUG(1, Sdprintf("ok\n"));
-    py_state.yielded = FALSE;
+    py_state.state = NULL;
   }
+  py_state.nested++;
 }
 
 
