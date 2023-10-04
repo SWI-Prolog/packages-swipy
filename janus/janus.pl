@@ -71,6 +71,8 @@
             op(200, fy, @),             % @constant
             op(50,  fx, #)              % #Value
           ]).
+:- meta_predicate py_with_gil(0).
+
 :- use_module(library(apply_macros), []).
 :- autoload(library(lists), [append/3, member/2]).
 :- autoload(library(apply), [maplist/2, exclude/3, maplist/3]).
@@ -96,8 +98,6 @@ add_python_dll_dir :-
 
 :- use_foreign_library(foreign(janus), [visibility(global)]).
 :- endif.
-
-:- meta_predicate py_with_gil(0).
 
 :- predicate_options(py_call/3, 3,
                      [ py_object(boolean),
@@ -269,7 +269,7 @@ py_version :-
 %   Prolog predicate succeeds deterministically. On   success,  the next
 %   candidate is stored.
 %
-%   Note that a Python _generator_  is   a  Python _iterator. Therefore,
+%   Note that a Python _generator_ is   a  Python _iterator_. Therefore,
 %   given  the  Python  generator   expression    below,   we   can  use
 %   py_iter(squares(1,5),X) to generate the squares on backtracking.
 %
