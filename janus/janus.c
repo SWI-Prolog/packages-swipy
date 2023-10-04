@@ -85,6 +85,7 @@ static int py_is_record(PyObject *rec);
 static PyObject *py_free_record(PyObject *rec);
 static int unchain(term_t call, PyObject **py_target);
 static PyObject *py_eval(PyObject *obj, term_t func);
+static foreign_t py_finalize(void);
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 On Windows,  `python3.dll` provides the  stable C API that  relates to
@@ -426,24 +427,23 @@ check_error(PyObject *obj)
 
 
 static int py_unify_unicode(term_t t, PyObject *obj, int flags);
+static PyObject *enum_constructor = NULL;
 
 static int
 PyEnum_Check(PyObject *obj)
-{ static PyObject *constructor = NULL;
-
-  if ( !constructor )
+{ if ( !enum_constructor )
   { PyObject *mod_name = NULL;
     PyObject *mod = NULL;
 
     if ( (mod_name=check_error(PyUnicode_FromString("enum"))) &&
          (mod=check_error(PyImport_Import(mod_name))) )
-      constructor = check_error(PyObject_GetAttrString(mod, "Enum"));
+      enum_constructor = check_error(PyObject_GetAttrString(mod, "Enum"));
 
     Py_CLEAR(mod_name);
     Py_CLEAR(mod);
   }
 
-  return PyObject_IsInstance(obj, constructor);
+  return PyObject_IsInstance(obj, enum_constructor);
 }
 
 
@@ -1311,6 +1311,14 @@ py_is_record(PyObject *rec)
 #define CVT_TEXT_EX (CVT_ATOM|CVT_STRING|CVT_LIST|CVT_EXCEPTION)
 
 static int
+py_halt(int rc, void *ctx)
+{ (void)ctx;
+  py_finalize();
+
+  return 0;
+}
+
+static int
 py_init(void)
 { if ( !py_initialize_done )
   { predicate_t pred = PL_predicate("py_initialize", 0, "janus");
@@ -1380,6 +1388,7 @@ py_initialize_(term_t prog, term_t Argv, term_t options)
 #endif
   py_yield_first();
   py_initialize_done = TRUE;
+  PL_exit_hook(py_halt, NULL);	/* called just before exit */
   rc = TRUE;
   goto succeeded;
 
@@ -1984,7 +1993,6 @@ py_is_object(term_t t)
 }
 
 
-
 		 /*******************************
 		 *        GIL MANAGEMENT        *
 		 *******************************/
@@ -2020,6 +2028,32 @@ py_resume(void)
     py_state.state = NULL;
   }
   py_state.nested++;
+}
+
+/* Ideally this would shut down Python such that we can restart it, but
+   that requires getting rid of all Python object references.   These
+   exist both at several places in static variables of this module as
+   in Prolog atoms.   So, for now this is just a cleanup after the
+   Prolog cleanup.
+*/
+
+static foreign_t
+py_finalize(void)
+{ if ( py_initialize_done )
+  { py_resume();
+    py_state.nested = 0;
+
+    Py_CLEAR(enum_constructor);
+    Py_FinalizeEx();
+
+    py_initialize_done = FALSE;
+    if ( py_module_table )
+    { py_free_hashmap(py_module_table);
+      py_module_table = NULL;
+    }
+  }
+
+  return TRUE;
 }
 
 
@@ -2065,6 +2099,7 @@ install_janus(void)
         PL_register_foreign_in_module("janus", name, arity, func, flags)
 
   REGISTER("py_initialize_",  3, py_initialize_, 0);
+  REGISTER("py_finalize",     0, py_finalize,    0);
   REGISTER("py_call",         1, py_call1,       0);
   REGISTER("py_call",         2, py_call2,       0);
   REGISTER("py_call",         3, py_call3,       0);
@@ -2088,6 +2123,6 @@ uninstall_janus(void)
     py_module_table = NULL;
   }
 #if O_DEBUG
-  Py_FinalizeEx();
+  py_finalize();
 #endif
 }
