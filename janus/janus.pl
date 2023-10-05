@@ -499,10 +499,13 @@ import_janus :-
 %!  py_pp(+Term, +Options) is det.
 %!  py_pp(+Stream, +Term, +Options) is det.
 %
-%   Pretty prints the Prolog translation of   a Python data structure in
-%   Python syntax. This  exploits  pformat()   from  the  Python  module
-%   `pprint` to do the actual  formatting.   Options  is translated into
-%   keyword arguments passed to pprint.pformat().  For example:
+%   Pretty prints the Prolog translation of a Python data structure in
+%   Python  syntax. This  exploits  pformat() from  the Python  module
+%   `pprint` to do the actual  formatting.  Options is translated into
+%   keyword arguments  passed to  pprint.pformat().  In  addition, the
+%   option  nl(Bool)  is processed.   When  `true`  (default), we  use
+%   pprint.pp(), which  makes the output  followed by a  newline.  For
+%   example:
 %
 %   ```
 %   ?- py_pp(py{a:1, l:[1,2,3], size:1000000},
@@ -517,8 +520,13 @@ py_pp(Term, Options) :-
     py_pp(current_output, Term, Options).
 
 py_pp(Stream, Term, Options) :-
-    opts_kws(Options, Kws),
-    PFormat =.. [pformat, Term|Kws],
+    select_option(nl(NL), Options, Options1, true),
+    (   NL == true
+    ->  Method = pp
+    ;   Method = pformat
+    ),
+    opts_kws(Options1, Kws),
+    PFormat =.. [Method, Term|Kws],
     py_call(pprint:PFormat, String),
     write(Stream, String).
 
