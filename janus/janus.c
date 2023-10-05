@@ -72,10 +72,17 @@ static functor_t FUNCTOR_eval1;
 
 static int py_initialize_done = FALSE;
 
+typedef struct
+{ PyGILState_STATE gil;
+  int use_gil;
+} py_gil_state;
+
 static PyObject *check_error(PyObject *obj);
 static int py_unify(term_t t, PyObject *obj, int flags);
 static int py_from_prolog(term_t t, PyObject **obj);
 static void py_yield_first(void);
+static int py_gil_ensure(py_gil_state *state);
+static void py_gil_release(py_gil_state state);
 static void py_yield(void);
 static void py_resume(void);
 static PyObject *py_record(term_t t);
@@ -269,6 +276,18 @@ compare_python_object(atom_t a, atom_t b)
 	 );
 }
 
+/* Write a Python  object reference as <py_<Class>>(Ref).   To get the
+ * class however, we need the  GIL.  Unfortunately, this may deadlock.
+ * Assume
+ *
+ *   - We printing an object ref to stream S.  We hold stream S and
+ *     try to get the GIL.
+ *   - Some other thread holds the GIL and tries to write to S.
+ *
+ * To resolve this we'd need a PyGILState_TryEnsure(), but this does
+ * not seem to exists.
+ */
+
 static int
 write_python_object(IOSTREAM *s, atom_t symbol, int flags)
 { PyObject *obj = PL_blob_data(symbol, NULL, NULL);
@@ -277,12 +296,18 @@ write_python_object(IOSTREAM *s, atom_t symbol, int flags)
   { PyObject *cls = NULL;
     PyObject *cname = NULL;
     const char *name;
+    py_gil_state state;
 
-    if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
-	 (cname=PyObject_GetAttrString(cls, "__name__")) )
-      name = PyUnicode_AsUTF8AndSize(cname, NULL);
-    else
-      name = "noclass";
+    if ( py_gil_ensure(&state) )
+    { if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
+	   (cname=PyObject_GetAttrString(cls, "__name__")) )
+	name = PyUnicode_AsUTF8AndSize(cname, NULL);
+      else
+	name = "noclass";
+      py_gil_release(state);
+    } else
+    { name = "no-GIL";
+    }
 
     SfprintfX(s, "<py_%Us>(%p)", name, obj);
 
@@ -1309,6 +1334,7 @@ py_is_record(PyObject *rec)
 		 *******************************/
 
 #define CVT_TEXT_EX (CVT_ATOM|CVT_STRING|CVT_LIST|CVT_EXCEPTION)
+static int py_thread = 0;
 
 static int
 py_halt(int rc, void *ctx)
@@ -1323,7 +1349,10 @@ py_init(void)
 { if ( !py_initialize_done )
   { predicate_t pred = PL_predicate("py_initialize", 0, "janus");
 
-    return PL_call_predicate(NULL, PL_Q_NORMAL, pred, 0);
+    int rc = PL_call_predicate(NULL, PL_Q_NORMAL, pred, 0);
+    if ( rc )
+      py_thread = PL_thread_self();
+    return rc;
   }
 
   return TRUE;
@@ -1599,16 +1628,37 @@ unchain(term_t call, PyObject **py_target)
   return rc;
 }
 
+
+/* py_gil_ensure()  and py_gil_release()  is  our  wrapper around  the
+ * Python GIL.   The first call  lazily initializes Python  if needed.
+ * This  thread   than  holds   the  GIL.    This  thread   must  call
+ * PyEval_SaveThread() to allow other  threads to interact with Python
+ * and call PyEval_RestoreThread() when it wants to call Python again.
+ * This,  while other  threads  need to  call PyGILState_Ensure()  and
+ * PyGILState_Release() to allow for calling Python.
+ *
+ * I  am not  sure this  is  correct.  Please  comment if  there is  a
+ * simpler way to achieve what we want.
+ *
+ * If we  have the GIL  and we  have delayed Py_DECREF()  call pending
+ * from the atom garbage collector we call delayed_decref();
+ */
+
 static int
-py_gil_ensure(PyGILState_STATE *state)
+py_gil_ensure(py_gil_state *state)
 { if ( !py_init() )
     return FALSE;
 
-  py_resume();
-  *state = PyGILState_Ensure();
+  state->use_gil = (PL_thread_self() != py_thread);
+  if ( state->use_gil )
+    state->gil = PyGILState_Ensure();
+  else
+    py_resume();
+
 #ifndef HAVE_PYGILSTATE_CHECK
   have_gil = TRUE;
 #endif
+
   if ( delayed )
     delayed_decref(NULL);
 
@@ -1617,13 +1667,15 @@ py_gil_ensure(PyGILState_STATE *state)
 
 
 static void
-py_gil_release(PyGILState_STATE state)
-{ assert(state == PyGILState_LOCKED);
+py_gil_release(py_gil_state state)
+{
 #ifndef HAVE_PYGILSTATE_CHECK
   have_gil = FALSE;
 #endif
-  PyGILState_Release(state);
-  py_yield();
+  if ( state.use_gil )
+    PyGILState_Release(state.gil);
+  else
+    py_yield();
 }
 
 
@@ -1678,7 +1730,7 @@ py_call3(term_t Call, term_t result, term_t options)
   term_t call = PL_copy_term_ref(Call);
   term_t val = 0;
   int rc = TRUE;
-  PyGILState_STATE state;
+  py_gil_state state;
   int uflags = 0;
 
   if ( !get_conversion_options(options, &uflags) )
@@ -1773,7 +1825,7 @@ static foreign_t
 py_iter3(term_t Iterator, term_t Result, term_t options, control_t handle)
 { iter_state iter_buf;
   iter_state *state;
-  PyGILState_STATE gil_state;
+  py_gil_state gil_state;
   int rc = FALSE;
 
   switch( PL_foreign_control(handle) )
@@ -1861,7 +1913,7 @@ py_iter2(term_t Iterator, term_t Result, control_t handle)
 
 static foreign_t
 py_with_gil(term_t goal)
-{ PyGILState_STATE state;
+{ py_gil_state state;
 
   if ( !py_gil_ensure(&state) )
     return FALSE;
@@ -1887,7 +1939,7 @@ py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result, term_t options)
   if ( PL_get_chars(Cmd, &cmd, CVT_ATOM|CVT_STRING|CVT_LIST|CVT_EXCEPTION) )
   { PyObject *locals=NULL, *globals=NULL;
     PyObject *result = NULL;
-    PyGILState_STATE state;
+    py_gil_state state;
     int rc;
     char *file_name = "string";
     atom_t start = ATOM_file;
@@ -1940,7 +1992,7 @@ static foreign_t
 py_str(term_t t, term_t str)
 { PyObject *obj;
   int rc;
-  PyGILState_STATE state;
+  py_gil_state state;
 
   if ( !py_gil_ensure(&state) )
     return FALSE;
@@ -2002,7 +2054,7 @@ typedef struct
   int		 nested;
 } py_state_t;
 
-static _Thread_local py_state_t py_state;
+static py_state_t py_state;
 
 static void
 py_yield_first(void)
@@ -2045,6 +2097,7 @@ py_finalize(void)
 
     Py_CLEAR(enum_constructor);
     Py_FinalizeEx();
+    py_thread = 0;
 
     py_initialize_done = FALSE;
     if ( py_module_table )
