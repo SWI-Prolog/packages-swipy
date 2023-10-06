@@ -283,7 +283,10 @@ def interact():
         readline.parse_and_bind("tab: complete")
     except:
         pass
-    code.InteractiveConsole(vars).interact();
+    try:
+        code.InteractiveConsole(vars).interact()
+    except SystemExit:          # quit() throws SystemExit
+        print("now exiting InteractiveConsole...")
 
 def prolog():
     """
