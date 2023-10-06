@@ -783,18 +783,18 @@ from Prolog on Python. As a result:
 \subsection{Calling Prolog from a Python thread}
 \label{sec:janus-thread-call-prolog}
 
-Prolog may be called safely from any Prolog thread.  If the calling
+Prolog may be called safely from any Python thread.  If the calling
 Python thread is not the one that initiated Janus,
-\cfuncref{janus.once}{} and \cfuncref{janus.Query}{} attach and
-detach a temporary Prolog engine using PL_thread_attach_engine()
-and PL_thread_destroy_engine().  This is relatively costly.  In
-addition we allow associating a Prolog engine persistently with
-the calling thread.
+\cfuncref{janus.once}{} and \cfuncref{janus.Query}{} attach and detach
+a temporary Prolog engine using PL_thread_attach_engine() and
+PL_thread_destroy_engine().  This is relatively costly.  In addition
+we allow associating a Prolog engine persistently with the calling
+thread.
 
 \begin{description}
   \cfunction{int}{janus.engine}{}
   Return the identifier of the Prolog engine associated to the current thread, -1
-  if no engine is attached or -2 if Prolog does not support engines.
+  if no engine is attached or -2 if this version of Prolog does not support engines.
 
   \cfunction{int}{janus.attach_engine}{}
   Attach a Prolog engine to the current thread using PL_thread_attach_engine().  On
@@ -811,6 +811,21 @@ the calling thread.
   engine if this count drops to zero.  Raises an exception of the calling thread
   is not attached to a Prolog engine.
 \end{description}
+
+\subsection{Python and Prolog deadlocks}
+\label{sec:janus-deadlocks}
+
+In a threaded environment, Python calls must be guarded by
+PyGILState_Ensure() and PyGILState_Release() that ultimately
+lock/unlock a \jargon{mutex}.  Unfortunately there is no
+PyGILState_TryEnsure() and therefore we may create deadlocks when
+Prolog locks are involved.  This may either apply to explicit Prolog
+locks from with_mutex/2 and friends or implicit locks on e.g. I/O
+streams.  The classical scenario is thread $A$ holding the Python GIL
+and wanting to call Prolog code that locks a mutex $M$, while thread
+$B$ holds $M$ and wishes to make a Python call and this tries to lock
+the GIL.  The predicate py_gil_owner/1 can be used to help diagnosing
+such issues.
 
 \section{Janus as a Python package}
 \label{sec:janus-python-package}

@@ -43,6 +43,7 @@
             py_free/1,			% +Obj
 	    py_is_object/1,		% @Term
 	    py_with_gil/1,		% :Goal
+	    py_gil_owner/1,		% -ThreadID
 
             py_func/3,                  % +Module, +Func, -Return
             py_func/4,                  % +Module, +Func, -Return, +Options
@@ -322,6 +323,18 @@ py_version :-
 %   predicate is only required if we  wish   to  make  multiple calls to
 %   Python while keeping the GIL. The GIL is a _recursive_ lock and thus
 %   calling py_call/1,2 while holding the GIL does not _deadlock_.
+
+%!  py_gil_owner(-Thread) is semidet.
+%
+%   True when  the Python GIL is  owned by Thread.  Note  that, unless
+%   Thread  is the  calling thread,  this merely  samples the  current
+%   state and may thus no longer  be true when the predicate succeeds.
+%   This predicate is intended to help diagnose _deadlock_ problems.
+%
+%   Note that  this predicate returns  the Prolog threads  that locked
+%   the GIL.  It is however possible that Python releases the GIL, for
+%   example if  it performs a  blocking call.  In this  scenario, some
+%   other thread or no thread may hold the gil.
 
 
 		 /*******************************

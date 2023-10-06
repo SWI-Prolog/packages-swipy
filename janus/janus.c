@@ -71,6 +71,7 @@ static functor_t FUNCTOR_at1;
 static functor_t FUNCTOR_eval1;
 
 static int py_initialize_done = FALSE;
+static int py_gil_thread = 0;	/* Prolog thread that owns the GIL */
 
 typedef struct
 { PyGILState_STATE gil;
@@ -298,7 +299,7 @@ write_python_object(IOSTREAM *s, atom_t symbol, int flags)
     const char *name;
     py_gil_state state;
 
-    if ( py_gil_ensure(&state) )
+    if ( py_gil_thread == 0 && py_gil_ensure(&state) )
     { if ( (cls=PyObject_GetAttrString(obj, "__class__")) &&
 	   (cname=PyObject_GetAttrString(cls, "__name__")) )
 	name = PyUnicode_AsUTF8AndSize(cname, NULL);
@@ -1646,15 +1647,18 @@ unchain(term_t call, PyObject **py_target)
 
 static int
 py_gil_ensure(py_gil_state *state)
-{ if ( !py_init() )
+{ int self = PL_thread_self();
+
+  if ( !py_init() )
     return FALSE;
 
-  state->use_gil = (PL_thread_self() != py_thread);
+  state->use_gil = (self != py_thread);
   if ( state->use_gil )
     state->gil = PyGILState_Ensure();
   else
     py_resume();
 
+  py_gil_thread = self;
 #ifndef HAVE_PYGILSTATE_CHECK
   have_gil = TRUE;
 #endif
@@ -1672,6 +1676,7 @@ py_gil_release(py_gil_state state)
 #ifndef HAVE_PYGILSTATE_CHECK
   have_gil = FALSE;
 #endif
+  py_gil_thread = 0;
   if ( state.use_gil )
     PyGILState_Release(state.gil);
   else
@@ -1924,13 +1929,20 @@ py_with_gil(term_t goal)
 }
 
 
+static foreign_t
+py_gil_owner(term_t owner)
+{ if ( py_gil_thread )
+    return PL_unify_thread_id(owner, py_gil_thread);
+
+  return FALSE;
+}
+
+
 static PL_option_t pyrun_options[] =
 { PL_OPTION("file_name", OPT_STRING),
   PL_OPTION("start",     OPT_ATOM),
   PL_OPTIONS_END
 };
-
-
 
 static foreign_t
 py_run(term_t Cmd, term_t Globals, term_t Locals, term_t Result, term_t options)
@@ -2162,6 +2174,7 @@ install_janus(void)
   REGISTER("py_free",         1, py_free,        0);
   REGISTER("py_is_object",    1, py_is_object,   0);
   REGISTER("py_with_gil",     1, py_with_gil,    PL_FA_TRANSPARENT);
+  REGISTER("py_gil_owner",    1, py_gil_owner,   0);
   REGISTER("py_str",          2, py_str,         0);
   REGISTER("py_debug",        1, py_debug,       0);
 
