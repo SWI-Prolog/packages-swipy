@@ -783,8 +783,13 @@ from Prolog on Python. As a result:
 \subsection{Calling Prolog from a Python thread}
 \label{sec:janus-thread-call-prolog}
 
-Prolog may be called safely from any Python thread.  If the calling
-Python thread is not the one that initiated Janus,
+Prolog may be called safely from any Python thread.  The Prolog
+execution is embraced with \const{Py_BEGIN_ALLOW_THREADS} and
+\const{Py_END_ALLOW_THREADS}, which implies that Python is
+allowed to switch to another thread while Prolog is doing its
+work.
+
+If the calling Python thread is not the one that initiated Janus,
 \cfuncref{janus.once}{} and \cfuncref{janus.Query}{} attach and detach
 a temporary Prolog engine using PL_thread_attach_engine() and
 PL_thread_destroy_engine().  This is relatively costly.  In addition
@@ -793,23 +798,26 @@ thread.
 
 \begin{description}
   \cfunction{int}{janus.engine}{}
-  Return the identifier of the Prolog engine associated to the current thread, -1
-  if no engine is attached or -2 if this version of Prolog does not support engines.
+  Return the identifier of the Prolog engine associated to the current
+  thread, -1 if no engine is attached or -2 if this version of Prolog
+  does not support engines.
 
   \cfunction{int}{janus.attach_engine}{}
-  Attach a Prolog engine to the current thread using PL_thread_attach_engine().  On
-  success, return the integer thread id of the created Prolog engine.\footnote{The
-  current implementation passes \const{NULL} to PL_thread_attach_engine().  Future
-  versions may provide access to the creation attributes.}
+  Attach a Prolog engine to the current thread using
+  PL_thread_attach_engine().  On success, return the integer thread id
+  of the created Prolog engine.\footnote{The current implementation
+  passes \const{NULL} to PL_thread_attach_engine().  Future versions
+  may provide access to the creation attributes.}
 
-  If the thread already has an engine the \textit{attach count} is incremented and
-  the current engine id is returned.  The engine is detached after a matching number
-  of calls to \cfuncref{janus.detach_engine}{}
+  If the thread already has an engine the \textit{attach count} is
+  incremented and the current engine id is returned.  The engine is
+  detached after a matching number of calls to
+  \cfuncref{janus.detach_engine}{}
 
   \cfunction{None}{janus.detach_engine}{}
-  Decrement the \textit{attach count} of the attached Prolog engine.  Destroy the
-  engine if this count drops to zero.  Raises an exception of the calling thread
-  is not attached to a Prolog engine.
+  Decrement the \textit{attach count} of the attached Prolog engine.
+  Destroy the engine if this count drops to zero.  Raises an exception
+  of the calling thread is not attached to a Prolog engine.
 \end{description}
 
 \subsection{Python and Prolog deadlocks}

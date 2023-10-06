@@ -84,8 +84,8 @@ static int py_from_prolog(term_t t, PyObject **obj);
 static void py_yield_first(void);
 static int py_gil_ensure(py_gil_state *state);
 static void py_gil_release(py_gil_state state);
-static void py_yield(void);
-static void py_resume(void);
+static void py_yield(py_gil_state state);
+static void py_resume(py_gil_state *state);
 static PyObject *py_record(term_t t);
 static int py_unify_record(term_t t, PyObject *rec);
 static int py_unify_constant(term_t t, atom_t c);
@@ -1656,7 +1656,7 @@ py_gil_ensure(py_gil_state *state)
   if ( state->use_gil )
     state->gil = PyGILState_Ensure();
   else
-    py_resume();
+    py_resume(state);
 
   py_gil_thread = self;
 #ifndef HAVE_PYGILSTATE_CHECK
@@ -1680,7 +1680,7 @@ py_gil_release(py_gil_state state)
   if ( state.use_gil )
     PyGILState_Release(state.gil);
   else
-    py_yield();
+    py_yield(state);
 }
 
 
@@ -2075,21 +2075,25 @@ py_yield_first(void)
 }
 
 static void
-py_yield(void)
+py_yield(py_gil_state state)
 { if ( --py_state.nested == 0 )
   { DEBUG(1, Sdprintf("Yielding ..."));
     py_state.state = PyEval_SaveThread();
     DEBUG(1, Sdprintf("ok\n"));
+  } else
+  { PyGILState_Release(state.gil);
   }
 }
 
 static void
-py_resume(void)
+py_resume(py_gil_state *state)
 { if ( py_state.state )
   { DEBUG(1, Sdprintf("Un yielding ..."));
     PyEval_RestoreThread(py_state.state);
     DEBUG(1, Sdprintf("ok\n"));
     py_state.state = NULL;
+  } else
+  { state->gil = PyGILState_Ensure();
   }
   py_state.nested++;
 }
@@ -2104,7 +2108,10 @@ py_resume(void)
 static foreign_t
 py_finalize(void)
 { if ( py_initialize_done )
-  { py_resume();
+  { if ( py_state.state )
+    { PyEval_RestoreThread(py_state.state);
+      py_state.state = NULL;
+    }
     py_state.nested = 0;
 
     Py_CLEAR(enum_constructor);

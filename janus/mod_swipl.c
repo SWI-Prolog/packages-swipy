@@ -145,7 +145,12 @@ swipl_call(PyObject *self, PyObject *args)
 	 unify_input(av+1, arity, args) )
     { qid_t qid = PL_open_query(user, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS,
 				pred, av);
-      int rc = PL_next_solution(qid);
+      int rc;
+
+      Py_BEGIN_ALLOW_THREADS
+      rc = PL_next_solution(qid);
+      Py_END_ALLOW_THREADS
+
       switch(rc)
       { case PL_S_TRUE:
 	case PL_S_LAST:
@@ -278,13 +283,16 @@ swipl_next_solution(PyObject *self, PyObject *args)
   int done = FALSE;
   PyObject *tp;
   int keep;
+  int rc;
 
   if ( !query_parms(args, &tp, &fid, &qid, &av, &keep) )
     return NULL;
   if ( !qid )
     return PyBool_FromLong(0);
 
-  int rc = PL_next_solution(qid);
+  Py_BEGIN_ALLOW_THREADS
+  rc = PL_next_solution(qid);
+  Py_END_ALLOW_THREADS
   PyObject *out = NULL;
 
   switch(rc)
