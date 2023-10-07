@@ -1345,6 +1345,14 @@ py_halt(int rc, void *ctx)
   return 0;
 }
 
+static void
+py_thread_exitted(void *ctx)
+{ (void) ctx;
+  DEBUG(0, Sdprintf("Thread %d, which created Python has exitted\n",
+		    PL_thread_self()));
+  py_thread = 0;
+}
+
 static int
 py_init(void)
 { if ( !py_initialize_done )
@@ -1352,7 +1360,9 @@ py_init(void)
 
     int rc = PL_call_predicate(NULL, PL_Q_NORMAL, pred, 0);
     if ( rc )
-      py_thread = PL_thread_self();
+    { py_thread = PL_thread_self();
+      PL_thread_at_exit(py_thread_exitted, NULL, FALSE);
+    }
     return rc;
   }
 
