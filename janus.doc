@@ -689,8 +689,8 @@ it back to Prolog.
 \begin{description}
   \cfunction{Term}{janus.Term}{...}
   Instances are never created explicitly by the user.   An instance is
-  created by handling a term \term{prolog}{Term} tho the data conversion
-  processes.   As a result, we can do
+  created by handling a term \term{prolog}{Term} to the data conversion
+  process.   As a result, we can do
 
 \begin{code}
 ?- py_call(janus:echo(prolog(hello(world))), Obj,
