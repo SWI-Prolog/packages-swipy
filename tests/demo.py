@@ -122,6 +122,20 @@ def bench_call_v(n):
     for i in range(1,n):
         print((i, once("py_thread(T)", {})["T"]))
 
+def bench_apply1(n):
+    sum=0
+    for i in range(1,n+1):
+        sum = sum + apply1("user", "=", i)
+    return sum
+
+def bench_apply1a(n):
+    for i in range(1,n+1):
+        apply1("user", "between", 1, 2)
+
+def bench_apply1b(n):
+    for i in range(1,n+1):
+        apply1("user", "between", 1, 2, fail=0)
+
 def bench_px_cmd(n):
     """Call `true` `n` times"""
     for i in range(1,n):

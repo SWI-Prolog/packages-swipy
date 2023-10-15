@@ -311,6 +311,20 @@ test(invalid_nesting, X == @true) :-
 test(while, X == [1,2,3]) :-
     py_call(while:test_while(), X).
 :- endif.
+test(apply, X == 3) :-
+    py_call(janus:apply1(user, plus, 1, 2), X).
+test(apply, X == 1) :-
+    py_call(janus:apply1(user, between, 1, 2), X).
+test(apply, X == 0) :-
+    py_call(janus:apply1(user, between, 3, 2, fail=0), X).
+test(apply, error(python_error('PrologError',_,_))) :-
+    py_call(janus:apply1(user, between, 3, 2), _).
+test(apply, error(python_error('PrologError',_,_))) :-
+    py_call(janus:apply1(janus, no_such_predicate), _).
+test(apply, X == 1) :-
+    py_call(janus:apply1(user, =, 1), X).
+test(apply, error(python_error('PrologError',_,_))) :-
+    py_call(janus:apply1(user, =, prolog(f(a))), _).
 
 :- end_tests(python_call_prolog).
 

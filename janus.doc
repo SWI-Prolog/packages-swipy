@@ -340,12 +340,39 @@ In the remainder of this section we consider the module to be named
 \const{janus}.
 
 The Python module \const{janus} provides utility functions and defines
-the classes \cfuncref{janus.Query}{}, \cfuncref{janus.Term}{} and
-\cfuncref{janus.PrologError}{}.  We start our discussion by
-introducing the \cfuncref{janus.once}{query,inputs} function for calling
-Prolog goals as once/1. A Prolog goal is constructed from a string and
-a dict with \jargon{input bindings} and returns \jargon{output
-  bindings} as a dict.  For example
+the classes \cfuncref{janus.Query}{}, \cfuncref{janus.Term}{},
+\cfuncref{janus.Undefined}{} and \cfuncref{janus.PrologError}{}.
+
+The Python calling Prolog interface consist of four primitives,
+distinguishing deterministic vs. non-deterministic Prolog queries and
+two different calling conventions which we name \jargon{functional
+  notation} and \jargon{relational notation}.  The \jargon{relational}
+calling convention specifies a Prolog query as a string with an
+\jargon{input dict} that provides (input) bindings for part of the
+variables in the query string.  The results are represented as a dict
+that holds the bindings of the output variables and the truth value
+(see \secref{janus-truth}).  The functional notation calling
+convention specifies the query as a module, predicate name and input
+arguments.  It calls the predicate with one argument more than the
+number of input arguments and translates the binding of the output
+argument to Python.
+
+\begin{center}
+  \begin{tabular}{|r|cc|}
+    \hline
+               & \bf Relational notation  & \bf Functional notation \\
+    \hline
+    \bf det    & \cfuncref{janus.once}{}  & \cfuncref{janus.apply1}{} \\
+    \bf nondet & \cfuncref{janus.Query}{} & \cfuncref{janus.Apply}{} \\
+    \hline
+  \end{tabular}
+\end{center}
+
+We start our discussion by introducing the
+\cfuncref{janus.once}{query,inputs} function for calling Prolog goals
+as once/1. A Prolog goal is constructed from a string and a dict with
+\jargon{input bindings} and returns \jargon{output bindings} as a
+dict.  For example
 
 \begin{code}
 >>> import janus_swi as janus
@@ -402,7 +429,6 @@ integers and \const{False} otherwise.
 def hasBigIntegers():
     janus.once("current_prolog_flag(bounded,false)")['truth']
 \end{code}
-
 
 While \cfuncref{janus.once}{} deals with semi-deterministic goals, the
 class \cfuncref{janus.Query}{} implements a Python \jargon{iterator}
@@ -512,6 +538,25 @@ Below is an example.  See \secref{janus-truth} for details.
 {'truth': Undefined}
 \end{code}
 
+    \cfunction{Any}{janus.apply1}{module, predicate, input ..., fail=obj}
+    \jargon{Functional notation} style calling of a deterministic Prolog
+    predicate.  This calls \term{module:predicate}{Input \ldots, Output}, where
+    \arg{Input} are the Python \arg{input} arguments converted to
+    Prolog.  On success, \arg{Output} is converted to Python and
+    returned.  On failure a \cfuncref{janus.PrologError}{} exception
+    is raised unless the \const{fail} parameter is specified.  In the
+    latter case the function returns \arg{obj}.  This interface
+    provides a comfortable and fast calling convention for calling a
+    simple predicate with suitable calling conventions.  The
+    example below returns the \jargon{home directory} of the SWI-Prolog
+    installation.
+
+\begin{code}
+>>> import janus_swi as janus
+>>> janus.apply1("user", "current_prolog_flag", "home")
+'/home/janw/src/swipl-devel/build.pdf/home'
+\end{code}
+      
     \cfunction{None}{janus.consult}{file, data=None, module='user'}
     Load Prolog text into the Prolog database.   By default, \arg{data}
     is \const{None} and the text is read from \arg{file}.  If \arg{data}

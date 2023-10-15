@@ -183,6 +183,118 @@ swipl_call(PyObject *self, PyObject *args)
   return out;
 }
 
+
+static atom_t
+py_obj_to_atom(PyObject *obj, const char *ex)
+{ if ( PyUnicode_Check(obj) )
+  { ssize_t len;
+    wchar_t *s;
+    atom_t a;
+
+    s = PyUnicode_AsWideCharString(obj, &len);
+    if ( !check_error((void*)s) )
+      return 0;
+    a = PL_new_atom_wchars(len, s);
+    PyMem_Free(s);
+    return a;
+  }
+
+  PyErr_SetString(PyExc_TypeError, ex);
+  return 0;
+}
+
+
+static PyObject *
+swipl_apply1(PyObject *self, PyObject *args, PyObject *kwargs)
+{ Py_ssize_t argc = PyTuple_GET_SIZE(args);
+  PyObject *rc = NULL;
+  atom_t mname=0;
+  atom_t pname=0;
+
+  if ( argc >= 2 )
+  { fid_t fid;
+    PyObject *on_fail = NULL;
+
+    if ( kwargs )
+    { static const char *kwds[] = {"fail", NULL};
+      static PyObject *empty = NULL;
+
+      if ( !empty && !(empty = PyTuple_New(0)) )
+	return NULL;
+      if ( !PyArg_ParseTupleAndKeywords(empty, kwargs, "|$O",
+					(char**)kwds, &on_fail) )
+	return NULL;
+    }
+
+    if ( !(mname=py_obj_to_atom(PyTuple_GetItem(args, 0),
+				"module expected")) )
+      goto error;
+    if ( !(pname=py_obj_to_atom(PyTuple_GetItem(args, 1),
+				"predicate name expected")) )
+      goto error;
+
+    if ( (fid=PL_open_foreign_frame()) )
+    { term_t av;
+
+      if ( (av=PL_new_term_refs(argc-1)) )
+      { for(Py_ssize_t i=2; i < argc; i++)
+	{ if ( !py_unify(av+i-2, PyTuple_GetItem(args, i), 0) )
+	    goto eunify;
+
+	}
+      }
+      module_t m = PL_new_module(mname);
+      functor_t f = PL_new_functor(pname, argc-1);
+      predicate_t pred = PL_pred(f, m);
+      qid_t qid;
+
+      if ( (qid=PL_open_query(m, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS,
+			      pred, av)) )
+      { int r;
+
+	Py_BEGIN_ALLOW_THREADS
+	r = PL_next_solution(qid);
+	Py_END_ALLOW_THREADS
+
+	switch(r)
+	{ case PL_S_TRUE:
+	  case PL_S_LAST:
+	    PL_cut_query(qid);
+	    if ( !py_from_prolog(av+argc-2, &rc) )
+	      Py_SetPrologError(PL_exception(0));
+	    break;
+	  case PL_S_EXCEPTION:
+	    Py_SetPrologError(PL_exception(qid));
+	    PL_cut_query(qid);
+	    break;
+	  case PL_S_FALSE:
+	    PL_cut_query(qid);
+	    if ( on_fail )
+	    { rc = on_fail;
+	      Py_INCREF(rc);
+	    } else
+	      Py_SetPrologErrorFromChars("apply1(): goal failed");
+	    break;
+	  default:
+	    assert(0);
+	}
+      }
+
+    eunify:
+      PL_discard_foreign_frame(fid);
+    }
+  } else
+  { PyErr_SetString(PyExc_TypeError, "swipl.apply1(module, predicate, [input ...]) expected");
+  }
+
+error:
+  if ( mname ) PL_unregister_atom(mname);
+  if ( pname ) PL_unregister_atom(pname);
+
+  return rc;
+}
+
+
 static void
 tuple_set_int(int i, PyObject *tuple, int64_t val)
 { PyObject *v = PyLong_FromLongLong(val);
@@ -460,6 +572,10 @@ swipl_initialize(PyObject *self, PyObject *args)
 static PyMethodDef swiplMethods[] =
 { {"call", swipl_call, METH_VARARGS,
    "Execute a Prolog query."},
+  {"apply1", (PyCFunction)swipl_apply1, METH_VARARGS|METH_KEYWORDS,
+   "Evaluate predicate as function.\n\n"
+   "Synopsis: apply1(module, predicate, input ...) -> output"
+  },
   {"open_query", swipl_open_query, METH_VARARGS,
    "Open a Prolog query."},
   {"next_solution", swipl_next_solution, METH_VARARGS,

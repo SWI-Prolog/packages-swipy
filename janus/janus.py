@@ -310,6 +310,17 @@ def _xsb_tv(truth):
     else:
         return 2
 
+# Ideally, we'd define apply1() and pass on the arguments.  This
+# however is considerably slower and in C we can detect the absence
+# of `fail=`, which we seems impossible in Python.
+
+apply1 = _swipl.apply1
+# def apply1(module, predicate, *args, fail='error'):
+#     if fail == 'error':
+#         return _swipl.apply1(module, predicate, *args)
+#     else:
+#         return _swipl.apply1(module, predicate, *args, fail=fail)
+
 def px_qdet(module, pred, *args):
     """Run predicate as once/1
 
