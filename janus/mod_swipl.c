@@ -205,7 +205,7 @@ py_obj_to_atom(PyObject *obj, const char *ex)
 
 
 static PyObject *
-swipl_apply1(PyObject *self, PyObject *args, PyObject *kwargs)
+swipl_apply_once(PyObject *self, PyObject *args, PyObject *kwargs)
 { Py_ssize_t argc = PyTuple_GET_SIZE(args);
   PyObject *rc = NULL;
   atom_t mname=0;
@@ -273,7 +273,7 @@ swipl_apply1(PyObject *self, PyObject *args, PyObject *kwargs)
 	    { rc = on_fail;
 	      Py_INCREF(rc);
 	    } else
-	      Py_SetPrologErrorFromChars("apply1(): goal failed");
+	      Py_SetPrologErrorFromChars("apply_once(): goal failed");
 	    break;
 	  default:
 	    assert(0);
@@ -284,7 +284,7 @@ swipl_apply1(PyObject *self, PyObject *args, PyObject *kwargs)
       PL_discard_foreign_frame(fid);
     }
   } else
-  { PyErr_SetString(PyExc_TypeError, "swipl.apply1(module, predicate, [input ...]) expected");
+  { PyErr_SetString(PyExc_TypeError, "swipl.apply_once(module, predicate, [input ...]) expected");
   }
 
 error:
@@ -572,9 +572,9 @@ swipl_initialize(PyObject *self, PyObject *args)
 static PyMethodDef swiplMethods[] =
 { {"call", swipl_call, METH_VARARGS,
    "Execute a Prolog query."},
-  {"apply1", (PyCFunction)swipl_apply1, METH_VARARGS|METH_KEYWORDS,
+  {"apply_once", (PyCFunction)swipl_apply_once, METH_VARARGS|METH_KEYWORDS,
    "Evaluate predicate as function.\n\n"
-   "Synopsis: apply1(module, predicate, input ...) -> output"
+   "Synopsis: apply_once(module, predicate, input ...) -> output"
   },
   {"open_query", swipl_open_query, METH_VARARGS,
    "Open a Prolog query."},

@@ -225,16 +225,16 @@ def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
 ################################################################
 # Functional style interface
 
-# Ideally, we'd define apply1() and pass on the arguments.  This
+# Ideally, we'd define apply_once() and pass on the arguments.  This
 # however is considerably slower and in C we can detect the absence
 # of `fail=`, which we seems impossible in Python.
 
-apply1 = _swipl.apply1
-# def apply1(module, predicate, *args, fail='error'):
+apply_once = _swipl.apply_once
+# def apply_once(module, predicate, *args, fail='error'):
 #     if fail == 'error':
-#         return _swipl.apply1(module, predicate, *args)
+#         return _swipl.apply_once(module, predicate, *args)
 #     else:
-#         return _swipl.apply1(module, predicate, *args, fail=fail)
+#         return _swipl.apply_once(module, predicate, *args, fail=fail)
 
 
 class apply:

@@ -362,7 +362,7 @@ argument to Python.
     \hline
                & \bf Relational notation  & \bf Functional notation \\
     \hline
-    \bf det    & \cfuncref{janus.once}{}  & \cfuncref{janus.apply1}{} \\
+    \bf det    & \cfuncref{janus.once}{}  & \cfuncref{janus.apply_once}{} \\
     \bf nondet & \cfuncref{janus.Query}{} & \cfuncref{janus.apply}{} \\
     \hline
   \end{tabular}
@@ -538,7 +538,7 @@ Below is an example.  See \secref{janus-truth} for details.
 {'truth': Undefined}
 \end{code}
 
-    \cfunction{Any}{janus.apply1}{module, predicate, input ..., fail=obj}
+    \cfunction{Any}{janus.apply_once}{module, predicate, input ..., fail=obj}
     \jargon{Functional notation} style calling of a deterministic Prolog
     predicate.  This calls \term{module:predicate}{Input \ldots, Output}, where
     \arg{Input} are the Python \arg{input} arguments converted to
@@ -553,7 +553,7 @@ Below is an example.  See \secref{janus-truth} for details.
 
 \begin{code}
 >>> import janus_swi as janus
->>> janus.apply1("user", "current_prolog_flag", "home")
+>>> janus.apply_once("user", "current_prolog_flag", "home")
 '/home/janw/src/swipl-devel/build.pdf/home'
 \end{code}
       
@@ -592,13 +592,13 @@ Below is an example.  See \secref{janus-truth} for details.
 \subsection{Janus iterator apply}
 \label{sec:janus-class-apply}
 
-Class \cfuncref{janus.apply}{} is similar to \cfuncref{janus.apply1}{},
+Class \cfuncref{janus.apply}{} is similar to \cfuncref{janus.apply_once}{},
 calling a Prolog predicate using functional notation style.  It returns
 a Python \jargon{iterator} that enumerates all answers.
 
 \begin{description}
   \cfunction{apply}{janus.apply}{module, predicate, input ...}
-  As \cfuncref{janus.apply1}{}, returning an \jargon{iterator}
+  As \cfuncref{janus.apply_once}{}, returning an \jargon{iterator}
   that returns individual answers.  The example below uses Python
   \jargon{list comprehension} to create a list of integers from
   the Prolog built-in between/3.

@@ -140,17 +140,17 @@ benchmark(N,
           call) :-
     py_call(demo:bench_px_cmd(N)).
 benchmark(N,
-          'Call `apply1("user", "=", 1)` ~D times'-[N],
+          'Call `apply_once("user", "=", 1)` ~D times'-[N],
           call) :-
-    py_call(demo:bench_apply1(N)).
+    py_call(demo:bench_apply_once(N)).
 benchmark(N,
-          'Call `apply1("user", "between", 1, 2)` ~D times'-[N],
+          'Call `apply_once("user", "between", 1, 2)` ~D times'-[N],
           call) :-
-    py_call(demo:bench_apply1a(N)).
+    py_call(demo:bench_apply_oncea(N)).
 benchmark(N,
-          'Call `apply1("user", "between", 1, 2, fail=0)` ~D times'-[N],
+          'Call `apply_once("user", "between", 1, 2, fail=0)` ~D times'-[N],
           call) :-
-    py_call(demo:bench_apply1b(N)).
+    py_call(demo:bench_apply_onceb(N)).
 
 py_thread(Id) :-
     thread_self(Self),
