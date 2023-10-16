@@ -26,9 +26,10 @@ available to Prolog and visa versa with minimal installation effort
 while providing a high level bi-directional interface with good
 performance.
 
-The API is being developed in close cooperation with the XSB team and
-aims to provide a de-facto standard interface between Python and
-Prolog.
+The API is being developed in close cooperation with the XSB and Ciao
+teams as a pilot for the PIP (\jargon{Prolog Improvement Proposal})
+initiative.  Janus should become the de-facto standard interface
+between Python and Prolog.
 \end{abstract}
 
 \pagebreak
@@ -56,7 +57,7 @@ initially developed for XSB.
 Janus provides a bi-directional interface between Prolog and Python
 using the low-level C API of both languages.  This makes using Python
 from Prolog as simple as taking the standard SWI-Prolog distribution
-and loading \pllib{janus}. Using Prolog from Python is as simple as
+and loading library \pllib{janus}. Using Prolog from Python is as simple as
 \exam{import janus_swi as janus} and start making calls.  Both Prolog
 and Python being dynamically typed languages, we can define an easy to
 use interface that provides a \jargon{latency} of about one $\mu$S.
@@ -74,13 +75,20 @@ developed for the WASM (Web Assembly) version.  That is
 \item A non-deterministic Prolog predicate py_iter/2 to
   enumerate a Python \jargon{iterator}.
 
-\item A Python function \cfuncref{janus.query_once}{} to call a Prolog
-  predicate as query_once/1, providing input to Prolog variables using
-  a Python dict and return a Python dict with bindings for each
-  Prolog output variable.
+\item A Python function \cfuncref{janus.query_once}{} to evaluate a
+  Prolog query as once/1, providing input to Prolog variables using a
+  Python dict and return a Python dict with bindings for each Prolog
+  output variable.
 
-\item A Python iterator \cfuncref{janus.query}{} that provides
-  access to non-deterministic Prolog predicates.
+\item A python function \cfuncref{janus.apply_once}{} to call a
+  Prolog predicate with $N$ \jargon{input arguments} followed by
+  exactly one \jargon{output argument}.  This provides a faster
+  and easier to use interface to compliant predicates.
+
+\item Python iterators \cfuncref{janus.query}{} and
+  \cfuncref{janus.apply}{} that provide access to non-deterministic
+  Prolog predicates using the calling conventions of
+  \cfuncref{janus.query_once}{} and \cfuncref{janus.apply_once}{}.
 \end{itemize}
 
 
@@ -111,7 +119,7 @@ that py_call/3 and py_iter/3 provide the option
 \term{py_string_as}{string} to obtain a string if this is desirable.
 
 \begin{center}
-\begin{tabular}{|l|c|l|p{2in}|}
+\begin{tabular}{|l|c|l|p{3in}|}
 \hline
 \textbf{Prolog} & & \textbf{Python} & \textbf{Notes} \\
 \hline
@@ -123,16 +131,17 @@ Float   & $\Longleftrightarrow$ & float    & \\
 @(true) & $\Longleftrightarrow$ & True     & \\
 @(false) & $\Longleftrightarrow$ & False    & \\
 Atom    & $\longleftarrow$      & \cfuncref{enum.Enum}{} & Name of Enum instance \\
-Atom    & $\longleftrightarrow$ & String   & Except the above reserved three atoms \\
+Atom    & $\longleftrightarrow$ & String   & \\
 String  & $\longrightarrow$     & String   & \\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
-prolog(Term) & $\longrightarrow$ & \cfuncref{janus.Term}{} & Represent any Prolog term \\
+prolog(Term) & $\longrightarrow$ & \cfuncref{janus.Term}{} & Represents any Prolog term \\
 Term    & $\longleftarrow$      & \cfuncref{janus.Term}{} & \\
 List    & $\longrightarrow$     & List & \\
 List    & $\longleftarrow$      & Sequence & \\
-List    & $\longleftarrow$      & Iterator & Note that a \jargon{Generator} is an \jargon{Iterator} \\
+List    & $\longleftarrow$      & Iterator & Note that a Python \jargon{Generator} is an \jargon{Iterator} \\
 py_set(List) & $\Longleftrightarrow$ & Set & \\
--(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples \\
+-()     & $\Longleftrightarrow$ & ()  & Python empty Tuple \\
+-(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples.  Note that a Prolog \jargon{pair} \exam{A-B} maps to a Python (binary) tuple. \\
 Dict    & $\Longleftrightarrow$ & Dict     & \\
 \{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
 py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
@@ -146,21 +155,21 @@ Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 The interface supports unbounded integers and rational numbers.  Large
 integers ($> 64$ bits) are converted using a hexadecimal string as
 intermediate.  SWI-Prolog rational numbers are mapped to the Python
-class \class{fractions:Fraction}.  Currently the mapping rational
-numbers uses an intermediate decimal string and is therefore
-relatively slow.  Mapping from Python to Prolog relies on the
-\cfuncref(__str__)() method of the instance returning +/-<num>/<den>
-where <num> and <den> are decimal numbers.
+class \class{fractions:Fraction}.\footnote{Currently, mapping rational
+numbers to fractions uses a string as intermediate representation and
+may thus be slow.}
 
 The conversion \#(Term) allows passing anything as a Python string. If
 \arg{Term} is an atom or string, this is the same as passing the atom
 or string.  Any other Prolog term is converted as defined by
 write_canonical/1.  The conversion \term{prolog}{Term} creates an
-instance of \cfuncref{janus.Term}{}. This class encapsulates a copy of an
-arbitrary Prolog term. The SWI-Prolog implementation uses the
+instance of \cfuncref{janus.Term}{}. This class encapsulates a copy of
+an arbitrary Prolog term. The SWI-Prolog implementation uses the
 PL_record() and PL_recorded() functions to store and retrieve the
-term. Internally, \cfuncref{janus.Term}{} is used to represent Prolog
-exeptions that are raised during the execution of
+term.  \arg{Term} may be any Prolog term, including \jargon{blobs},
+\jargon{attributed variables}.  Cycles and subterm sharing in
+\arg{Term} are preserved. Internally, \cfuncref{janus.Term}{} is used
+to represent Prolog exeptions that are raised during the execution of
 \cfuncref{janus.query_once}{} or \cfuncref{janus.query}{}.
 
 Python Tuples are array-like objects and thus map best to a Prolog
@@ -177,7 +186,7 @@ the common binary tuple map to a Prolog \jargon{pair}.
 \section{Janus by example}
 \label{sec:janus-examples}
 
-This section introduces Janus calling Python from Prolog by examples.
+This section introduces Janus calling Python from Prolog with examples.
 
 \subsection{Janus calling spaCy}
 \label{sec:janus-spacy}
@@ -194,7 +203,7 @@ Typically, spaCy and the English language models may be installed using
 After spaCy is installed, we can define \nopredref{model}{1} to
 represent a Python object for the English language model using the
 code below.  Note that by tabling this code as shared, the model is
-loaded only query_once and is accessible from multiple Prolog threads.
+loaded only once and is accessible from multiple Prolog threads.
 
 \begin{code}
 :- table english/1 as shared.
@@ -204,8 +213,11 @@ english(NLP) :-
 \end{code}
 
 Calling \term{english}{X} results in \arg{X} =
-\verb$<py_English>(0x7f703c24f430)$.  This object implements the
-Python \jargon{callable} protocol, i.e., it behaves as a function with
+\verb$<py_English>(0x7f703c24f430)$, a \jargon{blob} that references a
+Python object.  \textit{English} is the name of the Python class to
+which the object belongs and \textit{0x7f703c24f430} is the address of
+the object.  The returned object implements the Python
+\jargon{callable} protocol, i.e., it behaves as a function with
 additional properties and methods.  Calling the model with a string
 results in a parsed document.  We can use this from Prolog using the
 built-in \const{__call__} method:
@@ -227,8 +239,17 @@ implements many more methods that we may wish to use.  An example is
 \const{noun_chunks}, which provides a Python \jargon{generator} that
 enumerates the noun chunks found in the input.  Each chunk is an
 instance of \const{Span}, a sequence of \const{Token} instances that
-have the property \const{text}.  So, if we want the noun chunks as
-text, we can write the following program:
+have the property \const{text}.  The program below extracts the
+noun chunks of the input as a non-deterministic Prolog predicate.
+Note that we use \exam{py_object(true)} to get the parsed document
+as a Python object.  Next, we use py_iter/2 to access the members
+of the Python \jargon{iterator} returned by \exam{Doc.noun_chunks}
+as Python object references and finally we extract the text of each
+noun chunk as an atom.  The SWI-Prolog (atom) garbage collector will
+take care of the \arg{Doc} and \arg{Span} Python objects.  Immediate
+release of these objects can be enforced using py_free/1.\footnote{Janus
+implementations are not required to implement Python object reference
+garbage collection.}
 
 \begin{code}
 :- use_module(library(janus)).
@@ -252,6 +273,9 @@ After which we can call
 Noun = 'This' ;
 Noun = 'a sentence'.
 \end{code}
+
+The subsequent \secref{janus} documents the Prolog library
+\pllib{janus}.
 
 \input{libjanus.tex}
 
@@ -316,16 +340,19 @@ and versions.}
 \section{Calling Prolog from Python}
 \label{sec:janus-call-prolog}
 
-The binding can also call Prolog from Python.  This can both be used
-to realize \jargon{call backs}, i.e., the Python system embedded into
-Prolog calls Prolog, or after embedding SWI-Prolog into Python.
+The Janus interface can also call Prolog from Python.  Calling Prolog
+from Python is the basis when embedding Prolog into Python using the
+Python package \const{janus_swi}.  However, calling Prolog from Python
+is also used to handle \jargon{call backs}.  Mutually recursive calls
+between Python and Prolog are supported.  They should be handled with
+some care as it is easy to crash the process due to a stack overflow.
 
 Loading janus into Python is realized using the Python package
 \const{janus-swi}, which defines the module \const{janus_swi}.  We do
-not call this simply \const{janus} to allow coexistence of janus for
+not call this simply \const{janus} to allow coexistence of Janus for
 multiple Prolog implementations.  Unless you plan to interact with
-multiple Prolog systems in the same session, we advice to import
-janus for SWI-Prolog as below.
+multiple Prolog systems in the same session, we advice to import janus
+for SWI-Prolog as below.
 
 \begin{code}
 import janus_swi as janus
@@ -336,12 +363,13 @@ imported both as \const{janus} and \const{janus_swi}.  Using
 \const{janus} allows the same Python code to be used from different
 Prolog systems, while using \const{janus_swi} allows the same code to
 be used both for embedding Python into Prolog and Prolog into Python.
-In the remainder of this section we consider the module to be named
-\const{janus}.
+In the remainder of this section we assume the Janus functions are
+available in the name space \const{janus}.
 
 The Python module \const{janus} provides utility functions and defines
-the classes \cfuncref{janus.query}{}, \cfuncref{janus.Term}{},
-\cfuncref{janus.Undefined}{} and \cfuncref{janus.PrologError}{}.
+the classes \cfuncref{janus.query}{}, \cfuncref{janus.apply}{},
+\cfuncref{janus.Term}{}, \cfuncref{janus.Undefined}{} and
+\cfuncref{janus.PrologError}{}.
 
 The Python calling Prolog interface consist of four primitives,
 distinguishing deterministic vs. non-deterministic Prolog queries and
@@ -351,11 +379,24 @@ calling convention specifies a Prolog query as a string with an
 \jargon{input dict} that provides (input) bindings for part of the
 variables in the query string.  The results are represented as a dict
 that holds the bindings of the output variables and the truth value
-(see \secref{janus-truth}).  The functional notation calling
-convention specifies the query as a module, predicate name and input
-arguments.  It calls the predicate with one argument more than the
-number of input arguments and translates the binding of the output
-argument to Python.
+(see \secref{janus-truth}).  For example:
+
+\begin{code}
+>>> janus.query_once("Y is sqrt(X)", {'X':2})
+{'truth': True, 'Y': 1.4142135623730951}
+\end{code}
+
+The functional notation calling convention specifies the query as a
+module, predicate name and input arguments.  It calls the predicate
+with one argument more than the number of input arguments and
+translates the binding of the output argument to Python.  For example
+
+\begin{code}
+>>> janus.apply_once("user", "plus", 1, 2)
+3
+\end{code}
+
+The table below summarizes the four primitives.
 
 \begin{center}
   \begin{tabular}{|r|cc|}
@@ -370,7 +411,7 @@ argument to Python.
 
 We start our discussion by introducing the
 \cfuncref{janus.query_once}{query,inputs} function for calling Prolog goals
-as query_once/1. A Prolog goal is constructed from a string and a dict with
+as once/1. A Prolog goal is constructed from a string and a dict with
 \jargon{input bindings} and returns \jargon{output bindings} as a
 dict.  For example
 
@@ -393,11 +434,11 @@ large. Using a dict for input and output together with a (short)
 string to denote the goal is easy to use and fast.
 
 \begin{code}
->>> janus.query_once("Y is 1+1", {})	     # Ok for "static" queries
+>>> janus.query_once("Y is 1+1", {})    # Ok for "static" queries
 {'Y': 2, 'truth': True}
 >>> x = 1
->>> janus.query_once(f"Y is {x}+1", {})    # Do not use this
-{'Y': 2, 'truth': True}             # See above
+>>> janus.query_once(f"Y is {x}+1", {}) # WRONG, See above
+{'Y': 2, 'truth': True}
 \end{code}
 
 The \jargon{output dict} contains all named Prolog variables that (1)
@@ -418,26 +459,27 @@ In addition to the variable bindings the dict contains a key
 \const{truth}\footnote{Note that variable bindings always start with
 an uppercase latter.}  that represents the truth value of evaluating
 the query.  In normal Prolog this is a Python Boolean.  In systems
-that implement \jargon{Well Founded Semantics}, this may also be the
-string \const{'Undefined'}.  If evaluation of the query failed, all
-variable bindings are bound to the Python constant \const{None} and
-the \const{truth} key is \const{False}.  The following Python
-function returns \const{True} if the Prolog system supports unbounded
-integers and \const{False} otherwise.
+that implement \jargon{Well Founded Semantics}, this may also be an
+instance of the class \cfuncref{janus.Undefined}{}.  See
+\secref{janus-truth} for details. If evaluation of the query failed,
+all variable bindings are bound to the Python constant \const{None}
+and the \const{truth} key has the value \const{False}.  The following
+Python function returns \const{True} if the Prolog system supports
+unbounded integers and \const{False} otherwise.
 
 \begin{code}
 def hasBigIntegers():
     janus.query_once("current_prolog_flag(bounded,false)")['truth']
 \end{code}
 
-While \cfuncref{janus.query_once}{} deals with semi-deterministic goals, the
-class \cfuncref{janus.query}{} implements a Python \jargon{iterator}
-that iterates over the solutions of a Prolog goal. The iterator may be
-aborted using the Python \exam{break} statement.  As with
-\cfuncref{janus.query_once}{}, the returned dict contains a \const{truth}
-field.  This field cannot be \const{False} though and thus is either
-\const{True} or the string \verb$'Undefined'$.\footnote{The
-representation of \jargon{Undefined} is still under discussion.}
+While \cfuncref{janus.query_once}{} deals with semi-deterministic
+goals, the class \cfuncref{janus.query}{} implements a Python
+\jargon{iterator} that iterates over the solutions of a Prolog
+goal. The iterator may be aborted using the Python \exam{break}
+statement.  As with \cfuncref{janus.query_once}{}, the returned dict
+contains a \const{truth} field.  This field cannot be \const{False}
+though and thus is either \const{True} or an instance of the class
+\cfuncref{janus.Undefined}{}
 
 \begin{code}
 import janus_swi as janus
@@ -508,7 +550,7 @@ crash the process}.  Future versions may improve on that.
 \begin{description}
   \cfunction{dict}{janus.query_once}{query, bindings=\{{}\}, keep=False,
 			            truth=TruthVals.PLAIN_TRUTHVALS}
-Call \arg{query} using \arg{bindings} as query_once/1, returning a dict with
+Call \arg{query} using \arg{bindings} as once/1, returning a dict with
 the resulting bindings. If \arg{bindings} is omitted, no variables are
 bound. The \arg{keep} parameter determines whether or not Prolog
 discards all backtrackable changes.  By default, such changes are
@@ -595,6 +637,35 @@ Below is an example.  See \secref{janus-truth} for details.
     of py_shell/0.
 \end{description}
 
+\subsection{Janus iterator query}
+\label{sec:janus-class-query}
+
+Class \cfuncref{janus.query}{} is similar to the
+\cfuncref{janus.query_once}{} function, but it returns a Python
+\jargon{iterator} that allows for iterating over the answers to a
+non-deterministic Prolog predicate. 
+
+\begin{description}
+   \cfunction{query}{janus.query}{query, bindings=\{{}\}, keep=False}
+   As \cfuncref{janus.query_once}{}, returning an \jargon{iterator} that
+   provides an answer dict as \cfuncref{janus.query_once}{} for each answer
+   to \arg{query}.  Answers never have \const{truth} \const{False}.
+   See discussion above.
+
+   \cfunction{Query}{janus.query}{query, bindings=\{{}\}, keep=False}
+   \jargon{Deprecated}.  This class was renamed to \cfuncref{janus.query}.
+
+   \cfunction{dict{|}None}{janus.query.next}{}
+   Explicitly ask for the next solution of the iterator.  Normally,
+   using the \ctype{query} as an iterator is to be preferred.  See
+   discussion above.
+
+   \cfunction{None}{janus.query.close}{}
+   Close the query.  Closing a query is obligatory.  When used as
+   an iterator, the Python destructor (\cfuncref{__del__}{}) takes
+   care of closing the query.
+\end{description}
+
 \subsection{Janus iterator apply}
 \label{sec:janus-class-apply}
 
@@ -622,35 +693,6 @@ a Python \jargon{iterator} that enumerates all answers.
    and reaching the end of the iteration.
 
    \cfunction{None}{janus.apply.close}{}
-   Close the query.  Closing a query is obligatory.  When used as
-   an iterator, the Python destructor (\cfuncref{__del__}{}) takes
-   care of closing the query.
-\end{description}
-
-\subsection{Janus iterator query}
-\label{sec:janus-class-query}
-
-Class \cfuncref{janus.query}{} is similar to the
-\cfuncref{janus.query_once}{} function, but it returns a Python
-\jargon{iterator} that allows for iterating over the answers to a
-non-deterministic Prolog predicate. 
-
-\begin{description}
-   \cfunction{query}{janus.query}{query, bindings=\{{}\}, keep=False}
-   As \cfuncref{janus.query_once}{}, returning an \jargon{iterator} that
-   provides an answer dict as \cfuncref{janus.query_once}{} for each answer
-   to \arg{query}.  Answers never have \const{truth} \const{False}.
-   See discussion above.
-
-   \cfunction{Query}{janus.query}{query, bindings=\{{}\}, keep=False}
-   \jargon{Deprecated}.  This class was renamed to \cfuncref{janus.query}.
-
-   \cfunction{dict{|}None}{janus.query.next}{}
-   Explicitly ask for the next solution of the iterator.  Normally,
-   using the \ctype{query} as an iterator is to be preferred.  See
-   discussion above.
-
-   \cfunction{None}{janus.query.close}{}
    Close the query.  Closing a query is obligatory.  When used as
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
    care of closing the query.
@@ -800,8 +842,9 @@ Obj = <py_Term>(0x7f7a14512050).
 
 Class \cfuncref{janus.PrologError}{}, derived from the Python class
 \class{Exception} represents a Prolog exception that typically results
-from calling \cfuncref{janus.query_once}{} or using
-\cfuncref{janus.query}{}.  The class either encapsulates a string on a
+from calling \cfuncref{janus.query_once}{},
+\cfuncref{janus.apply_once}{}, \cfuncref{janus.query}{} or
+\cfuncref{janus.apply}{}.  The class either encapsulates a string on a
 Prolog exception term using \class{janus.Term}.  Prolog exceptions are
 used to represent errors raised by Prolog.  Strings are used to
 represent errors from invalid use of the interface.  The default
@@ -833,37 +876,29 @@ or provide a method to classify the error more easily.
 \label{sec:janus-threads}
 
 Where SWI-Prolog support native preemptively scheduled threads that
-exploit multiple cores, Python has a single interpreter that can switch
-between native threads.\footnote{Actually, you can create multiple
-Python interpreters. It is not yet clear to us whether that can help
-improving on concurrency.} Initially the Python interpreter is
-associated with the thread that created it which, for janus, is the
-first thread calling Python. Janus uses PyGILState_Ensure() and
-PyGILState_Release() around calls to e.g. py_call/2. In addition, the
-thread that created Python releases its interpreter after every call
-from Prolog on Python. As a result:
+exploit multiple cores, Python has a single interpreter that can
+switch between native threads.\footnote{Actually, you can create
+multiple Python interpreters. It is not yet clear to us whether that
+can help improving on concurrency.} Initially the Python interpreter
+is associated with the thread that created it which, for janus, is the
+first thread calling Python.  The Prolog thread that initiated Janus
+may terminate.  This does not affect the embedded Python interpreter
+and this interpreter may continue to be used from other Prolog threads.
+
+Janus ensures it holds the Python GIL when interacting with the Python
+interpreter.  If Python calls Prolog, the GIL is released using
+\const{Py_BEGIN_ALLOW_THREADS}.
 
 \begin{itemize}
-    \item Multiple Prolog threads can make calls to Python.  The
-    access to Python is \jargon{serialized}.  If a Prolog thread
-    does not want other threads to use Python it can use
-    py_with_gil/1.  When multiple Prolog threads make many
-    calls to Python performance tends to drop significantly.
+\item Multiple Prolog threads can make calls to Python.  The
+  access to Python is \jargon{serialized}.  If a Prolog thread
+  does not want other threads to use Python it can use
+  py_with_gil/1.  When multiple Prolog threads make many
+  calls to Python performance tends to drop significantly.
 
-    \item Multiple Python threads can make calls to Prolog.  As
-    Python uses only one core at the same time, Prolog working
-    on behalve of Python \jargon{synchronously} only uses one
-    core.  Prolog threads not related to Python can proceed
-    on other cores.
-
-    \item Python threading is \jargon{cooperative}.  At the
-    moment, a thread Python thread running Prolog will not
-    allow other Python threads to make progress.  Possibly that
-    can be improved in the future.
-
-    \item It appears to be possible to initialize Python in a
-    thread.   Python remains accessible from other threads after
-    the initializing thread has terminated.
+\item Multiple Python threads can make calls to Prolog. While
+  Prolog is working on the query, the Python interpreter may switch
+  to other Python threads.
 \end{itemize}
 
 \subsection{Calling Prolog from a Python thread}
@@ -977,6 +1012,7 @@ Prolog is a very different language than imperative languages.  An
 interesting similarity is the notion of \jargon{backtracking} vs.
 Python \jargon{iterators}.
 
+To be extended.
 
 \section{Janus performance evaluation}
 \label{sec:janus-performance}
@@ -1020,18 +1056,17 @@ that Python's multi threading will be able to use multiple cores.}
 Writing an interface for SWI-Prolog is typically easier that for
 Python/C because memory management is easier. Where we need to manage
 reference counts to Python objects through all possibly paths of the C
-functions, SWI-Prolog \ctype{term_t} merely has to be allocated query_once in
+functions, SWI-Prolog \ctype{term_t} merely has to be allocated once in
 the function. All failure parts will discard the Prolog data
 automatically through backtracking and all success paths will do so
 through the Prolog garbage collector.\footnote{Using a Python C++
 interface such as \href{https://github.com/pybind/pybind11}{pybind11}
 simplifies memory management for a Python interface.}
 
-Summarizing, the presented interface is ideal to get started quickly.
-Applications that need to access C/C++ resources and need either exploit
-all cores of your hardware or get the best performance on calls or
-exchanging data should consider using the C or C++ interfaces of
-SWI-Prolog.
+Summarizing, Janus is ideal to get started quickly.  Applications that
+need to access C/C++ resources and need either exploit all cores of
+your hardware or get the best performance on calls or exchanging data
+should consider using the C or C++ interfaces of SWI-Prolog.
 
 \section{Janus platforms notes}
 \label{sec:janus-platforms}
@@ -1150,7 +1185,7 @@ code.
 
 \begin{itemize}
 \item The design is stable
-\item Prolog predicates have been agreed upon
+\item Some naming details are still under debate
 \item Testing is not exhaustive.
 \end{itemize}
 

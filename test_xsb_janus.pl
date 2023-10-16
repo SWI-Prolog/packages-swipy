@@ -44,11 +44,7 @@ test_xsb_janus :-
     run_tests([ xsb_janus
               ]).
 
-:- initialization
-    source_file(test_xsb_janus, File),
-    file_directory_name(File, Dir),
-    directory_file_path(Dir, xsb_tests, XSBDir),
-    py_add_lib_dir(XSBDir, first).
+:-  py_add_lib_dir(xsb_tests).
 
 py_gc :-
     py_call(gc:collect()).

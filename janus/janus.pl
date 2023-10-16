@@ -66,6 +66,7 @@
 
             py_initialize/3,            % +Program, +Argv, +Options
             py_lib_dirs/1,              % -Dirs
+            py_add_lib_dir/0,           % (directive)
             py_add_lib_dir/1,           % +Dir
             py_add_lib_dir/2,           % +Dir,+Where
 
@@ -122,10 +123,10 @@ add_python_dll_dir :-
 /** <module> Call Python from Prolog
 
 This library implements calling Python  from   Prolog.  It  is available
-directly from Prolog if the janus   package is bundled, providing access
-to an _embedded_ Python instance. If  SWI-Prolog is embedded into Python
-using the Python package ``janus-swi``, this  library is provided either
-from Prolog or from the Python package.
+directly from Prolog if  the  janus   package  is  bundled.  The library
+provides access to an  _embedded_  Python   instance.  If  SWI-Prolog is
+embedded into Python  using  the   Python  package  ``janus-swi``,  this
+library is provided either from Prolog or from the Python package.
 
 Normally,  the  Prolog  user  can  simply  start  calling  Python  using
 py_call/2 or friends. In special cases it   may  be needed to initialize
@@ -171,15 +172,19 @@ py_version :-
 %       % call a built-in
 %	?- py_call(print("Hello World!\n")).
 %	true.
+%
 %       % call a built-in (alternative)
 %	?- py_call(builtins:print("Hello World!\n")).
 %	true.
+%
 %	% call function in a module
 %	?- py_call(sys:getsizeof([1,2,3]), Size).
 %	Size = 80.
+%
 %	% call function on an attribute of a module
 %       ?- py_call(sys:path:append("/home/bob/janus")).
 %       true
+%
 %       % get attribute from a module
 %       ?- py_call(sys:path, Path)
 %       Path = ["dir1", "dir2", ...]
@@ -204,8 +209,10 @@ py_version :-
 %
 %       ?- py_call(dog:'Dog'("Fido"), Dog).
 %       Dog = <py_Dog>(0x7f095c9d02e0).
+%
 %       ?- py_call($Dog:add_trick("roll_over")).
 %       Dog = <py_Dog>(0x7f095c9d02e0).
+%
 %       ?- py_call($Dog:tricks, Tricks).
 %       Dog = <py_Dog>(0x7f095c9d02e0),
 %       Tricks = ["roll_over"]
@@ -240,8 +247,9 @@ py_version :-
 %       object reference. Some objects are _always_ translated to
 %       Prolog, regardless of this flag.  These are the Python constants
 %       ``None``, ``True`` and ``False`` as well as instances of the
-%       Python base classes long, float, string or tuple.  Instances of
-%       sub classes of these base classes are controlled by this option.
+%       Python base classes `int`, `float`, `str` or `tuple`. Instances
+%       of sub classes of these base classes are controlled by this
+%       option.
 
 %!  py_iter(+Iterator, -Value) is nondet.
 %!  py_iter(+Iterator, -Value, +Options) is nondet.
@@ -306,23 +314,24 @@ py_version :-
 
 %!  py_free(+Obj) is det.
 %
-%   Immediately free (decrement  the  reference   count)  for  th Python
-%   object Obj. Further reference to Obj  using py_call/1,2 or py_free/1
-%   raises an `existence_error`. Note that by decrementing the reference
-%   count, we make the  reference  invalid   from  Prolog.  This may not
-%   actually delete the object because the   object  may have references
-%   inside Python.
+%   Immediately free (decrement the  reference   count)  for  the Python
+%   object Obj. Further reference  to  Obj   using  e.g.,  py_call/2  or
+%   py_free/1 raises an `existence_error`. Note that by decrementing the
+%   reference count, we make the reference invalid from Prolog. This may
+%   not  actually  delete  the  object  because   the  object  may  have
+%   references inside Python.
 %
 %   Prolog references to Python objects  are   subject  to  atom garbage
 %   collection and thus normally do not need to be freed explicitly.
 
 %!  py_with_gil(:Goal) is semidet.
 %
-%   Run Goal as  query_once(Goal)  while  holding   the  Phyton  GIL  (_Global
-%   Interpreter Lock_). Note that py_call/1,2 also   locks the GIL. This
-%   predicate is only required if we  wish   to  make  multiple calls to
-%   Python while keeping the GIL. The GIL is a _recursive_ lock and thus
-%   calling py_call/1,2 while holding the GIL does not _deadlock_.
+%   Run Goal as  once(Goal)  while  holding   the  Phyton  GIL  (_Global
+%   Interpreter Lock_). Note that  all   predicates  that  interact with
+%   Python lock the GIL. This predicate is   only required if we wish to
+%   make multiple calls to Python while keeping   the  GIL. The GIL is a
+%   _recursive_ lock and thus calling py_call/1,2  while holding the GIL
+%   does not _deadlock_.
 
 %!  py_gil_owner(-Thread) is semidet.
 %
@@ -681,38 +690,55 @@ py_lib_dirs(Dirs) :-
     py_call(sys:path, Dirs0),
     maplist(prolog_to_os_filename, Dirs, Dirs0).
 
+%!  py_add_lib_dir is det.
 %!  py_add_lib_dir(+Dir) is det.
 %!  py_add_lib_dir(+Dir, +Where) is det.
 %
 %   Add a directory to the Python  module   search  path.  In the second
 %   form, Where is one of `first`   or `last`. py_add_lib_dir/1 adds the
-%   directory as last.
+%   directory as first. The property `sys:path`   is  not modified if it
+%   already contains Dir.
 %
 %   Dir is in Prolog notation. The added   directory  is converted to an
 %   absolute path using the OS notation.
 %
-%   A flexible way to add the directory  holding the current Prolog file
-%   to the Python search path is  in   the  template below. The `here/0`
-%   predicate can be replaced by  any   predicate  defined  in the file,
-%   either above or below the initializing/1   directive.  A simple name
-%   like here/0 is good style when this code is part of a Prolog module.
-%
-%   ```
-%   here.
-%   :- initialization
-%       (   source_file(here, File),
-%           file_directory_name(File, Dir),
-%           py_add_lib_dir(Dir, first)
-%       ).
-%   ```
+%   The form py_add_lib_dir/0 may only be  used as a _directive_, adding
+%   the directory from which the current Prolog  source is loaded at the
+%   head  of  the   Python   search    path.   If   py_add_lib_dir/1  or
+%   py_add_lib_dir/2 are used in a directive  and the given directory is
+%   not absolute, it is  resolved  against   the  directory  holding the
+%   current Prolog source.
+
+:- multifile system:term_expansion/2.
+
+system:term_expansion((:- py_add_lib_dir),
+                      (:- initialization(py_add_lib_dir(Dir, first), now))) :-
+    prolog_load_context(directory, Dir).
+system:term_expansion((:- py_add_lib_dir(Dir0)),
+                      (:- initialization(py_add_lib_dir(Dir, first), now))) :-
+    \+ is_absolute_file_name(Dir0),
+    prolog_load_context(directory, CWD),
+    absolute_file_name(Dir0, Dir, [relative_to(CWD)]).
+system:term_expansion((:- py_add_lib_dir(Dir0, Where)),
+                      (:- initialization(py_add_lib_dir(Dir, Where), now))) :-
+    \+ is_absolute_file_name(Dir0),
+    prolog_load_context(directory, CWD),
+    absolute_file_name(Dir0, Dir, [relative_to(CWD)]),
+    absolute_file_name(Dir0, Dir).
+
+py_add_lib_dir :-
+    throw(error(context_error(nodirective, py_add_lib_dir), _)).
 
 py_add_lib_dir(Dir) :-
-    py_add_lib_dir(Dir, last).
+    py_add_lib_dir(Dir, first).
 
 py_add_lib_dir(Dir, Where) :-
     absolute_file_name(Dir, AbsDir),
     prolog_to_os_filename(AbsDir, OSDir),
-    (   Where == last
+    (   py_call(sys:path, Dirs0),
+        memberchk(OSDir, Dirs0)
+    ->  true
+    ;   Where == last
     ->  py_call(sys:path:append(OSDir), _)
     ;   Where == first
     ->  py_call(sys:path:insert(0, OSDir), _)
@@ -836,7 +862,7 @@ unbind(NonVar, NonVar).
 % in janus.py.
 
 
-%!  px_call(+Input:tuple, +Module, -Pred, -Ret)
+%   px_call(+Input:tuple, +Module, -Pred, -Ret)
 %
 %   Supports px_qdet() and apply()
 

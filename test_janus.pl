@@ -63,11 +63,7 @@ test_janus :-
 		xsb_call
               ]).
 
-:- initialization
-    source_file(test_janus, File),
-    file_directory_name(File, Dir0),
-    directory_file_path(Dir0, tests, Dir),
-    py_add_lib_dir(Dir, first).
+:- py_add_lib_dir(tests).
 
 :- begin_tests(janus_data).
 

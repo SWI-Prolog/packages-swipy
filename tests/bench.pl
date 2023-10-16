@@ -46,11 +46,7 @@
 /** <module> Janus benchmarks
 */
 
-here.
-:- initialization
-    source_file(here, File),
-    file_directory_name(File, Dir),
-    py_add_lib_dir(Dir, first).
+:- py_add_lib_dir.
 
 :- initialization(main, main).
 
