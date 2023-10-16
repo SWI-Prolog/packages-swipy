@@ -70,7 +70,7 @@ def kwd_all(a=1, b=2, c=3):
 
 def abort_iter(n):
     sum=0
-    for d in Query("between(1,M,X)", {"M":n}):
+    for d in query("between(1,M,X)", {"M":n}):
         sum += d["X"]
         if sum > 10000:
             break;
@@ -78,14 +78,14 @@ def abort_iter(n):
 
 def double_iter(w,h):
     tuples=[]
-    for yd in Query("between(1,M,Y)", {"M":h}):
-        for xd in Query("between(1,M,X)", {"M":w}):
+    for yd in query("between(1,M,Y)", {"M":h}):
+        for xd in query("between(1,M,X)", {"M":w}):
             tuples.append((xd['X'],yd['Y']))
     return tuples
 
 def test_invalid_nesting():
-    q1 = Query("between(1,3,X)")
-    q2 = Query("between(1,3,Y)")
+    q1 = query("between(1,3,X)")
+    q2 = query("between(1,3,Y)")
     q2.next()
     try:
         q1.next()
@@ -104,13 +104,13 @@ def squares(start, stop):
 # Test for WFS
 
 def shaves(truth=PLAIN_TRUTHVALS):
-    return [*Query("russel:shaves(X,Y)", truth=truth)]
+    return [*query("russel:shaves(X,Y)", truth=truth)]
 
 # Benchmarking support
 
 def bench_query_iter(n):
     sum=0
-    for d in Query("between(1,M,X)", {"M":n}):
+    for d in query("between(1,M,X)", {"M":n}):
         sum += d["X"]
     return sum;
 

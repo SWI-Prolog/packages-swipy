@@ -106,7 +106,7 @@ benchmark(N,
           forall) :-
     py_call(demo:sumlist3(5,[1,2,3]), _).
 benchmark(N,
-          'Iterate over Prolog `Query("between(1,M,X)", {"M":~d})`'-[N],
+          'Iterate over Prolog `query("between(1,M,X)", {"M":~d})`'-[N],
           call) :-
     py_call(demo:bench_query_iter(N), _).
 benchmark(N,

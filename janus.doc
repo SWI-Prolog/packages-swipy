@@ -79,7 +79,7 @@ developed for the WASM (Web Assembly) version.  That is
   a Python dict and return a Python dict with bindings for each
   Prolog output variable.
 
-\item A Python iterator class \cfuncref{janus.Query}{} that provides
+\item A Python iterator \cfuncref{janus.query}{} that provides
   access to non-deterministic Prolog predicates.
 \end{itemize}
 
@@ -161,7 +161,7 @@ arbitrary Prolog term. The SWI-Prolog implementation uses the
 PL_record() and PL_recorded() functions to store and retrieve the
 term. Internally, \cfuncref{janus.Term}{} is used to represent Prolog
 exeptions that are raised during the execution of
-\cfuncref{janus.query_once}{} or \cfuncref{janus.Query}{}.
+\cfuncref{janus.query_once}{} or \cfuncref{janus.query}{}.
 
 Python Tuples are array-like objects and thus map best to a Prolog
 compound term.  There are two problems with this.  One is that few
@@ -340,7 +340,7 @@ In the remainder of this section we consider the module to be named
 \const{janus}.
 
 The Python module \const{janus} provides utility functions and defines
-the classes \cfuncref{janus.Query}{}, \cfuncref{janus.Term}{},
+the classes \cfuncref{janus.query}{}, \cfuncref{janus.Term}{},
 \cfuncref{janus.Undefined}{} and \cfuncref{janus.PrologError}{}.
 
 The Python calling Prolog interface consist of four primitives,
@@ -363,7 +363,7 @@ argument to Python.
                & \bf Relational notation  & \bf Functional notation \\
     \hline
     \bf det    & \cfuncref{janus.query_once}{}  & \cfuncref{janus.apply_once}{} \\
-    \bf nondet & \cfuncref{janus.Query}{} & \cfuncref{janus.apply}{} \\
+    \bf nondet & \cfuncref{janus.query}{} & \cfuncref{janus.apply}{} \\
     \hline
   \end{tabular}
 \end{center}
@@ -431,7 +431,7 @@ def hasBigIntegers():
 \end{code}
 
 While \cfuncref{janus.query_once}{} deals with semi-deterministic goals, the
-class \cfuncref{janus.Query}{} implements a Python \jargon{iterator}
+class \cfuncref{janus.query}{} implements a Python \jargon{iterator}
 that iterates over the solutions of a Prolog goal. The iterator may be
 aborted using the Python \exam{break} statement.  As with
 \cfuncref{janus.query_once}{}, the returned dict contains a \const{truth}
@@ -443,7 +443,7 @@ representation of \jargon{Undefined} is still under discussion.}
 import janus_swi as janus
 
 def printRange(from, to):
-    for d in janus.Query("between(F,T,X)", {"F":from, "T":to})
+    for d in janus.query("between(F,T,X)", {"F":from, "T":to})
         print(d["X"])
 \end{code}
 
@@ -453,8 +453,8 @@ like below.
 \begin{code}
 def double_iter(w,h):
     tuples=[]
-    for yd in janus.Query("between(1,M,Y)", {"M":h}):
-        for xd in janus.Query("between(1,M,X)", {"M":w}):
+    for yd in janus.query("between(1,M,Y)", {"M":h}):
+        for xd in janus.query("between(1,M,X)", {"M":w}):
             tuples.append((xd['X'],yd['Y']))
     return tuples
 \end{code}
@@ -467,12 +467,12 @@ After this, we may run
 \end{code}
 
 In addition to the \jargon{iterator} protocol that class
-\cfuncref{janus.Query}{} implements, it also implements the methods
-\cfuncref{janus.Query.next}{} and \cfuncref{janus.Query.close}{}.
+\cfuncref{janus.query}{} implements, it also implements the methods
+\cfuncref{janus.query.next}{} and \cfuncref{janus.query.close}{}.
 This allows for e.g.
 
 \begin{code}
-    q = Query("between(1,3,X)")
+    q = query("between(1,3,X)")
     while ( s := q.next() ):
         print(s['X'])
     q.close()
@@ -486,8 +486,8 @@ can ask for the next solution of the outer query.  We illustrate
 this using the sequence below.
 
 \begin{code}
->>> q1 = Query("between(1,3,X)")
->>> q2 = Query("between(1,3,X)")
+>>> q1 = query("between(1,3,X)")
+>>> q2 = query("between(1,3,X)")
 >>> q2.next()
 {'truth': True, 'X': 1}
 >>> q1.next()
@@ -587,7 +587,7 @@ Below is an example.  See \secref{janus-truth} for details.
     """)
 
     print([d['Tuple'] for d in
-           janus.Query("train(_From,_To),Tuple=_From-_To")])
+           janus.query("train(_From,_To),Tuple=_From-_To")])
     \end{code}
 
     \cfunction{None}{janus.prolog}{}
@@ -627,27 +627,30 @@ a Python \jargon{iterator} that enumerates all answers.
    care of closing the query.
 \end{description}
 
-\subsection{Janus class Query}
+\subsection{Janus iterator query}
 \label{sec:janus-class-query}
 
-Class \cfuncref{janus.Query}{} is similar to the
+Class \cfuncref{janus.query}{} is similar to the
 \cfuncref{janus.query_once}{} function, but it returns a Python
 \jargon{iterator} that allows for iterating over the answers to a
-non-deterministic Prolog predicate.
+non-deterministic Prolog predicate. 
 
 \begin{description}
-   \cfunction{Query}{janus.Query}{query, bindings=\{{}\}, keep=False}
+   \cfunction{query}{janus.query}{query, bindings=\{{}\}, keep=False}
    As \cfuncref{janus.query_once}{}, returning an \jargon{iterator} that
    provides an answer dict as \cfuncref{janus.query_once}{} for each answer
    to \arg{query}.  Answers never have \const{truth} \const{False}.
    See discussion above.
 
-   \cfunction{dict{|}None}{janus.Query.next}{}
+   \cfunction{Query}{janus.query}{query, bindings=\{{}\}, keep=False}
+   \jargon{Deprecated}.  This class was renamed to \cfuncref{janus.query}.
+
+   \cfunction{dict{|}None}{janus.query.next}{}
    Explicitly ask for the next solution of the iterator.  Normally,
-   using the \ctype{Query} as an iterator is to be preferred.  See
+   using the \ctype{query} as an iterator is to be preferred.  See
    discussion above.
 
-   \cfunction{None}{janus.Query.close}{}
+   \cfunction{None}{janus.query.close}{}
    Close the query.  Closing a query is obligatory.  When used as
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
    care of closing the query.
@@ -691,7 +694,7 @@ under the \jargon{Well Founded Semantics}.
   \cfunction{Undefined}{janus.Undefined}{term=None}
   Instances are never created explicitly by the user.  They are
   created by the calls to Prolog initiated from \cfuncref{janus.query_once}{}
-  and \cfuncref{janus.Query}{}.
+  and \cfuncref{janus.query}{}.
 
   The class has a single property class \const{term} that represents
   either the \jargon{delay list} or the \jargon{residual program}.  See
@@ -700,7 +703,7 @@ under the \jargon{Well Founded Semantics}.
   \cfunction{Enum}{janus.TruthVal}{}
   This class is a Python \jargon{enumeration}.  Its values are passed
   as the optional \arg{truth} parameter to \cfuncref{janus.query_once}{} and
-  \cfuncref{janus.Query}{}.   The defined instances are
+  \cfuncref{janus.query}{}.   The defined instances are
 
   \begin{description}
     \definition{NO_TRUTHVALS}
@@ -798,7 +801,7 @@ Obj = <py_Term>(0x7f7a14512050).
 Class \cfuncref{janus.PrologError}{}, derived from the Python class
 \class{Exception} represents a Prolog exception that typically results
 from calling \cfuncref{janus.query_once}{} or using
-\cfuncref{janus.Query}{}.  The class either encapsulates a string on a
+\cfuncref{janus.query}{}.  The class either encapsulates a string on a
 Prolog exception term using \class{janus.Term}.  Prolog exceptions are
 used to represent errors raised by Prolog.  Strings are used to
 represent errors from invalid use of the interface.  The default
@@ -873,7 +876,7 @@ allowed to switch to another thread while Prolog is doing its
 work.
 
 If the calling Python thread is not the one that initiated Janus,
-\cfuncref{janus.query_once}{} and \cfuncref{janus.Query}{} attach and detach
+\cfuncref{janus.query_once}{} and \cfuncref{janus.query}{} attach and detach
 a temporary Prolog engine using PL_thread_attach_engine() and
 PL_thread_destroy_engine().  This is relatively costly.  In addition
 we allow associating a Prolog engine persistently with the calling
@@ -957,7 +960,7 @@ python
 >>> query_once("writeln('Hello world!')")
 Hello world!
 {'truth': True}
->>> [a["D"] for a in Query("between(1,6,D)")]
+>>> [a["D"] for a in query("between(1,6,D)")]
 [1, 2, 3, 4, 5, 6]
 >>> prolog()
 ?- version.
@@ -1112,7 +1115,7 @@ items/2, values/3, key/2 and items/2.
 
 Both implementations will provide a low-level and more high level
 interface.  The high level interface is realized by py_call/[2,3] and
-py_iter/[2,3] from Prolog and janus.query_once() and janus.Query() from Python.
+py_iter/[2,3] from Prolog and janus.query_once() and janus.query() from Python.
 We realize the low level interfaces py_func/[3,4] and py_dot/[4,5] on
 top of py_call/2 and the Python functions px_cmd(), px_qdet() and
 px_comp() on top of janus.query_once().  Emulation of the Prolog predicates

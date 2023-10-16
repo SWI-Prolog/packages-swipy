@@ -281,7 +281,7 @@ py_version :-
 %   ```
 %
 %   @arg Options is processed as with py_call/3.
-%   @bug Iterator may not depend on janus.Query()
+%   @bug Iterator may not depend on janus.query()
 
 %!  py_run(+String, +Globals, +Locals, -Result, +Options) is det.
 %
@@ -730,7 +730,7 @@ py_add_lib_dir(Dir, Where) :-
 
 %   py_call_string(:String, +DictIn, -Dict) is nondet.
 %
-%   Support janus.query_once() and janus.Query(). Parses   String  into a goal
+%   Support janus.query_once() and janus.query(). Parses   String  into a goal
 %   term. Next, all variables from the goal   term that appear in DictIn
 %   are bound to the value from  this   dict.  Dict  is created from the
 %   remaining variables, unless they  start   with  an underscore (e.g.,

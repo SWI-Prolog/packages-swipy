@@ -4,7 +4,7 @@ from janus import *
 
 def test_while():
     list=[]
-    q = Query("between(1,3,X)")
+    q = query("between(1,3,X)")
     while ( s := q.next() ):
         list.append(s['X'])
     q.close()

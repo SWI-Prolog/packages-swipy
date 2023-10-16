@@ -37,7 +37,7 @@ This module provides  access to Prolog from Python.  It  may be loaded
 both  from Prolog  through  `library(janus)` or  Python using  `import
 janus`.   The module provides three groups of support:
 
-  - Class janus.Query and function janus.query_once() that allow calling
+  - Class janus.query and function janus.query_once() that allow calling
     Prolog at a high level of abstraction.
   - Functions janus.px_cmp(), janus.qdet() and janus.comp() that
     provide a more low-level interface for calling Prolog that
@@ -80,7 +80,7 @@ class Undefined:
     by a unique instance of this class that is available as the property
     `janus.undefined`.
 
-    Instances of this class are created by query_once() and Query() and should
+    Instances of this class are created by query_once() and query() and should
     never be created by the user.
 
     Parameters
@@ -121,7 +121,7 @@ class TruthVal(enum.Enum):
     """
     Enum constants for asking for the Well Founded Semantics
     details on undefined results.   These are used by query_once()
-    and Query() and affect the value of the `truth` key in
+    and query() and affect the value of the `truth` key in
     results.  Values
 
       - `NO_TRUTHVALS`
@@ -156,9 +156,9 @@ RESIDUAL_PROGRAM = TruthVal.RESIDUAL_PROGRAM
 ################################################################
 # Primary high level interface
 
-class Query:
+class query:
     """
-    Class `Query` implements an _iterator_ over a Prolog goal.
+    Class `query` implements an _iterator_ over a Prolog goal.
 
     Attributes
     ----------
@@ -222,6 +222,11 @@ def query_once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
     inputs['truth'] = truth
     return _swipl.call(query, inputs, keep)
 
+class Query(query):
+    """
+    Deprecated.  Renamed to class `query`.
+    """
+    pass
 
 def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
     """
