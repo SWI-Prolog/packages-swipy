@@ -71,6 +71,7 @@ static functor_t FUNCTOR_at1;
 static functor_t FUNCTOR_eval1;
 
 static int py_initialize_done = FALSE;
+static int py_finalizing = FALSE;
 static int py_gil_thread = 0;	/* Prolog thread that owns the GIL */
 
 typedef struct
@@ -2117,8 +2118,9 @@ py_resume(py_gil_state *state)
 
 static foreign_t
 py_finalize(void)
-{ if ( py_initialize_done )
-  { if ( py_state.state )
+{ if ( py_initialize_done && !py_finalizing )
+  { py_finalizing = TRUE;
+    if ( py_state.state )
     { PyEval_RestoreThread(py_state.state);
       py_state.state = NULL;
     }
@@ -2133,6 +2135,7 @@ py_finalize(void)
     { py_free_hashmap(py_module_table);
       py_module_table = NULL;
     }
+    py_finalizing = FALSE;
   }
 
   return TRUE;

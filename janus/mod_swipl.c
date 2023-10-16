@@ -122,6 +122,9 @@ swipl_call(PyObject *self, PyObject *args)
   fid_t fid;
   Py_ssize_t arity = PyTuple_GET_SIZE(args);
 
+  if ( py_finalizing )
+    Py_RETURN_NONE;		/* error? */
+
   if ( arity == 0 || arity > 3 )
   { PyErr_SetString(PyExc_TypeError,
 		    "swipl.call(query,bindings,keep) takes 1..3 arguments");
