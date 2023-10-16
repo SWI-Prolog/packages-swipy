@@ -132,7 +132,7 @@ benchmark(N,
           call) :-
     forall(py_iter(range(0,N), _), true).
 benchmark(N,
-          'Call `once("Y is X+1", {"X":i})` from Python ~D times'-[N],
+          'Call `query_once("Y is X+1", {"X":i})` from Python ~D times'-[N],
           call) :-
     py_call(demo:bench_call(N)).
 benchmark(N,

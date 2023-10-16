@@ -59,7 +59,7 @@ e.g.,
 
     python
 	>>> from janus_swi import *
-	>>> once("writeln('Hello world!')")
+	>>> query_once("writeln('Hello world!')")
 	Hello world!
 	{'truth': True}
 	>>>

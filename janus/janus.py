@@ -37,7 +37,7 @@ This module provides  access to Prolog from Python.  It  may be loaded
 both  from Prolog  through  `library(janus)` or  Python using  `import
 janus`.   The module provides three groups of support:
 
-  - Class janus.Query and function janus.once() that allow calling
+  - Class janus.Query and function janus.query_once() that allow calling
     Prolog at a high level of abstraction.
   - Functions janus.px_cmp(), janus.qdet() and janus.comp() that
     provide a more low-level interface for calling Prolog that
@@ -80,7 +80,7 @@ class Undefined:
     by a unique instance of this class that is available as the property
     `janus.undefined`.
 
-    Instances of this class are created by once() and Query() and should
+    Instances of this class are created by query_once() and Query() and should
     never be created by the user.
 
     Parameters
@@ -120,7 +120,7 @@ undefined = Undefined()
 class TruthVal(enum.Enum):
     """
     Enum constants for asking for the Well Founded Semantics
-    details on undefined results.   These are used by once()
+    details on undefined results.   These are used by query_once()
     and Query() and affect the value of the `truth` key in
     results.  Values
 
@@ -174,14 +174,14 @@ class Query:
 
     """
     def __init__(self, query, inputs={}, truth=TruthVal.PLAIN_TRUTHVALS):
-        """Create from query and inputs as janus.once()"""
+        """Create from query and inputs as janus.query_once()"""
         inputs['truth'] = truth
         self.state = _swipl.open_query(query, inputs)
     def __iter__(self):
         """Implement iter protocol"""
         return self
     def __next__(self):
-        """Implement iter protocol.  Returns a dict as janus.once()"""
+        """Implement iter protocol.  Returns a dict as janus.query_once()"""
         rc = _swipl.next_solution(self.state)
         if rc == False or rc["truth"] == False:
             raise StopIteration()
@@ -201,9 +201,9 @@ class Query:
         """Explicitly close the query."""
         _swipl.close_query(self.state)
 
-def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
+def query_once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
     """
-    Call a Prolog predicate as `once/1`
+    Call a Prolog predicate as `query_once/1`
 
     Parameters
     ----------
@@ -222,6 +222,13 @@ def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
     inputs['truth'] = truth
     return _swipl.call(query, inputs, keep)
 
+
+def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
+    """
+    Deprecated.  Renamed to query_once().
+    """
+    return query_once(query, inputs, keep, truth)
+    
 ################################################################
 # Functional style interface
 
@@ -262,7 +269,7 @@ class apply:
         """Implement iter protocol"""
         return self
     def __next__(self):
-        """Implement iter protocol.  Returns a dict as janus.once()"""
+        """Implement iter protocol.  Returns a dict as janus.query_once()"""
         rc = _swipl.next_solution(self.state)
         if rc == False:
             raise StopIteration()
@@ -315,7 +322,7 @@ def consult(file, data=None, module='user'):
         (or data) does not define a module or where the exports of the
         loaded module are imported into.
     """
-    once("janus:py_consult(File, Data, Module)",
+    query_once("janus:py_consult(File, Data, Module)",
          {"File":file, "Data":data, "Module":module})
 
 def echo(v):
@@ -357,15 +364,15 @@ def prolog():
     """
     Start and interactive Prolog toplevel.
     """
-    once("'$toplevel':setup_interactive")
-    once("prolog")
+    query_once("'$toplevel':setup_interactive")
+    query_once("prolog")
 
 ################################################################
 # Emulated XSB interface
 
 def px_cmd(module, pred, *args):
     """Run module:pred(arg ...)"""
-    once("janus:px_cmd(M,P,Args)", {"M":module, "P":pred, "Args":args})
+    query_once("janus:px_cmd(M,P,Args)", {"M":module, "P":pred, "Args":args})
 
 def _xsb_tv(truth):
     if truth == True:
@@ -376,7 +383,7 @@ def _xsb_tv(truth):
         return 2
 
 def px_qdet(module, pred, *args):
-    """Run predicate as once/1
+    """Run predicate as query_once/1
 
     The predicate is called with one more argument than provided in `args`.
 
@@ -398,7 +405,7 @@ def px_qdet(module, pred, *args):
         and the success truth.  `0` means failure, `1`, success and `2`
         _undefined_ (success with delays)
     """
-    d = once("janus:px_call(Args,M,P,Ret)", {"M":module, "P":pred, "Args":args})
+    d = query_once("janus:px_call(Args,M,P,Ret)", {"M":module, "P":pred, "Args":args})
     return (d["Ret"], _xsb_tv(d["truth"]))
 
 def px_comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TRUTHVALS):
@@ -431,7 +438,7 @@ def px_comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN
         and the truth value.
 
     """
-    d = once("janus:px_comp(M,P,Args,Vars,Set,TV,Ret)",
+    d = query_once("janus:px_comp(M,P,Args,Vars,Set,TV,Ret)",
              { "M":module,
                "P":pred,
                "Args":args,
@@ -461,11 +468,11 @@ class Term:
         self._record = record;
     def __str__(self):
         """Return the output of print/1 on self"""
-        return once("with_output_to(string(Str),print(Msg))",
+        return query_once("with_output_to(string(Str),print(Msg))",
                     {"Msg":self})["Str"]
     def __repr__(self):
         """Return the output of write_canonical/1 on self"""
-        return once("with_output_to(string(Str),write_canonical(Msg))",
+        return query_once("with_output_to(string(Str),write_canonical(Msg))",
                     {"Msg":self})["Str"]
     def __del__(self):
         """Destroy the represented term"""
@@ -500,13 +507,13 @@ class PrologError(Exception):
     def __str__(self):
         """Return the output of message_to_string/2 on the term"""
         if ( self.term ):
-            return once("message_to_string(Msg,Str)", {"Msg":self.term})["Str"]
+            return query_once("message_to_string(Msg,Str)", {"Msg":self.term})["Str"]
         else:
             return self.message
     def __repr__(self):
         """Return the output of write_canonical/1 on term"""
         if ( self.term ):
-            return once("with_output_to(string(Str),write_canonical(Msg))",
+            return query_once("with_output_to(string(Str),write_canonical(Msg))",
                          {"Msg":self.term})["Str"]
         else:
             return self.message
@@ -545,11 +552,11 @@ class PrologIO(io.TextIOWrapper):
         if ( ignore and ignore == s and self.prolog_stream == "user_output" ):
             ignore = None
         else:
-            once("janus:py_write(Stream, String)",
+            query_once("janus:py_write(Stream, String)",
                  {'Stream':self.prolog_stream, 'String':s})
     def readline(self, size=-1):
         global prompt
-        return once("janus:py_readline(Stream, Size, Prompt, Line)",
+        return query_once("janus:py_readline(Stream, Size, Prompt, Line)",
                     {'Stream':self.prolog_stream, 'Size':size, 'Prompt':prompt})['Line']
 
 def audit(event, args):

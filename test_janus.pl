@@ -293,7 +293,7 @@ test(iter, Sum == 10011) :-
 test(iter, Sum == 10011) :-             % Check we didn't mess up the Prolog stack
     py_call(demo:abort_iter(1000), Sum).
 test(undef, Result == py{truth:Undef}) :-
-    py_call(janus:once(undefined), Result),
+    py_call(janus:query_once(undefined), Result),
     py_call(janus:undefined, Undef).
 test(russel, List == [py{'X':barber,'Y':barber,truth:Undef},
 		      py{'X':barber,'Y':mayor,truth: @true}]) :-

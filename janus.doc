@@ -74,8 +74,8 @@ developed for the WASM (Web Assembly) version.  That is
 \item A non-deterministic Prolog predicate py_iter/2 to
   enumerate a Python \jargon{iterator}.
 
-\item A Python function \cfuncref{janus.once}{} to call a Prolog
-  predicate as once/1, providing input to Prolog variables using
+\item A Python function \cfuncref{janus.query_once}{} to call a Prolog
+  predicate as query_once/1, providing input to Prolog variables using
   a Python dict and return a Python dict with bindings for each
   Prolog output variable.
 
@@ -161,7 +161,7 @@ arbitrary Prolog term. The SWI-Prolog implementation uses the
 PL_record() and PL_recorded() functions to store and retrieve the
 term. Internally, \cfuncref{janus.Term}{} is used to represent Prolog
 exeptions that are raised during the execution of
-\cfuncref{janus.once}{} or \cfuncref{janus.Query}{}.
+\cfuncref{janus.query_once}{} or \cfuncref{janus.Query}{}.
 
 Python Tuples are array-like objects and thus map best to a Prolog
 compound term.  There are two problems with this.  One is that few
@@ -194,7 +194,7 @@ Typically, spaCy and the English language models may be installed using
 After spaCy is installed, we can define \nopredref{model}{1} to
 represent a Python object for the English language model using the
 code below.  Note that by tabling this code as shared, the model is
-loaded only once and is accessible from multiple Prolog threads.
+loaded only query_once and is accessible from multiple Prolog threads.
 
 \begin{code}
 :- table english/1 as shared.
@@ -362,21 +362,21 @@ argument to Python.
     \hline
                & \bf Relational notation  & \bf Functional notation \\
     \hline
-    \bf det    & \cfuncref{janus.once}{}  & \cfuncref{janus.apply_once}{} \\
+    \bf det    & \cfuncref{janus.query_once}{}  & \cfuncref{janus.apply_once}{} \\
     \bf nondet & \cfuncref{janus.Query}{} & \cfuncref{janus.apply}{} \\
     \hline
   \end{tabular}
 \end{center}
 
 We start our discussion by introducing the
-\cfuncref{janus.once}{query,inputs} function for calling Prolog goals
-as once/1. A Prolog goal is constructed from a string and a dict with
+\cfuncref{janus.query_once}{query,inputs} function for calling Prolog goals
+as query_once/1. A Prolog goal is constructed from a string and a dict with
 \jargon{input bindings} and returns \jargon{output bindings} as a
 dict.  For example
 
 \begin{code}
 >>> import janus_swi as janus
->>> janus.once("Y is X+1", {"X":1})
+>>> janus.query_once("Y is X+1", {"X":1})
 {'Y': 2, 'truth': True}
 \end{code}
 
@@ -393,10 +393,10 @@ large. Using a dict for input and output together with a (short)
 string to denote the goal is easy to use and fast.
 
 \begin{code}
->>> janus.once("Y is 1+1", {})	     # Ok for "static" queries
+>>> janus.query_once("Y is 1+1", {})	     # Ok for "static" queries
 {'Y': 2, 'truth': True}
 >>> x = 1
->>> janus.once(f"Y is {x}+1", {})    # Do not use this
+>>> janus.query_once(f"Y is {x}+1", {})    # Do not use this
 {'Y': 2, 'truth': True}             # See above
 \end{code}
 
@@ -409,7 +409,7 @@ Prolog data structures that cannot be represented in Python such as
 variables or arbitrary compound terms.
 
 \begin{code}
->>> janus.once("findall(_GP, parent(Me, _P), parent(_P, _GP), GPs)",
+>>> janus.query_once("findall(_GP, parent(Me, _P), parent(_P, _GP), GPs)",
                {'Me':'Jan'})["GPs"]
 [ 'Kees', 'Jan' ]
 \end{code}
@@ -427,14 +427,14 @@ integers and \const{False} otherwise.
 
 \begin{code}
 def hasBigIntegers():
-    janus.once("current_prolog_flag(bounded,false)")['truth']
+    janus.query_once("current_prolog_flag(bounded,false)")['truth']
 \end{code}
 
-While \cfuncref{janus.once}{} deals with semi-deterministic goals, the
+While \cfuncref{janus.query_once}{} deals with semi-deterministic goals, the
 class \cfuncref{janus.Query}{} implements a Python \jargon{iterator}
 that iterates over the solutions of a Prolog goal. The iterator may be
 aborted using the Python \exam{break} statement.  As with
-\cfuncref{janus.once}{}, the returned dict contains a \const{truth}
+\cfuncref{janus.query_once}{}, the returned dict contains a \const{truth}
 field.  This field cannot be \const{False} though and thus is either
 \const{True} or the string \verb$'Undefined'$.\footnote{The
 representation of \jargon{Undefined} is still under discussion.}
@@ -506,9 +506,9 @@ crash the process}.  Future versions may improve on that.
 
 
 \begin{description}
-  \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
-			       truth=TruthVals.PLAIN_TRUTHVALS}
-Call \arg{query} using \arg{bindings} as once/1, returning a dict with
+  \cfunction{dict}{janus.query_once}{query, bindings=\{{}\}, keep=False,
+			            truth=TruthVals.PLAIN_TRUTHVALS}
+Call \arg{query} using \arg{bindings} as query_once/1, returning a dict with
 the resulting bindings. If \arg{bindings} is omitted, no variables are
 bound. The \arg{keep} parameter determines whether or not Prolog
 discards all backtrackable changes.  By default, such changes are
@@ -516,9 +516,9 @@ discarded and as a result, changes to backtrackable global variables
 are lost.  Using \const{True}, such changes are preserved.
 
 \begin{code}
->>> once("b_setval(a, 1)", keep=True)
+>>> query_once("b_setval(a, 1)", keep=True)
 {'truth': 'True'}
->>> once("b_getval(a, X)")
+>>> query_once("b_getval(a, X)")
 {'truth': 'True', 'X': 1}
 \end{code}
 
@@ -534,9 +534,15 @@ Below is an example.  See \secref{janus-truth} for details.
 
 \begin{code}
 >>> import janus_swi as janus
->>> janus.once("undefined")
+>>> janus.query_once("undefined")
 {'truth': Undefined}
 \end{code}
+
+    \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
+			         truth=TruthVals.PLAIN_TRUTHVALS}
+    \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.\footnote{Note that
+    the name is not yet fully settled.  It may be wise to stick with once()
+    until the next release.}
 
     \cfunction{Any}{janus.apply_once}{module, predicate, input ..., fail=obj}
     \jargon{Functional notation} style calling of a deterministic Prolog
@@ -625,14 +631,14 @@ a Python \jargon{iterator} that enumerates all answers.
 \label{sec:janus-class-query}
 
 Class \cfuncref{janus.Query}{} is similar to the
-\cfuncref{janus.once}{} function, but it returns a Python
+\cfuncref{janus.query_once}{} function, but it returns a Python
 \jargon{iterator} that allows for iterating over the answers to a
 non-deterministic Prolog predicate.
 
 \begin{description}
    \cfunction{Query}{janus.Query}{query, bindings=\{{}\}, keep=False}
-   As \cfuncref{janus.once}{}, returning an \jargon{iterator} that
-   provides an answer dict as \cfuncref{janus.once}{} for each answer
+   As \cfuncref{janus.query_once}{}, returning an \jargon{iterator} that
+   provides an answer dict as \cfuncref{janus.query_once}{} for each answer
    to \arg{query}.  Answers never have \const{truth} \const{False}.
    See discussion above.
 
@@ -684,7 +690,7 @@ under the \jargon{Well Founded Semantics}.
 \begin{description}
   \cfunction{Undefined}{janus.Undefined}{term=None}
   Instances are never created explicitly by the user.  They are
-  created by the calls to Prolog initiated from \cfuncref{janus.once}{}
+  created by the calls to Prolog initiated from \cfuncref{janus.query_once}{}
   and \cfuncref{janus.Query}{}.
 
   The class has a single property class \const{term} that represents
@@ -693,7 +699,7 @@ under the \jargon{Well Founded Semantics}.
 
   \cfunction{Enum}{janus.TruthVal}{}
   This class is a Python \jargon{enumeration}.  Its values are passed
-  as the optional \arg{truth} parameter to \cfuncref{janus.once}{} and
+  as the optional \arg{truth} parameter to \cfuncref{janus.query_once}{} and
   \cfuncref{janus.Query}{}.   The defined instances are
 
   \begin{description}
@@ -738,19 +744,19 @@ to use a more human friendly notation.
 
 \begin{code}
 # Using NO_TRUTHVALS
->>> janus.once("russel:shaves(barber, X)", truth=janus.NO_TRUTHVALS)
+>>> janus.query_once("russel:shaves(barber, X)", truth=janus.NO_TRUTHVALS)
 {'truth': True, 'X': 'barber'}
 
 # Using default PLAIN_TRUTHVALS (default)
->>> janus.once("russel:shaves(barber, X)")
+>>> janus.query_once("russel:shaves(barber, X)")
 {'truth': Undefined, 'X': 'barber'}
 
 # Using default DELAY_LISTS
->>> janus.once("russel:shaves(barber, X)", truth=janus.DELAY_LISTS)
+>>> janus.query_once("russel:shaves(barber, X)", truth=janus.DELAY_LISTS)
 {'truth': :(russel,shaves(barber,barber)), 'X': 'barber'}
 
 # Using default RESIDUAL_PROGRAM
->>> janus.once("russel:shaves(barber, X)", truth=janus.RESIDUAL_PROGRAM)
+>>> janus.query_once("russel:shaves(barber, X)", truth=janus.RESIDUAL_PROGRAM)
 {'truth': [:-(:(russel,shaves(barber,barber)),tnot(:(russel,shaves(barber,barber))))], 'X': 'barber'}
 \end{code}
 
@@ -791,7 +797,7 @@ Obj = <py_Term>(0x7f7a14512050).
 
 Class \cfuncref{janus.PrologError}{}, derived from the Python class
 \class{Exception} represents a Prolog exception that typically results
-from calling \cfuncref{janus.once}{} or using
+from calling \cfuncref{janus.query_once}{} or using
 \cfuncref{janus.Query}{}.  The class either encapsulates a string on a
 Prolog exception term using \class{janus.Term}.  Prolog exceptions are
 used to represent errors raised by Prolog.  Strings are used to
@@ -799,7 +805,7 @@ represent errors from invalid use of the interface.  The default
 behavior gives the expected message:
 
 \begin{code}
->>> x = janus.once("X is 3.14/0")['X']
+>>> x = janus.query_once("X is 3.14/0")['X']
 Traceback (most recent call last):
   ...
 janus.PrologError: //2: Arithmetic: evaluation error: `zero_divisor'
@@ -867,7 +873,7 @@ allowed to switch to another thread while Prolog is doing its
 work.
 
 If the calling Python thread is not the one that initiated Janus,
-\cfuncref{janus.once}{} and \cfuncref{janus.Query}{} attach and detach
+\cfuncref{janus.query_once}{} and \cfuncref{janus.Query}{} attach and detach
 a temporary Prolog engine using PL_thread_attach_engine() and
 PL_thread_destroy_engine().  This is relatively costly.  In addition
 we allow associating a Prolog engine persistently with the calling
@@ -948,7 +954,7 @@ from Python.  For example:
 \begin{code}
 python
 >>> from janus_swi import *
->>> once("writeln('Hello world!')")
+>>> query_once("writeln('Hello world!')")
 Hello world!
 {'truth': True}
 >>> [a["D"] for a in Query("between(1,6,D)")]
@@ -1011,7 +1017,7 @@ that Python's multi threading will be able to use multiple cores.}
 Writing an interface for SWI-Prolog is typically easier that for
 Python/C because memory management is easier. Where we need to manage
 reference counts to Python objects through all possibly paths of the C
-functions, SWI-Prolog \ctype{term_t} merely has to be allocated once in
+functions, SWI-Prolog \ctype{term_t} merely has to be allocated query_once in
 the function. All failure parts will discard the Prolog data
 automatically through backtracking and all success paths will do so
 through the Prolog garbage collector.\footnote{Using a Python C++
@@ -1106,12 +1112,12 @@ items/2, values/3, key/2 and items/2.
 
 Both implementations will provide a low-level and more high level
 interface.  The high level interface is realized by py_call/[2,3] and
-py_iter/[2,3] from Prolog and janus.once() and janus.Query() from Python.
+py_iter/[2,3] from Prolog and janus.query_once() and janus.Query() from Python.
 We realize the low level interfaces py_func/[3,4] and py_dot/[4,5] on
 top of py_call/2 and the Python functions px_cmd(), px_qdet() and
-px_comp() on top of janus.once().  Emulation of the Prolog predicates
+px_comp() on top of janus.query_once().  Emulation of the Prolog predicates
 is shallow and has little impact on performance.  Emulation of the
-Python functions on top of janus.once() is more expensive.  Future
+Python functions on top of janus.query_once() is more expensive.  Future
 versions of the SWI-Prolog implementation may opt for a more low-level
 implementation.
 

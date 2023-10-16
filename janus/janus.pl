@@ -318,7 +318,7 @@ py_version :-
 
 %!  py_with_gil(:Goal) is semidet.
 %
-%   Run Goal as  once(Goal)  while  holding   the  Phyton  GIL  (_Global
+%   Run Goal as  query_once(Goal)  while  holding   the  Phyton  GIL  (_Global
 %   Interpreter Lock_). Note that py_call/1,2 also   locks the GIL. This
 %   predicate is only required if we  wish   to  make  multiple calls to
 %   Python while keeping the GIL. The GIL is a _recursive_ lock and thus
@@ -478,7 +478,7 @@ comma_dict_items(Key:Value, Keys) =>
 %
 %       ?- py_shell.
 %       ...
-%       >>> once("writeln(X)", {"X":"Hello world"})
+%       >>> query_once("writeln(X)", {"X":"Hello world"})
 %       Hello world
 %       {'truth': True}
 %
@@ -730,7 +730,7 @@ py_add_lib_dir(Dir, Where) :-
 
 %   py_call_string(:String, +DictIn, -Dict) is nondet.
 %
-%   Support janus.once() and janus.Query(). Parses   String  into a goal
+%   Support janus.query_once() and janus.Query(). Parses   String  into a goal
 %   term. Next, all variables from the goal   term that appear in DictIn
 %   are bound to the value from  this   dict.  Dict  is created from the
 %   remaining variables, unless they  start   with  an underscore (e.g.,

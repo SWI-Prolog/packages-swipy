@@ -122,11 +122,11 @@ def bench_apply_iter(n):
 
 def bench_call(n):
     for i in range(1,n):
-        once("Y is X+1", {"X":i})
+        query_once("Y is X+1", {"X":i})
 
 def bench_call_v(n):
     for i in range(1,n):
-        print((i, once("py_thread(T)", {})["T"]))
+        print((i, query_once("py_thread(T)", {})["T"]))
 
 def bench_apply_once(n):
     sum=0
@@ -171,7 +171,7 @@ class GCAble:
 def call_except(query, input={}):
     """Call query, return the exception or none"""
     try:
-        once(query, input)
+        query_once(query, input)
     except Exception as ex:
         return ex
     return None
@@ -181,7 +181,7 @@ def call_try(n, query, input={}):
     count = 0
     for i in range(0,n):
         try:
-            once(query, input)
+            query_once(query, input)
         except Exception as ex:
             count = count+1
     return count
