@@ -287,7 +287,7 @@ test(free, error(existence_error('PyObject', Obj))) :-
 :- begin_tests(python_call_prolog).
 
 test(iter, Sum == 500500) :-
-    py_call(demo:bench_iter(1000), Sum).
+    py_call(demo:bench_query_iter(1000), Sum).
 test(iter, Sum == 10011) :-
     py_call(demo:abort_iter(1000), Sum).
 test(iter, Sum == 10011) :-             % Check we didn't mess up the Prolog stack

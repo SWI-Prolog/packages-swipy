@@ -68,12 +68,6 @@ def kwd_all(a=1, b=2, c=3):
 
 # Demo for dealing with iterators
 
-def bench_iter(n):
-    sum=0
-    for d in Query("between(1,M,X)", {"M":n}):
-        sum += d["X"]
-    return sum;
-
 def abort_iter(n):
     sum=0
     for d in Query("between(1,M,X)", {"M":n}):
@@ -113,6 +107,18 @@ def shaves(truth=PLAIN_TRUTHVALS):
     return [*Query("russel:shaves(X,Y)", truth=truth)]
 
 # Benchmarking support
+
+def bench_query_iter(n):
+    sum=0
+    for d in Query("between(1,M,X)", {"M":n}):
+        sum += d["X"]
+    return sum;
+
+def bench_apply_iter(n):
+    sum=0
+    for d in apply("user", "between", 1, n):
+        sum += d
+    return sum;
 
 def bench_call(n):
     for i in range(1,n):

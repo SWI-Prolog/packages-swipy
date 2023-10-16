@@ -829,15 +829,34 @@ unbind(NonVar, NonVar).
 
 :- public
        px_cmd/3,
-       px_qdet/4,
+       px_call/4,
        px_comp/7.
 
 % These predicates are helpers  for the corresponding Python functions
 % in janus.py.
 
-px_cmd(M, P, Tuple) :-
-    atom_string(Pred, P),
-    atom_string(Module, M),
+
+%!  px_call(+Input:tuple, +Module, -Pred, -Ret)
+%
+%   Supports px_qdet() and apply()
+
+px_call(-(), Module, Pred, Ret) =>
+    call(Module:Pred, Ret).
+px_call(-(A1), Module, Pred, Ret) =>
+    call(Module:Pred, A1, Ret).
+px_call(-(A1,A2), Module, Pred, Ret) =>
+    call(Module:Pred, A1, A2, Ret).
+px_call(-(A1,A2,A3), Module, Pred, Ret) =>
+    call(Module:Pred, A1, A2, A3, Ret).
+px_call(-(A1,A2,A3,A4), Module, Pred, Ret) =>
+    call(Module:Pred, A1, A2, A3, A4, Ret).
+px_call(Tuple, Module, Pred, Ret) =>
+    compound_name_arguments(Tuple, _, Args),
+    append(Args, [Ret], GArgs),
+    Goal =.. [Pred|GArgs],
+    call(Module:Goal).
+
+px_cmd(Module, Pred, Tuple) :-
     (   compound(Tuple)
     ->  compound_name_arguments(Tuple, _, Args),
 	Goal =.. [Pred|Args]
@@ -845,20 +864,7 @@ px_cmd(M, P, Tuple) :-
     ),
     call(Module:Goal).
 
-px_qdet(M, P, Tuple, Ret) :-
-    atom_string(Pred, P),
-    atom_string(Module, M),
-    (   compound(Tuple)
-    ->  compound_name_arguments(Tuple, _, Args),
-	append(Args, [Ret], GArgs),
-	Goal =.. [Pred|GArgs],
-	call(Module:Goal)
-    ;   call(Module:Pred, Ret)
-    ).
-
-px_comp(M, P, Tuple, Vars, Set, TV, Ret) :-
-    atom_string(Pred, P),
-    atom_string(Module, M),
+px_comp(Module, Pred, Tuple, Vars, Set, TV, Ret) :-
     length(Out, Vars),
     (   compound(Tuple)
     ->  compound_name_arguments(Tuple, _, Args),

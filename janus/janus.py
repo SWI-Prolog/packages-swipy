@@ -222,6 +222,71 @@ def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
     inputs['truth'] = truth
     return _swipl.call(query, inputs, keep)
 
+################################################################
+# Functional style interface
+
+# Ideally, we'd define apply1() and pass on the arguments.  This
+# however is considerably slower and in C we can detect the absence
+# of `fail=`, which we seems impossible in Python.
+
+apply1 = _swipl.apply1
+# def apply1(module, predicate, *args, fail='error'):
+#     if fail == 'error':
+#         return _swipl.apply1(module, predicate, *args)
+#     else:
+#         return _swipl.apply1(module, predicate, *args, fail=fail)
+
+
+class apply:
+    """
+    Functional style call on non-deterministic predicate
+
+    Return an _iterator_ that returns the answers for a
+    non-deterministic Prolog predicate.   The calling
+    conventions are the same as `apply_once()`.
+
+    Examples
+    --------
+    **Example 1**
+
+    >>> [*apply("user", "between", 1, 6)]
+    [1, 2, 3, 4, 5, 6]
+    """
+    def __init__(self, module, predicate, *args):
+        self.state = _swipl.open_query("janus:px_call(In,M,P,Out)",
+                                       { "M":module,
+                                         "P":predicate,
+                                         "In":args
+                                        });
+    def __iter__(self):
+        """Implement iter protocol"""
+        return self
+    def __next__(self):
+        """Implement iter protocol.  Returns a dict as janus.once()"""
+        rc = _swipl.next_solution(self.state)
+        if rc == False:
+            raise StopIteration()
+        else:
+            return rc["Out"]
+    def __del__(self):
+        """Close the Prolog query"""
+        _swipl.close_query(self.state)
+    def next(self):
+        """Allow for explicit enumeration,  Returns None or a dict"""
+        rc = _swipl.next_solution(self.state)
+        if rc == False:
+            return None
+        else:
+            return rc["Out"]
+    def close(self):
+        """Explicitly close the query."""
+        _swipl.close_query(self.state)
+
+
+
+################################################################
+# Misc functions
+
 def engine():
     """Return the engine id if the attached Prolog engine"""
     return _swipl.engine()
@@ -310,17 +375,6 @@ def _xsb_tv(truth):
     else:
         return 2
 
-# Ideally, we'd define apply1() and pass on the arguments.  This
-# however is considerably slower and in C we can detect the absence
-# of `fail=`, which we seems impossible in Python.
-
-apply1 = _swipl.apply1
-# def apply1(module, predicate, *args, fail='error'):
-#     if fail == 'error':
-#         return _swipl.apply1(module, predicate, *args)
-#     else:
-#         return _swipl.apply1(module, predicate, *args, fail=fail)
-
 def px_qdet(module, pred, *args):
     """Run predicate as once/1
 
@@ -344,7 +398,7 @@ def px_qdet(module, pred, *args):
         and the success truth.  `0` means failure, `1`, success and `2`
         _undefined_ (success with delays)
     """
-    d = once("janus:px_qdet(M,P,Args,Ret)", {"M":module, "P":pred, "Args":args})
+    d = once("janus:px_call(Args,M,P,Ret)", {"M":module, "P":pred, "Args":args})
     return (d["Ret"], _xsb_tv(d["truth"]))
 
 def px_comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TRUTHVALS):

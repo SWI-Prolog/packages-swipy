@@ -40,6 +40,8 @@
 :- use_module(library(lists)).
 :- use_module(library(statistics)).
 :- use_module(library(apply_macros)).
+:- use_module(library(main)).
+:- use_module(library(prolog_format)).
 
 /** <module> Janus benchmarks
 */
@@ -50,66 +52,103 @@ here.
     file_directory_name(File, Dir),
     py_add_lib_dir(Dir, first).
 
+:- initialization(main, main).
+
+main(Argv) :-
+    argv_options(Argv, Pos, Options),
+    option(count(Count), Options, 100 000),
+    maplist(atom_number, Pos, Ids),
+    (   Ids == []
+    ->  bench(Count)
+    ;   bench(Count, Ids)
+    ).
+
+opt_type(count, count, integer).
+opt_type(c,     count, integer).
+opt_meta(count, 'TIMES').
+opt_help(count, "Number of times to iterate (default 100,000)").
+opt_help(help(header),
+         "Run Janus benchmarks\n").
+opt_help(help(usage),
+         " [options] [benchmark ...]").
+
 %!  bench(+Count)
 %
 %   Run registered benchmarks scaled Count times.
 
 bench(N) :-
-    forall(benchmark(N), true).
+    forall(benchmark(_, N), true).
+
+bench(N, Ids) :-
+    forall(member(Id, Ids), benchmark(Id, N)).
 
 term_expansion((benchmark(N, Fmt-Args, forall) :- Body), Clause) :-
-    term_expansion((benchmark(N, Fmt-Args, call) :- forall(between(1,N,_), Body)), Clause).
+    term_expansion((benchmark(N, Fmt-Args, call) :- forall(between(1,N,_), Body)),
+                   Clause).
 term_expansion((benchmark(N, Fmt-Args, call) :- Body),
-               (   benchmark(N) :-
-                       ansi_format(comment, Fmt, Args),
+               (   benchmark(Id, N) :-
+                       progress(Id, Fmt, Args),
                        call_time(Body, Time),
                        get_dict(cpu, Time, CPU),
-                       format('~t ~3f sec~70|~n', [CPU]))).
+                       PerSec is round(N/CPU),
+                       format(' ~`.t ~D/s~78|~n', [PerSec]))) :-
+    (   predicate_property(benchmark(_,_), number_of_clauses(NC))
+    ->  Id is NC+1
+    ;   Id = 1
+    ).
 
 benchmark(N,
-          'Calling python int() ~D times'-[N],
+          'Calling Python `int()` ~D times'-[N],
           forall) :-
     py_call(demo:int(), _).
 benchmark(N,
-          'Calling python sumlist3(5,[1,2,3]) ~D times'-[N],
+          'Calling Python `sumlist3(5,[1,2,3])` ~D times'-[N],
           forall) :-
     py_call(demo:sumlist3(5,[1,2,3]), _).
 benchmark(N,
-          'Iterate over Prolog Query("between(1,M,X)", {"M":~d})'-[N],
+          'Iterate over Prolog `Query("between(1,M,X)", {"M":~d})`'-[N],
           call) :-
-    py_call(demo:bench_iter(N), _).
+    py_call(demo:bench_query_iter(N), _).
 benchmark(N,
-          'Pass list [1.. ~D] to Python'-[N],
+          'Iterate over Prolog `apply("user","between",1,~d)`'-[N],
+          call) :-
+    py_call(demo:bench_apply_iter(N), _).
+benchmark(N,
+          'Iterate over Prolog `apply("user","between",1,2)` ~D times'-[N],
+          forall) :-
+    py_call(demo:bench_apply_iter(2), _).
+benchmark(N,
+          'Pass list [1..~D] to Python'-[N],
           call) :-
     numlist(1, N, L),
     py_call(demo:echo(L)).
 benchmark(N,
-          'Echo list [1.. ~D] to Python and back to Prolog'-[N],
+          'Echo list [1..~D] to Python and back to Prolog'-[N],
           call) :-
     numlist(1, N, L),
     py_call(demo:echo(L), _).
 benchmark(N,
-          'Iterating over Python range(0,~d) from Prolog'-[N],
+          'Iterating over Python `range(0,~d)` from Prolog'-[N],
           call) :-
     forall(py_iter(range(0,N), _), true).
 benchmark(N,
-          'Call once("Y is X+1", {"X":i}) from Python ~D times'-[N],
+          'Call `once("Y is X+1", {"X":i})` from Python ~D times'-[N],
           call) :-
     py_call(demo:bench_call(N)).
 benchmark(N,
-          'Call px_cmd("true") ~D times'-[N],
+          'Call `px_cmd("true")` ~D times'-[N],
           call) :-
     py_call(demo:bench_px_cmd(N)).
 benchmark(N,
-          'Call apply1("user", "=", 1) ~D times'-[N],
+          'Call `apply1("user", "=", 1)` ~D times'-[N],
           call) :-
     py_call(demo:bench_apply1(N)).
 benchmark(N,
-          'Call apply1("user", "between", 1, 2) ~D times'-[N],
+          'Call `apply1("user", "between", 1, 2)` ~D times'-[N],
           call) :-
     py_call(demo:bench_apply1a(N)).
 benchmark(N,
-          'Call apply1("user", "between", 1, 2, fail=0) ~D times'-[N],
+          'Call `apply1("user", "between", 1, 2, fail=0)` ~D times'-[N],
           call) :-
     py_call(demo:bench_apply1b(N)).
 
@@ -119,3 +158,26 @@ py_thread(Id) :-
     ->  Id = Self
     ;   thread_property(Self, id(Id))
     ).
+
+%!  progress(+Id, +Fmt, +Args) is det.
+%
+%   As ansi_format/3, handling `code` style.
+
+progress(Id, Fmt, Args) :-
+    ansi_format(bold, '~t~w~3| ', [Id]),
+    split_string(Fmt, "`", "", Parts),
+    progress_(comment, Parts, Args).
+
+progress_(Style, [H|T], Args) =>
+    format_types(H, Types),
+    same_length(Types, HArgs),
+    append(HArgs, RArgs, Args),
+    ansi_format(Style, H, HArgs),
+    next_style(Style, Style1),
+    progress_(Style1, T, RArgs).
+progress_(_, [], _) =>
+    true.
+
+next_style(comment, code).
+next_style(code, comment).
+
