@@ -306,15 +306,15 @@ write_python_object(IOSTREAM *s, atom_t symbol, int flags)
 	name = PyUnicode_AsUTF8AndSize(cname, NULL);
       else
 	name = "noclass";
+
+      SfprintfX(s, "<py_%Us>(%p)", name, obj);
+
+      Py_CLEAR(cls);
+      Py_CLEAR(cname);
       py_gil_release(state);
     } else
-    { name = "no-GIL";
+    { SfprintfX(s, "<py_obj(no-GIL)>(%p)", obj);
     }
-
-    SfprintfX(s, "<py_%Us>(%p)", name, obj);
-
-    Py_CLEAR(cls);
-    Py_CLEAR(cname);
   } else
   { Sfprintf(s, "<py_FREED>(0x0)");
   }
