@@ -540,6 +540,7 @@ swipl_initialize(PyObject *self, PyObject *args)
     }
   }
 
+  py_initialize_done = TRUE;
   if ( !PL_initialise((int)argc, (char**)argv) )
   { Py_SetPrologErrorFromChars("Failed to initialize SWI-Prolog");
     return NULL;
