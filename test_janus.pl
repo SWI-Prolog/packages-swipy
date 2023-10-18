@@ -52,6 +52,7 @@ test_janus :-
     run_tests([ janus_data,
                 janus_prolog_data,
                 janus_eval,
+                janus_py_builtin,
                 janus_obj,
                 janus_py_object,
                 janus_params,
@@ -174,6 +175,13 @@ test(eval) :-
     must_be(list(atom), Path).
 
 :- end_tests(janus_eval).
+
+:- begin_tests(janus_py_builtin).
+
+test(globals, Class == dict) :-
+    py_call(globals():'__class__':'__name__', Class).
+
+:- end_tests(janus_py_builtin).
 
 :- begin_tests(janus_obj).
 

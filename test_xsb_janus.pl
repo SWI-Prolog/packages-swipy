@@ -184,7 +184,7 @@ meth_tests:-
     Ret3 = chocolate,
     Ret4 = 'Hello my name is john and I''m a real doofus',
     Ret5 = 'Hello my name is john and I''m a real big doofus',
-    check_error(M1, ['Type error', py_target, '1']),
+    check_error(M1, ['Type error', py_callable, '1']),
     check_error(M2, ['Type error', py_callable, '1']).
 
 test_Person(Obj,Ret1,Ret2,Ret3,Ret4,Ret5,Msg2,Msg3):-

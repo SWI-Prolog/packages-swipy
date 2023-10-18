@@ -55,6 +55,8 @@ static atom_t ATOM_file;
 static atom_t ATOM_eval;
 static atom_t ATOM_single;
 static atom_t ATOM_builtins;
+static atom_t ATOM_locals;
+static atom_t ATOM_globals;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
@@ -1518,16 +1520,34 @@ py_eval(PyObject *obj, term_t func)
     PyObject *py_argv = NULL;
     PyObject *py_kws  = NULL;
 
-    if ( obj == PyEval_GetBuiltins() )
-    { py_func = builtin_function(obj, fname);
-    } else if ( obj )
+    if ( obj && obj != PyEval_GetBuiltins() )
     { PL_STRINGS_MARK();
       char *fn;
       if ( PL_atom_mbchars(fname, NULL, &fn, REP_UTF8|CVT_EXCEPTION) )
 	py_func = check_error(PyObject_GetAttrString(obj, fn));
       PL_STRINGS_RELEASE();
     } else
-    { py_func = builtin_function(NULL, fname);
+    { if ( fname == ATOM_globals || fname == ATOM_locals )
+      { if ( fname == ATOM_globals )
+	{ py_res = PyEval_GetGlobals();
+
+	  if ( !py_res )		/* no frame */
+	  { PyObject *m;
+
+	    if ( !(m=check_error(PyImport_AddModule("__main__"))) )
+	      return NULL;
+	    py_res = PyModule_GetDict(m);
+	  }
+	} else
+	{ py_res = check_error(PyEval_GetLocals());
+	}
+
+	if ( py_res )
+	  Py_INCREF(py_res);
+	return py_res;
+      }
+
+      py_func = builtin_function(obj, fname);
     }
     if ( !py_func )
       goto out;
@@ -1620,18 +1640,13 @@ unchain(term_t call, PyObject **py_target)
   { _PL_get_arg(1, call, on);
     _PL_get_arg(2, call, call);
 
-    if ( !*py_target )
-    { if ( !(rc=get_py_initial_target(on, py_target, TRUE)) )
-	break;
-    } else
-    { PyObject *next = py_eval(*py_target, on);
+    PyObject *next = py_eval(*py_target, on);
 
-      Py_XDECREF(*py_target);
-      *py_target = next;
-      if ( !next )
-      { rc = FALSE;
-	break;
-      }
+    Py_XDECREF(*py_target);
+    *py_target = next;
+    if ( !next )
+    { rc = FALSE;
+      break;
     }
   }
 
@@ -2162,6 +2177,8 @@ install_janus(void)
   MKATOM(eval);
   MKATOM(single);
   MKATOM(builtins);
+  MKATOM(locals);
+  MKATOM(globals);
   ATOM_tuple  = PL_new_atom("-");
   ATOM_pydict = PL_new_atom("py");
   ATOM_curl   = PL_new_atom("{}");
