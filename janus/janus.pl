@@ -236,11 +236,6 @@ py_version :-
 %       ?- py_call(sys, S).
 %          S = <py_module>(0x7fa8cd582390).
 %
-%   The Python built-in functions locals()   and  globals() are threaded
-%   special, calling ``PyEval_GetLocals()`` and ``PyEval_GetGlobals()``.
-%   If no frame is executing, locals() raises an exception while globals
-%   returns the dict of the ``__main__`` module.
-%
 %   Options processed:
 %
 %     - py_string_as(+Type)

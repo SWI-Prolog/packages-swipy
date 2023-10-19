@@ -582,9 +582,7 @@ Below is an example.  See \secref{janus-truth} for details.
 
     \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
 			         truth=TruthVals.PLAIN_TRUTHVALS}
-    \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.\footnote{Note that
-    the name is not yet fully settled.  It may be wise to stick with once()
-    until the next release.}
+    \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.
 
     \cfunction{Any}{janus.apply_once}{module, predicate, input ..., fail=obj}
     \jargon{Functional notation} style calling of a deterministic Prolog
@@ -697,6 +695,35 @@ a Python \jargon{iterator} that enumerates all answers.
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
    care of closing the query.
 \end{description}
+
+\subsection{Janus access to Python locals and globals}
+\label{sec:janus-locals-and-globals}
+
+Python provides access to dictionaries holding the local variables of
+a function using \cfuncref{locals}{} as well as the global variables
+stored as attributes to the module to which the function belongs as
+\cfuncref{globals}{}.  The Python C API provides
+\cfuncref{PyEval_GetLocals}{} and \cfuncref{PyEval_GetGlobals}{}, but
+these return the scope of the Janus API function rather than user
+code, i.e., the global variables of the \const{janus} module and the
+local variables of the running Janus interface function.
+
+Python code that wishes Prolog to access its scope must pass the
+necessary scope elements (local and global variables) explicitly to
+the Prolog code.  It is possible to pass the entire local and or
+global scope by the output of \cfuncref{locals}{} and/or
+\cfuncref{globals}{}.  Note however that a dict passed to Prolog is
+translated to its Prolog representation.  This representation may be
+prohibitively large and does not allow Prolog to modify variables in
+the scope.  Note that Prolog can access the global scope of a module
+as attributes of this module, e.g.
+
+\begin{code}
+increment :-
+    py_call(demo:counter, V0),
+    V is V0+1,
+    py_call(demo:counter = V).
+\end{code}
 
 \subsection{Janus and Prolog truth}
 \label{sec:janus-truth}
@@ -1133,9 +1160,9 @@ We aim to provide an interface that is close enough to allow
 developing Prolog code that uses Python and visa versa.  Differences
 between the two Prolog implementation make this non-trivial.
 SWI-Prolog has native support for \jargon{dicts}, \jargon{strings},
-\jargon{unbounded integers} and \jargon{blobs} that provide safe
-pointers to external objects that are subject to (atom) garbage
-collection.
+\jargon{unbounded integers}, \jargon{rational numbers} and
+\jargon{blobs} that provide safe pointers to external objects that are
+subject to (atom) garbage collection.
 
 We try to find a compromise to make the data conversion as close as
 possible while supporting both systems as good as possible.  For this
@@ -1148,21 +1175,16 @@ supported by both systems and where the SWI-Prolog version supports
 both SWI-Prolog dicts and the above Prolog representation.  See
 items/2, values/3, key/2 and items/2.
 
-Both implementations will provide a low-level and more high level
+Calling Python from Prolog provides a low-level and a more high level
 interface.  The high level interface is realized by py_call/[2,3] and
-py_iter/[2,3] from Prolog and janus.query_once() and janus.query() from Python.
-We realize the low level interfaces py_func/[3,4] and py_dot/[4,5] on
-top of py_call/2 and the Python functions px_cmd(), px_qdet() and
-px_comp() on top of janus.query_once().  Emulation of the Prolog predicates
-is shallow and has little impact on performance.  Emulation of the
-Python functions on top of janus.query_once() is more expensive.  Future
-versions of the SWI-Prolog implementation may opt for a more low-level
-implementation.
+py_iter/[2,3]. We realize the low level interfaces py_func/[3,4] and
+py_dot/[4,5] on top of py_call/2.  The interface for calling Prolog
+from Python is settled on the four primitives described in
+\secref{janus-call-prolog}.
 
 We are discussing to minimize the differences.  The current
-implementation reflects the almost complete agreement calling Python
-from Prolog.  Discussing calling Prolog from Python is work in
-progress.
+implementation reflects the almost complete agreement.
+
 
 \subsection{Writing portable Janus modules}
 \label{sec:janus-portable-code}
