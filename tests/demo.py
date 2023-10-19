@@ -185,3 +185,24 @@ def call_try(n, query, input={}):
         except Exception as ex:
             count = count+1
     return count
+
+
+# Test locals() and globals()
+
+g1 = 23
+g2 = "nice"
+
+def with_gvars(a1):
+    global g1
+    l1 = 46
+    return query_once(
+        """py_call(globals(), Globals)
+        """)
+
+def with_vars(a1):
+    global g1
+    l1 = 46
+    return query_once(
+        """py_call(locals(), Locals),
+           py_call(globals(), Globals)
+        """)

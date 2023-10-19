@@ -41,6 +41,9 @@
 #include <SWI-Prolog.h>
 #include <SWI-Stream.h>
 #include <Python.h>
+#if O_PYFRAME
+#include <frameobject.h>	/* Limited API */
+#endif
 #include <assert.h>
 
 static atom_t ATOM_none;
@@ -1514,6 +1517,67 @@ builtin_function(PyObject *builtins, atom_t fname)
 }
 
 
+/* Get the locals()  or globals().  This is pretty much  useless as is
+ * as we  get the  locals and  globals of the  running method  that is
+ * defined in janus.py.
+ *
+ * With CPython  3.11 we can  walk up the  contexts and poke  into our
+ * calling  context.   Using  `O_PYFRAME`  we  get  very  partial  and
+ * untested code trying  to do this.  Notably, we must  find the frame
+ * that is _calling_ the Janus functions.
+ */
+
+static PyObject *
+py_scope(atom_t fname)
+{ PyObject *py_res;
+
+#if O_PYFRAME
+  PyFrameObject *frame = PyEval_GetFrame();
+  int up = 1;
+
+  while(up>0 && frame)
+  { PyFrameObject *fr2 = PyFrame_GetBack(frame);
+    if ( fr2 )
+    { frame = fr2;
+      up--;
+    } else
+      break;
+  }
+
+  if ( fname == ATOM_globals )
+  { py_res = PyFrame_GetGlobals(frame);
+
+    if ( !py_res )		/* no frame */
+    { PyObject *m;
+
+      if ( !(m=check_error(PyImport_AddModule("__main__"))) )
+	return NULL;
+      py_res = PyModule_GetDict(m);
+    }
+  } else
+  { py_res = check_error(PyFrame_GetLocals(frame));
+  }
+#else
+  if ( fname == ATOM_globals )
+  { py_res = PyEval_GetGlobals();
+
+    if ( !py_res )		/* no frame */
+    { PyObject *m;
+
+      if ( !(m=check_error(PyImport_AddModule("__main__"))) )
+	return NULL;
+      py_res = PyModule_GetDict(m);
+    }
+  } else
+  { py_res = check_error(PyEval_GetLocals());
+  }
+#endif
+  if ( py_res )
+    Py_INCREF(py_res);
+
+  return py_res;
+}
+
 /* Evaluate func on obj.  If obj = NULL, evaluate a builtin function
  * Return value: New Reference
  */
@@ -1543,24 +1607,7 @@ py_eval(PyObject *obj, term_t func)
       PL_STRINGS_RELEASE();
     } else
     { if ( fname == ATOM_globals || fname == ATOM_locals )
-      { if ( fname == ATOM_globals )
-	{ py_res = PyEval_GetGlobals();
-
-	  if ( !py_res )		/* no frame */
-	  { PyObject *m;
-
-	    if ( !(m=check_error(PyImport_AddModule("__main__"))) )
-	      return NULL;
-	    py_res = PyModule_GetDict(m);
-	  }
-	} else
-	{ py_res = check_error(PyEval_GetLocals());
-	}
-
-	if ( py_res )
-	  Py_INCREF(py_res);
-	return py_res;
-      }
+	return py_scope(fname);		/* locals() or globals() */
 
       py_func = builtin_function(obj, fname);
     }
