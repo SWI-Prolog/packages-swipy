@@ -142,8 +142,10 @@ test(stringify_wc, R == 'f(A,_,A)') :-     % numbervars
     py_call(janus:echo(#f(X,_,X)), R).
 test(dict, R=py{a:1, 2:2}) :-
     py_call(demo:dict1(), R).
-test(dict, error(representation_error(py_dict_key))) :-
-    py_call(demo:dict2(), _).
+test(dict, Class == dict) :-               % invalid key: return as ref
+    py_call(demo:dict2(), Dict),
+    assertion(py_is_object(Dict)),
+    py_call(Dict:'__class__':'__name__', Class).
 test(iterator, L == [1,2,3,4]) :-          % An iterator checks as a sequence
     py_call(range(1,5), L).
 test(set, Ordered == [1,2,3]) :-

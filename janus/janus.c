@@ -635,7 +635,7 @@ py_unify_sequence(term_t t, PyObject *obj, int flags)
   term_t head = PL_new_term_ref();
 
   for(ssize_t i=0; i<len; i++)
-  { PyObject *el = check_error(PySequence_GetItem(obj, i));
+  { PyObject *el = PySequence_GetItem(obj, i);
 
     if ( !el )
       return FALSE;
@@ -648,7 +648,6 @@ py_unify_sequence(term_t t, PyObject *obj, int flags)
   if ( !PL_unify_nil(tail) )
     return FALSE;
 
-  PL_reset_term_refs(tail);
   return TRUE;
 }
 
@@ -658,7 +657,7 @@ py_unify_iter(term_t t, PyObject *obj, int flags)
   term_t head = PL_new_term_ref();
   PyObject *item;
 
-  while((item=check_error(PyIter_Next(obj))))
+  while((item=PyIter_Next(obj)))
   { int rc = ( PL_unify_list(tail, head,tail) &&
 	       py_unify(head, item, flags) );
     Py_DECREF(item);
@@ -668,13 +667,12 @@ py_unify_iter(term_t t, PyObject *obj, int flags)
   if ( PL_exception(0) || !PL_unify_nil(tail) )
     return FALSE;
 
-  PL_reset_term_refs(tail);
   return TRUE;
 }
 
 static int
 py_unify_set(term_t t, PyObject *obj, int flags)
-{ PyObject *iter = check_error(PyObject_GetIter(obj));
+{ PyObject *iter = PyObject_GetIter(obj);
   PyObject *item = NULL;
   int rc = FALSE;
 
@@ -747,8 +745,7 @@ py_unify_dict(term_t t, PyObject *obj, int flags)
 	goto out;
       }
     } else
-    { PL_representation_error("py_dict_key");
-      goto out;
+    { goto out;
     }
     if ( !py_unify(pl_values+pli, py_value, flags) )
       goto out;
@@ -774,7 +771,10 @@ py_unify_constant(term_t t, atom_t c)
 
 static int
 py_unify(term_t t, PyObject *obj, int flags)
-{ if ( !obj )
+{ int rc = -1;
+  fid_t fid;
+
+  if ( !obj )
   { check_error(obj);
     return FALSE;
   }
@@ -784,43 +784,58 @@ py_unify(term_t t, PyObject *obj, int flags)
   if ( PyBool_Check(obj) )
     return py_unify_constant(t, PyLong_AsLong(obj) ? ATOM_true : ATOM_false);
 
-  if ( (flags&PYU_OBJ) )	/* py_object(true) effective */
-  { if ( PyLong_CheckExact(obj) )
-      return py_unify_long(t, obj);
-    if ( PyFloat_CheckExact(obj) )
-      return PL_unify_float(t, PyFloat_AsDouble(obj));
-    if ( PyUnicode_CheckExact(obj) )
-      return py_unify_unicode(t, obj, flags);
-    if ( PyTuple_CheckExact(obj) )
-      return py_unify_tuple(t, obj, flags);
-  } else
-  { if ( PyLong_Check(obj) )
-      return py_unify_long(t, obj);
-    if ( PyFloat_Check(obj) )
-      return PL_unify_float(t, PyFloat_AsDouble(obj));
-    if ( PyUnicode_Check(obj) )
-      return py_unify_unicode(t, obj, flags);
-    if ( PyTuple_Check(obj) )
-      return py_unify_tuple(t, obj, flags);
-    if ( PyDict_Check(obj) )
-      return py_unify_dict(t, obj, flags);
-    if ( PyIter_Check(obj) )
-      return py_unify_iter(t, obj, flags);
-    if ( PySequence_Check(obj) )
-      return py_unify_sequence(t, obj, flags);
-    if ( PySet_Check(obj) )
-      return py_unify_set(t, obj, flags);
-    if ( !(flags&PYU_ERROR) )	/* cannot be called with error around */
-    { if ( PyObject_IsInstance(obj, func_Fraction()) )
-	return py_unify_fraction(t, obj);
-      if ( PyEnum_Check(obj) )
-	return py_unify_enum(t, obj);
-      if ( py_is_record(obj) )
-	return py_unify_record(t, obj);
+  if ( (fid=PL_open_foreign_frame()) )
+  { if ( (flags&PYU_OBJ) )	/* py_object(true) effective */
+    { if ( PyLong_CheckExact(obj) )
+	rc = py_unify_long(t, obj);
+      else if ( PyFloat_CheckExact(obj) )
+	rc = PL_unify_float(t, PyFloat_AsDouble(obj));
+      else if ( PyUnicode_CheckExact(obj) )
+	rc = py_unify_unicode(t, obj, flags);
+      else if ( PyTuple_CheckExact(obj) )
+	rc = py_unify_tuple(t, obj, flags);
+    } else
+    { if ( PyLong_Check(obj) )
+	rc = py_unify_long(t, obj);
+      else if ( PyFloat_Check(obj) )
+	rc = PL_unify_float(t, PyFloat_AsDouble(obj));
+      else if ( PyUnicode_Check(obj) )
+	rc = py_unify_unicode(t, obj, flags);
+      else if ( PyTuple_Check(obj) )
+	rc = py_unify_tuple(t, obj, flags);
+      else if ( PyDict_Check(obj) )
+	rc = py_unify_dict(t, obj, flags);
+      else if ( PyIter_Check(obj) )
+	rc = py_unify_iter(t, obj, flags);
+      else if ( PySequence_Check(obj) )
+	rc = py_unify_sequence(t, obj, flags);
+      else if ( PySet_Check(obj) )
+	rc = py_unify_set(t, obj, flags);
+      else if ( !(flags&PYU_ERROR) )	/* cannot be called with error around */
+      { if ( PyObject_IsInstance(obj, func_Fraction()) )
+	  rc = py_unify_fraction(t, obj);
+	else if ( PyEnum_Check(obj) )
+	  rc = py_unify_enum(t, obj);
+	else if ( py_is_record(obj) )
+	  rc = py_unify_record(t, obj);
+      }
     }
-  }
 
-  return unify_py_obj(t, obj);
+    /* conversion failed on Python error: retry as reference */
+    if ( rc == FALSE && !PL_exception(0) )
+    { PyErr_Clear();
+      PL_rewind_foreign_frame(fid);
+      rc = -1;
+    }
+
+    PL_close_foreign_frame(fid);
+
+    if ( rc == -1 )
+      return unify_py_obj(t, obj);
+
+    return rc;
+  } else
+    return FALSE;
 }
 
 
