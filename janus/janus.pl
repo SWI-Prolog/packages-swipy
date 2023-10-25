@@ -864,23 +864,29 @@ unbind(NonVar, NonVar).
 
 %   px_call(+Input:tuple, +Module, -Pred, -Ret)
 %
-%   Supports px_qdet() and apply()
+%   Supports  px_qdet()  and  apply().  Note    that   these  predicates
+%   explicitly address predicates  in  a   particular  module.  For meta
+%   predicates, this implies they also control  the context module. This
+%   leads to ``janus.cmd("consult", "consult", file)`` to consult _file_
+%   into the module `consult`, which is not   what we want. Therefore we
+%   set the context module to `user`, which is better, but probably also
+%   not what we want.
 
 px_call(-(), Module, Pred, Ret) =>
-    call(Module:Pred, Ret).
+    @(call(Module:Pred, Ret), user).
 px_call(-(A1), Module, Pred, Ret) =>
-    call(Module:Pred, A1, Ret).
+    @(call(Module:Pred, A1, Ret), user).
 px_call(-(A1,A2), Module, Pred, Ret) =>
-    call(Module:Pred, A1, A2, Ret).
+    @(call(Module:Pred, A1, A2, Ret), user).
 px_call(-(A1,A2,A3), Module, Pred, Ret) =>
-    call(Module:Pred, A1, A2, A3, Ret).
+    @(call(Module:Pred, A1, A2, A3, Ret), user).
 px_call(-(A1,A2,A3,A4), Module, Pred, Ret) =>
-    call(Module:Pred, A1, A2, A3, A4, Ret).
+    @(call(Module:Pred, A1, A2, A3, A4, Ret), user).
 px_call(Tuple, Module, Pred, Ret) =>
     compound_name_arguments(Tuple, _, Args),
     append(Args, [Ret], GArgs),
     Goal =.. [Pred|GArgs],
-    call(Module:Goal).
+    @(Module:Goal, user).
 
 px_cmd(Module, Pred, Tuple) :-
     (   compound(Tuple)
@@ -888,7 +894,7 @@ px_cmd(Module, Pred, Tuple) :-
 	Goal =.. [Pred|Args]
     ;   Goal = Pred
     ),
-    call(Module:Goal).
+    @(Module:Goal, user).
 
 px_comp(Module, Pred, Tuple, Vars, Set, TV, Ret) :-
     length(Out, Vars),
@@ -899,7 +905,7 @@ px_comp(Module, Pred, Tuple, Vars, Set, TV, Ret) :-
     ;   Goal =.. [Pred|Out]
     ),
     compound_name_arguments(OTempl0, -, Out),
-    tv_goal_and_template(TV, Module:Goal, FGoal, OTempl0, OTempl),
+    tv_goal_and_template(TV, @(Module:Goal, user), FGoal, OTempl0, OTempl),
     findall(OTempl, FGoal, Ret0),
     (   Set == @true
     ->  sort(Ret0, Ret)
