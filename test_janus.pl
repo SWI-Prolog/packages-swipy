@@ -369,14 +369,14 @@ test(iso_latin_1, R == schloß) :-
 :- begin_tests(xsb_call).
 
 test(reverse, X == -([py{a:py{b:c}}, -(mytuple), 3, 2, 1], 1)) :-
-    py_call(janus:px_qdet(lists, reverse,
-			  [1,2,3,-(mytuple),py{a:py{b:c}}]),
+    py_call(janus:qdet(lists, reverse,
+		       [1,2,3,-(mytuple),py{a:py{b:c}}]),
 	    X).
-test(px_comp1, X == [-(1)-1,-(2)-1]) :-
-    py_call(janus:px_comp(user, between, 1, 2), X).
-test(px_comp2, X == [-(1),-(2)]) :-
+test(comp1, X == [-(1)-1,-(2)-1]) :-
+    py_call(janus:comp(user, between, 1, 2), X).
+test(comp2, X == [-(1),-(2)]) :-
     py_call(janus:'NO_TRUTHVALS', NoThruthVals),
-    py_call(janus:px_comp(user, between, 1, 2, truth=NoThruthVals), X).
+    py_call(janus:comp(user, between, 1, 2, truth=NoThruthVals), X).
 
 :- end_tests(xsb_call).
 

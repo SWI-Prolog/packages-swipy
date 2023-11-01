@@ -132,9 +132,9 @@ benchmark(N,
           call) :-
     py_call(demo:bench_call(N)).
 benchmark(N,
-          'Call `px_cmd("true")` ~D times'-[N],
+          'Call `cmd("true")` ~D times'-[N],
           call) :-
-    py_call(demo:bench_px_cmd(N)).
+    py_call(demo:bench_cmd(N)).
 benchmark(N,
           'Call `apply_once("user", "=", 1)` ~D times'-[N],
           call) :-
@@ -176,4 +176,3 @@ progress_(_, [], _) =>
 
 next_style(comment, code).
 next_style(code, comment).
-

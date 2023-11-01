@@ -39,7 +39,7 @@ janus`.   The module provides three groups of support:
 
   - Class janus.query and function janus.query_once() that allow calling
     Prolog at a high level of abstraction.
-  - Functions janus.px_cmp(), janus.qdet() and janus.comp() that
+  - Functions janus.cmp(), janus.qdet() and janus.comp() that
     provide a more low-level interface for calling Prolog that
     is compatible with the original version of Janus for XSB.
   - The classes `Term` and `PrologError` to represent arbitrary
@@ -375,7 +375,7 @@ def prolog():
 ################################################################
 # Emulated XSB interface
 
-def px_cmd(module, pred, *args):
+def cmd(module, pred, *args):
     """Run module:pred(arg ...)"""
     query_once("janus:px_cmd(M,P,Args)", {"M":module, "P":pred, "Args":args})
 
@@ -387,7 +387,7 @@ def _xsb_tv(truth):
     else:
         return 2
 
-def px_qdet(module, pred, *args):
+def qdet(module, pred, *args):
     """Run predicate as query_once/1
 
     The predicate is called with one more argument than provided in `args`.
@@ -396,11 +396,11 @@ def px_qdet(module, pred, *args):
     --------
     **Example 1**
 
-    >>> px_qdet("user", "current_prolog_flag", "version")
+    >>> qdet("user", "current_prolog_flag", "version")
     (90113, 1)
 
     **Example 2**
-    >>> px_qdet("user", "current_prolog_flag", "no_such_flag")
+    >>> qdet("user", "current_prolog_flag", "no_such_flag")
     (None, 0)
 
     Returns
@@ -413,14 +413,14 @@ def px_qdet(module, pred, *args):
     d = query_once("janus:px_call(Args,M,P,Ret)", {"M":module, "P":pred, "Args":args})
     return (d["Ret"], _xsb_tv(d["truth"]))
 
-def px_comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TRUTHVALS):
+def comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TRUTHVALS):
     """Call non-deterministic predicate
 
 
     Examples
     --------
 
-    >>> px_comp("user", "between", 1, 6)
+    >>> comp("user", "between", 1, 6)
     [((1,), 1), ((2,), 1), ((3,), 1), ((4,), 1), ((5,), 1), ((6,), 1)]
 
     Parameters

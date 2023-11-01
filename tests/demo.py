@@ -142,10 +142,10 @@ def bench_apply_onceb(n):
     for i in range(1,n+1):
         apply_once("user", "between", 1, 2, fail=0)
 
-def bench_px_cmd(n):
+def bench_cmd(n):
     """Call `true` `n` times"""
     for i in range(1,n):
-        px_cmd("user", "true")
+        cmd("user", "true")
 
 # Simple counter class
 
