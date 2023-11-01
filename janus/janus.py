@@ -388,7 +388,7 @@ def _xsb_tv(truth):
         return 2
 
 def qdet(module, pred, *args):
-    """Run predicate as query_once/1
+    """Run predicate as apply_once/1
 
     The predicate is called with one more argument than provided in `args`.
 
