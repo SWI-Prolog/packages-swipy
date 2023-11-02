@@ -320,7 +320,7 @@ swipl_cmd(PyObject *self, PyObject *args)
     { term_t av;
 
       if ( (av=PL_new_term_refs(arity)) )
-      { for(Py_ssize_t i=0; i < arity; i++)
+      { for(Py_ssize_t i=0; i < (Py_ssize_t)arity; i++)
 	{ if ( !py_unify(av+i, PyTuple_GetItem(args, i+2), 0) )
 	    goto eunify;
 
