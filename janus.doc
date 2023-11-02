@@ -580,6 +580,11 @@ Below is an example.  See \secref{janus-truth} for details.
 {'truth': Undefined}
 \end{code}
 
+See also \cfuncref{janus.cmd}{} and \cfuncref{janus.apply_once}{},
+which provide a fast but more limited alternative for making ground
+queries (\cfuncref{janus.cmd}{}) or queries with leading ground
+arguments followed by a single output variable.
+
     \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
 			         truth=TruthVals.PLAIN_TRUTHVALS}
     \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.
@@ -603,6 +608,32 @@ Below is an example.  See \secref{janus-truth} for details.
 '/home/janw/src/swipl-devel/build.pdf/home'
 \end{code}
       
+    \cfunction{Truth}{janus.cmd}{module, predicate, input ...}
+    Similar to \cfuncref{janus.apply_once}{}, but no argument for the
+    return value is added.  This function returns the \jargon{truth
+      value} using the same conventions as the \const{truth} key
+    in \cfuncref{janus.query_once}{}.  For example:
+
+\begin{code}
+>>> import janus_swi as janus
+>>> cmd("user", "true")
+True
+>>> cmd("user", "current_prolog_flag", "bounded", "true")
+False
+>>> cmd("user", "undefined")
+Undefined
+>>> cmd("user", "no_such_predicate")
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/code.py", line 90, in runcode
+    exec(code, self.locals)
+  File "<console>", line 1, in <module>
+janus.PrologError: '$c_call_prolog'/0: Unknown procedure: no_such_predicate/0
+\end{code}
+
+    The function \cfuncref{janus.query_once}{} is more flexible and
+    provides all functionality of \cfuncref{janus.cmd}{}.  However,
+    this function is faster and in some scenarios easier to use.
+
     \cfunction{None}{janus.consult}{file, data=None, module='user'}
     Load Prolog text into the Prolog database.   By default, \arg{data}
     is \const{None} and the text is read from \arg{file}.  If \arg{data}

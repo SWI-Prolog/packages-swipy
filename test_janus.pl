@@ -377,9 +377,23 @@ test(comp1, X == [-(1)-1,-(2)-1]) :-
 test(comp2, X == [-(1),-(2)]) :-
     py_call(janus:'NO_TRUTHVALS', NoThruthVals),
     py_call(janus:comp(user, between, 1, 2, truth=NoThruthVals), X).
+test(cmd, X == @(true)) :-
+    py_call(janus:cmd(user, true), X).
+test(cmd, X == @(false)) :-
+    py_call(janus:cmd(user, fail), X).
+test(cmd, X == Undefined) :-
+    py_call(janus:undefined, Undefined),
+    py_call(janus:cmd(user, undefined), X).
+test(cmd, X == @true) :-
+    py_call(janus:cmd(test_janus, p, 42), X).
+test(cmd, X == @false) :-
+    py_call(janus:cmd(test_janus, p, 1), X).
+test(cmd, error(python_error('PrologError', _, _))) :-
+    py_call(janus:cmd(test_janus, no_such_pred), _).
+
+test_janus:p(42).
 
 :- end_tests(xsb_call).
-
 
 bench_janus :-
     bench_python(concat_list(100 000)).

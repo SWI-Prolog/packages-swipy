@@ -375,9 +375,7 @@ def prolog():
 ################################################################
 # Emulated XSB interface
 
-def cmd(module, pred, *args):
-    """Run module:pred(arg ...)"""
-    query_once("janus:px_cmd(M,P,Args)", {"M":module, "P":pred, "Args":args})
+cmd = _swipl.cmd
 
 def _xsb_tv(truth):
     if truth == True:

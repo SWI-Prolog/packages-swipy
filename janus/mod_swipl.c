@@ -298,6 +298,86 @@ error:
 }
 
 
+static PyObject *
+swipl_cmd(PyObject *self, PyObject *args)
+{ Py_ssize_t argc = PyTuple_GET_SIZE(args);
+  PyObject *rc = NULL;
+  atom_t mname=0;
+  atom_t pname=0;
+
+  if ( argc >= 2 )
+  { fid_t fid;
+    size_t arity = argc-2;
+
+    if ( !(mname=py_obj_to_atom(PyTuple_GetItem(args, 0),
+				"module expected")) )
+      goto error;
+    if ( !(pname=py_obj_to_atom(PyTuple_GetItem(args, 1),
+				"predicate name expected")) )
+      goto error;
+
+    if ( (fid=PL_open_foreign_frame()) )
+    { term_t av;
+
+      if ( (av=PL_new_term_refs(arity)) )
+      { for(Py_ssize_t i=0; i < arity; i++)
+	{ if ( !py_unify(av+i, PyTuple_GetItem(args, i+2), 0) )
+	    goto eunify;
+
+	}
+      }
+      module_t m = PL_new_module(mname);
+      functor_t f = PL_new_functor(pname, arity);
+      predicate_t pred = PL_pred(f, m);
+      qid_t qid;
+
+      if ( (qid=PL_open_query(m, PL_Q_CATCH_EXCEPTION|PL_Q_EXT_STATUS,
+			      pred, av)) )
+      { int r;
+
+	Py_BEGIN_ALLOW_THREADS
+	r = PL_next_solution(qid);
+	Py_END_ALLOW_THREADS
+
+	switch(r)
+	{ case PL_S_TRUE:
+	  case PL_S_LAST:
+	    PL_cut_query(qid);
+	    if ( PL_get_delay_list(0) )
+	      rc = PyObject_GetAttrString(mod_janus(), "undefined");
+	    else
+	      rc = Py_True;
+	    Py_INCREF(rc);
+	    break;
+	  case PL_S_EXCEPTION:
+	    Py_SetPrologError(PL_exception(qid));
+	    PL_cut_query(qid);
+	    break;
+	  case PL_S_FALSE:
+	    PL_cut_query(qid);
+	    rc = Py_False;
+	    Py_INCREF(rc);
+	    break;
+	  default:
+	    assert(0);
+	}
+      }
+
+    eunify:
+      PL_discard_foreign_frame(fid);
+    }
+  } else
+  { PyErr_SetString(PyExc_TypeError, "swipl.cmd(module, predicate, [arg ...]) expected");
+  }
+
+error:
+  if ( mname ) PL_unregister_atom(mname);
+  if ( pname ) PL_unregister_atom(pname);
+
+  return rc;
+}
+
+
 static void
 tuple_set_int(int i, PyObject *tuple, int64_t val)
 { PyObject *v = PyLong_FromLongLong(val);
@@ -576,6 +656,10 @@ swipl_initialize(PyObject *self, PyObject *args)
 static PyMethodDef swiplMethods[] =
 { {"call", swipl_call, METH_VARARGS,
    "Execute a Prolog query."},
+  {"cmd", swipl_cmd, METH_VARARGS,
+   "Evaluate predicate as Boolean function.\n\n"
+   "Synopsis: cmd(module, predicate, input ...) -> truth"
+  },
   {"apply_once", (PyCFunction)swipl_apply_once, METH_VARARGS|METH_KEYWORDS,
    "Evaluate predicate as function.\n\n"
    "Synopsis: apply_once(module, predicate, input ...) -> output"
