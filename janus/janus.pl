@@ -64,6 +64,8 @@
             py_obj_dir/2,               % +ObjRef,-List
             py_obj_dict/2,              % obj_dict(+ObjRef, -Dict)
 
+            py_load/2,                  % +Module:atom, +Source:string
+
             py_initialize/3,            % +Program, +Argv, +Options
             py_lib_dirs/1,              % -Dirs
             py_add_lib_dir/0,           % (directive)
@@ -572,6 +574,43 @@ py_obj_dir(ObjRef, List) :-
 
 py_obj_dict(ObjRef, Dict) :-
     py_call(ObjRef:'__dict__', Dict).
+
+
+%!  py_load(+Module:atom, +Source:string) is det.
+%
+%   Load Source into the Python module Module.   This  is intended to be
+%   used together with the `string` _quasi quotation_ that supports long
+%   strings in SWI-Prolog.   For example:
+%
+%   ```
+%   :- use_module(library(strings)).
+%   :- py_load(hello,
+%              {|string||
+%               | def say_hello_to(s):
+%               |     print(f"hello {s}")
+%               |}).
+%   ```
+%
+%   Calling this predicate multiple  times  with   the  same  Module and
+%   Source is a no-op. Called with  a   different  source  creates a new
+%   Python module that replaces the old in the global namespace.
+%
+%   @error python_error(Type, Data, Stack) is raised if Python raises an
+%   error.
+
+:- dynamic py_dyn_module/2 as volatile.
+
+py_load(Module, Source) :-
+    variant_sha1(Source, Hash),
+    (   py_dyn_module(Module, Hash)
+    ->  true
+    ;   py_call(janus:import_module_from_string(Module, Source)),
+        (   retract(py_dyn_module(Module, _))
+        ->  py_update_module_cache(Module)
+        ;   true
+        ),
+        asserta(py_dyn_module(Module, Hash))
+    ).
 
 
 		 /*******************************

@@ -159,7 +159,7 @@ rehash(htable *t)
 
 
 static int
-py_add_hashmap(htable *t, atom_t name, PyObject *obj)
+py_add_hashmap(htable *t, atom_t name, PyObject *obj, PyObject **old)
 { unsigned int k;
   hcell *c;
 
@@ -169,6 +169,18 @@ py_add_hashmap(htable *t, atom_t name, PyObject *obj)
   }
 
   k = MurmurHashAligned2(&name, sizeof(name), SEED) % t->size;
+  for(c=t->entries[k]; c; c=c->next)
+  { if ( c->name == name )
+    { if ( c->object != obj )
+      { if ( old )
+	{ *old = c->object;
+	  c->object = obj;
+	}
+      }
+      return TRUE;
+    }
+  }
+
   if ( (c=malloc(sizeof(*c))) )
   { c->name       = name;
     c->object     = obj;

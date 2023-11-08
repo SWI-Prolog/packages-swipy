@@ -371,10 +371,10 @@ get_py_obj(term_t t, PyObject **objp, int error)
 }
 
 static int
-get_py_name(term_t name, PyObject **obj)
+get_py_name(term_t name, PyObject **obj, int flags)
 { char *idname;
 
-  if ( PL_get_chars(name, &idname, CVT_ATOM) )
+  if ( PL_get_chars(name, &idname, CVT_ATOM|flags) )
   { PyObject *id = check_error(PyUnicode_FromString(idname));
 
     if ( id )
@@ -387,6 +387,34 @@ get_py_name(term_t name, PyObject **obj)
 }
 
 static htable *py_module_table = NULL;
+
+static int
+py_register_module(term_t name, PyObject **mod, int flags)
+{ PyObject *idobj;
+  atom_t id;
+
+  if ( !py_module_table )
+    py_module_table = py_new_hashmap();
+
+  if ( get_py_name(name, &idobj, flags) &&
+       PL_get_atom(name, &id) )
+  { PyObject *m = check_error(PyImport_Import(idobj));
+
+    Py_DECREF(idobj);
+    if ( m )
+    { PyObject *old = NULL;
+      if ( mod )
+	*mod = m;
+      int rc = py_add_hashmap(py_module_table, id, m, &old);
+      if ( old )
+	Py_DECREF(old);
+      return rc;
+    }
+  }
+
+  return FALSE;
+}
+
 
 static int
 get_py_module(term_t name, PyObject **mod)
@@ -410,22 +438,28 @@ get_py_module(term_t name, PyObject **mod)
       *mod = obj;
       return TRUE;
     } else
-    { PyObject *idobj;
-
-      if ( get_py_name(name, &idobj) )
-      { PyObject *m = check_error(PyImport_Import(idobj));
-
-	Py_DECREF(idobj);
-	if ( m )
-	{ *mod = m;
-	  py_add_hashmap(py_module_table, id, m);
-	  return TRUE;
-	}
+    { if ( py_register_module(name, mod, 0) )
+      { Py_INCREF(*mod);
+	return TRUE;
       }
     }
   }
 
   return FALSE;
+}
+
+
+static foreign_t
+py_update_module_cache(term_t name)
+{ int rc;
+  py_gil_state state;
+
+  if ( !py_gil_ensure(&state) )
+    return FALSE;
+  rc = py_register_module(name, NULL, CVT_EXCEPTION);
+  py_gil_release(state);
+
+  return rc;
 }
 
 
@@ -2261,21 +2295,23 @@ install_janus(void)
 
 #define REGISTER(name, arity, func, flags) \
         PL_register_foreign_in_module("janus", name, arity, func, flags)
+#define NDET PL_FA_NONDETERMINISTIC
 
-  REGISTER("py_initialize_",  3, py_initialize_, 0);
-  REGISTER("py_finalize",     0, py_finalize,    0);
-  REGISTER("py_call",         1, py_call1,       0);
-  REGISTER("py_call",         2, py_call2,       0);
-  REGISTER("py_call",         3, py_call3,       0);
-  REGISTER("py_iter",         2, py_iter2,       PL_FA_NONDETERMINISTIC);
-  REGISTER("py_iter",         3, py_iter3,       PL_FA_NONDETERMINISTIC);
-  REGISTER("py_run",          5, py_run,         0);
-  REGISTER("py_free",         1, py_free,        0);
-  REGISTER("py_is_object",    1, py_is_object,   0);
-  REGISTER("py_with_gil",     1, py_with_gil,    PL_FA_TRANSPARENT);
-  REGISTER("py_gil_owner",    1, py_gil_owner,   0);
-  REGISTER("py_str",          2, py_str,         0);
-  REGISTER("py_debug",        1, py_debug,       0);
+  REGISTER("py_initialize_",	     3,	py_initialize_,		0);
+  REGISTER("py_finalize",	     0,	py_finalize,		0);
+  REGISTER("py_call",		     1,	py_call1,		0);
+  REGISTER("py_call",		     2,	py_call2,		0);
+  REGISTER("py_call",		     3,	py_call3,		0);
+  REGISTER("py_iter",		     2,	py_iter2,		NDET);
+  REGISTER("py_iter",		     3,	py_iter3,		NDET);
+  REGISTER("py_run",		     5,	py_run,			0);
+  REGISTER("py_free",		     1,	py_free,		0);
+  REGISTER("py_is_object",	     1,	py_is_object,		0);
+  REGISTER("py_with_gil",	     1,	py_with_gil,		NDET);
+  REGISTER("py_gil_owner",	     1,	py_gil_owner,		0);
+  REGISTER("py_str",		     2,	py_str,			0);
+  REGISTER("py_debug",		     1,	py_debug,		0);
+  REGISTER("py_update_module_cache", 1,	py_update_module_cache,	0);
 
   if ( PyImport_AppendInittab("_swipl", PyInit__swipl) == -1 )
     Sdprintf("Failed to add module swipl to Python");
