@@ -1851,6 +1851,8 @@ get_conversion_options(term_t options, int *flags)
   return TRUE;
 }
 
+static int said_deprecated_setattr = FALSE;
+
 static foreign_t
 py_call3(term_t Call, term_t result, term_t options)
 { PyObject *py_target = NULL;
@@ -1867,6 +1869,11 @@ py_call3(term_t Call, term_t result, term_t options)
   { val = PL_new_term_ref();
     _PL_get_arg(2, call, val);
     _PL_get_arg(1, call, call);
+    if ( !said_deprecated_setattr )
+    { said_deprecated_setattr = TRUE;
+      Sdprintf("Deprecated: instead of py_call(Obj:Attr = Value), "
+	       "use py_setattr(Obj,Attr,Value)");
+    }
   }
 
   if ( !py_gil_ensure(&state) )
@@ -1918,6 +1925,43 @@ py_call1(term_t Call)
 { return py_call3(Call, 0, 0);
 }
 
+static foreign_t
+py_setattr(term_t On, term_t name, term_t value)
+{ term_t on = PL_copy_term_ref(On);
+  PyObject *py_target = NULL;
+  int rc;
+  py_gil_state state;
+
+  if ( !py_gil_ensure(&state) )
+    return FALSE;
+
+  rc = unchain(on, &py_target);
+  PyObject *next = py_eval(py_target, on);
+  Py_XDECREF(py_target);
+  py_target = next;
+  rc = !!py_target;
+
+  if ( rc )
+  { char *attr;
+
+    PL_STRINGS_MARK();
+    if ( (rc=PL_get_chars(name, &attr, CVT_ATOM|REP_UTF8|CVT_EXCEPTION)) )
+    { PyObject *py_val = NULL;
+
+      if ( (rc=py_from_prolog(value, &py_val)) )
+      { if ( PyObject_SetAttrString(py_target, attr, py_val) == -1 )
+	  rc = !!check_error(NULL);
+      }
+      Py_CLEAR(py_val);
+    }
+    PL_STRINGS_RELEASE();
+  }
+
+  Py_CLEAR(py_target);
+  py_gil_release(state);
+
+  return rc;
+}
 
 typedef struct
 { PyObject *iterator;
@@ -2304,6 +2348,7 @@ install_janus(void)
   REGISTER("py_call",		     3,	py_call3,		0);
   REGISTER("py_iter",		     2,	py_iter2,		NDET);
   REGISTER("py_iter",		     3,	py_iter3,		NDET);
+  REGISTER("py_setattr",	     3, py_setattr,		0);
   REGISTER("py_run",		     5,	py_run,			0);
   REGISTER("py_free",		     1,	py_free,		0);
   REGISTER("py_is_object",	     1,	py_is_object,		0);

@@ -125,7 +125,7 @@ test(set, Set == [1, a, false]) :- % True canot be in a Python set??
     py_call(janus:echo(py_set([1,a,false])), py_set(List)),
     sort(List, Set).
 test(attr, Val = 42) :-
-    py_call(demo:test_attr = 42),
+    py_setattr(demo, test_attr, 42),
     py_call(demo:test_attr, Val).
 test(stringify, R == '6') :-
     py_call(janus:echo(#6), R).
@@ -256,7 +256,7 @@ test(arg, R == py{a:a,b:b,c:c}) :-
 test(gc1) :-
     current_prolog_flag(gc_thread, Old),
     set_prolog_gc_thread(false),
-    py_call(demo:gced = 0),
+    py_setattr(demo, gced, 0),
     forall(between(1, 10 000, _),
            py_call(demo:'GCAble'(), _)),
     garbage_collect_atoms,
@@ -267,7 +267,7 @@ test(gc2, [GCed0,GCed] == [10 000, 10 000]) :-
     current_prolog_flag(gc_thread, Old),
     set_prolog_gc_thread(false),
     garbage_collect_atoms,
-    py_call(demo:gced = 0),
+    py_setattr(demo, gced, 0),
     forall(between(1, 10 000, _),
            ( py_call(demo:'GCAble'(), Obj),
 	     py_free(Obj) )),
@@ -276,7 +276,7 @@ test(gc2, [GCed0,GCed] == [10 000, 10 000]) :-
     set_prolog_gc_thread(Old),
     py_call(demo:gced, GCed).
 test(free, GCed == 1) :-
-    py_call(demo:gced = 0),
+    py_setattr(demo, gced, 0),
     py_call(demo:'GCAble'(), Obj),
     py_free(Obj),
     py_call(demo:gced, GCed).
@@ -287,7 +287,7 @@ test(free, error(existence_error('PyObject', Obj))) :-
 test(free, error(existence_error('PyObject', Obj))) :-
     py_call(demo:'GCAble'(), Obj),
     py_free(Obj),
-    py_call(Obj:test = 1).
+    py_setattr(Obj, test, 1).
 
 :- end_tests(janus_gc).
 

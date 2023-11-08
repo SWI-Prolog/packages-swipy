@@ -40,6 +40,7 @@
             py_call/3,                  % +Call, -Return, +Options
 	    py_iter/2,			% +Call, -Return
 	    py_iter/3,			% +Call, -Return, +Options
+            py_setattr/3,               % +On, +Name, +Value
             py_free/1,			% +Obj
 	    py_is_object/1,		% @Term
 	    py_with_gil/1,		% :Goal
@@ -219,15 +220,6 @@ py_version :-
 %       Dog = <py_Dog>(0x7f095c9d02e0),
 %       Tricks = ["roll_over"]
 %
-%   py_call/1 can also be used to set an attribute on a module or object
-%   using the syntax py_call(Obj:Attr = Value). For example:
-%
-%       ?- py_call(dog:'Dog'("Fido"), Dog),
-%          py_call(Dog:owner = "Bob"),
-%          py_call(Doc:owner, Owner).
-%       Dog = <py_Dog>(0x7ffff7112170),
-%       Owner = "Bob".
-%
 %   If the principal term of the   first  argument is not `Target:Func`,
 %   The argument is evaluated as the initial target, i.e., it must be an
 %   object reference or a module.   For example:
@@ -292,6 +284,17 @@ py_version :-
 %
 %   @arg Options is processed as with py_call/3.
 %   @bug Iterator may not depend on janus.query()
+
+%!  py_setattr(+Target, +Name, +Value) is det.
+%
+%   Set a Python attribute on an object.  If   Target  is an atom, it is
+%   interpreted  as  a  module.  Otherwise  it  is  normally  an  object
+%   reference. py_setattr/3 allows for  _chaining_   and  behaves  as if
+%   defined as
+%
+%      py_setattr(Target, Name, Value) :-
+%          py_call(Target, Obj, [py_object(true)]),
+%          py_call(setattr(Obj, Name, Value)).
 
 %!  py_run(+String, +Globals, +Locals, -Result, +Options) is det.
 %

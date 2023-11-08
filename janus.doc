@@ -607,7 +607,7 @@ arguments followed by a single output variable.
 >>> janus.apply_once("user", "current_prolog_flag", "home")
 '/home/janw/src/swipl-devel/build.pdf/home'
 \end{code}
-      
+
     \cfunction{Truth}{janus.cmd}{module, predicate, input ...}
     Similar to \cfuncref{janus.apply_once}{}, but no argument for the
     return value is added.  This function returns the \jargon{truth
@@ -672,7 +672,7 @@ janus.PrologError: '$c_call_prolog'/0: Unknown procedure: no_such_predicate/0
 Class \cfuncref{janus.query}{} is similar to the
 \cfuncref{janus.query_once}{} function, but it returns a Python
 \jargon{iterator} that allows for iterating over the answers to a
-non-deterministic Prolog predicate. 
+non-deterministic Prolog predicate.
 
 \begin{description}
    \cfunction{query}{janus.query}{query, bindings=\{{}\}, keep=False}
@@ -713,7 +713,7 @@ a Python \jargon{iterator} that enumerates all answers.
 >>> [*janus.apply("user", "between", 1, 6)]
 [1, 2, 3, 4, 5, 6]
 \end{code}
-  
+
    \cfunction{any{|}None}{janus.apply.next}{}
    Explicitly ask for the next solution of the iterator.  Normally,
    using the \ctype{apply} as an iterator is to be preferred.  See
@@ -753,7 +753,7 @@ as attributes of this module, e.g.
 increment :-
     py_call(demo:counter, V0),
     V is V0+1,
-    py_call(demo:counter = V).
+    py_setattr(demo, counter, V).
 \end{code}
 
 \subsection{Janus and Prolog truth}
