@@ -173,9 +173,8 @@ py_add_hashmap(htable *t, atom_t name, PyObject *obj, PyObject **old)
   { if ( c->name == name )
     { if ( c->object != obj )
       { if ( old )
-	{ *old = c->object;
-	  c->object = obj;
-	}
+	  *old = c->object;
+	c->object = obj;
       }
       return TRUE;
     }
