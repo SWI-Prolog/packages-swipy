@@ -371,24 +371,24 @@ test(iso_latin_1, R == schloß) :-
 :- use_module(library(strings)).
 
 test(load, X == 4) :-
-    py_load(load_test,
-             {|string||
-              | def times_two(n):
-              |     return n*2
-              |}),
+    py_module(load_test,
+              {|string||
+               | def times_two(n):
+               |     return n*2
+               |}),
     py_call(load_test:times_two(2), X).
 test(reload, [X1,X2] == [6,4]) :-
-    py_load(load_test2,
-             {|string||
-              | def times_two(n):
-              |     return n*3
-              |}),
+    py_module(load_test2,
+              {|string||
+               | def times_two(n):
+               |     return n*3
+               |}),
     py_call(load_test2:times_two(2), X1),
-    py_load(load_test2,
-             {|string||
-              | def times_two(n):
-              |     return n*2
-              |}),
+    py_module(load_test2,
+              {|string||
+               | def times_two(n):
+               |     return n*2
+               |}),
     py_call(load_test2:times_two(2), X2).
 
 :- end_tests(janus_load).

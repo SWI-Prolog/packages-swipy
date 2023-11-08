@@ -65,7 +65,7 @@
             py_obj_dir/2,               % +ObjRef,-List
             py_obj_dict/2,              % obj_dict(+ObjRef, -Dict)
 
-            py_load/2,                  % +Module:atom, +Source:string
+            py_module/2,                % +Module:atom, +Source:string
 
             py_initialize/3,            % +Program, +Argv, +Options
             py_lib_dirs/1,              % -Dirs
@@ -579,7 +579,7 @@ py_obj_dict(ObjRef, Dict) :-
     py_call(ObjRef:'__dict__', Dict).
 
 
-%!  py_load(+Module:atom, +Source:string) is det.
+%!  py_module(+Module:atom, +Source:string) is det.
 %
 %   Load Source into the Python module Module.   This  is intended to be
 %   used together with the `string` _quasi quotation_ that supports long
@@ -587,11 +587,11 @@ py_obj_dict(ObjRef, Dict) :-
 %
 %   ```
 %   :- use_module(library(strings)).
-%   :- py_load(hello,
-%              {|string||
-%               | def say_hello_to(s):
-%               |     print(f"hello {s}")
-%               |}).
+%   :- py_module(hello,
+%                {|string||
+%                 | def say_hello_to(s):
+%                 |     print(f"hello {s}")
+%                 |}).
 %   ```
 %
 %   Calling this predicate multiple  times  with   the  same  Module and
@@ -603,7 +603,7 @@ py_obj_dict(ObjRef, Dict) :-
 
 :- dynamic py_dyn_module/2 as volatile.
 
-py_load(Module, Source) :-
+py_module(Module, Source) :-
     variant_sha1(Source, Hash),
     (   py_dyn_module(Module, Hash)
     ->  true
