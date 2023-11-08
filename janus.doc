@@ -1210,12 +1210,32 @@ Calling Python from Prolog provides a low-level and a more high level
 interface.  The high level interface is realized by py_call/[2,3] and
 py_iter/[2,3]. We realize the low level interfaces py_func/[3,4] and
 py_dot/[4,5] on top of py_call/2.  The interface for calling Prolog
-from Python is settled on the four primitives described in
+from Python is settled on the five primitives described in
 \secref{janus-call-prolog}.
 
-We are discussing to minimize the differences.  The current
-implementation reflects the almost complete agreement.
+We are discussing to minimize the differences.  Below we summarize the
+known differences.
 
+\begin{itemize}
+\item SWI-Prolog represents Phyton dicts as Prolog dicts.  XSB uses
+  a term py({k:v, ...}), where the \verb$py()$ wrapper is optional.
+\item SWI-Prolog allows for \term{prolog}{Term} to be sent to
+  Python, creating an instance of \cfuncref{janus.Term}{}.
+\item SWI-Prolog represents Python object references as a \jargon{blob}.
+  XSB uses a term.  The predicate py_is_object/1 may be used to test
+  that a Prolog term refers to a Python object.   In XSB, the user
+  \emph{must} call py_free/1 when done with some object.  In SWI-Prolog,
+  either py_free/1 may be used or the object may be left to the Prolog
+  (atom) garbage collector.
+\item Exceptions are represented differently, both representing Python
+  exceptions in Prolog and Prolog exceptions in Python.  As a result,
+  acting on specific types of exceptions in a portable way is not
+  supported.
+\item When calling Prolog from Python and relying on well founded
+  semantics, only \jargon{plain truth values} (i.e., \const{janus.undefined}
+  are supported in a portable way.  \jargon{Delay lists}, providing
+  details on why the result is undefined, are represented differently.
+\end{itemize}
 
 \subsection{Writing portable Janus modules}
 \label{sec:janus-portable-code}
