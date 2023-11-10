@@ -292,9 +292,9 @@ py_version :-
 %   reference. py_setattr/3 allows for  _chaining_   and  behaves  as if
 %   defined as
 %
-%      py_setattr(Target, Name, Value) :-
-%          py_call(Target, Obj, [py_object(true)]),
-%          py_call(setattr(Obj, Name, Value)).
+%       py_setattr(Target, Name, Value) :-
+%           py_call(Target, Obj, [py_object(true)]),
+%           py_call(setattr(Obj, Name, Value)).
 
 %!  py_run(+String, +Globals, +Locals, -Result, +Options) is det.
 %
@@ -311,7 +311,7 @@ py_version :-
 
 %!  py_is_object(@Term) is semidet.
 %
-%   True when Term is a Python object reference. Fails silently if @Term
+%   True when Term is a Python object reference. Fails silently if Term
 %   is any other Prolog term.
 %
 %   @error existence_error(py_object, Term) is raised of Term is a
@@ -678,7 +678,7 @@ no_env_dir('dist-packages').
 %   list.
 %
 %   Calling this predicate while the  Python is already initialized is
-%   a no-op.   This predicate is  thread-safe, where the  first thread
+%   a  no-op.  This  predicate is  thread-safe, where  the first  call
 %   initializes Python.
 %
 %   In addition to initializing the Python system, it
