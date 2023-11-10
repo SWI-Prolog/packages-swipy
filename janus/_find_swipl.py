@@ -13,7 +13,7 @@ def swipl_properties():
         return None
     
 def swipl_exe_properties(exe="swipl"):
-    config = subprocess.run(["swipl", '--dump-runtime-variables'],
+    config = subprocess.run([exe, '--dump-runtime-variables'],
                             stdout=subprocess.PIPE).stdout.decode('utf-8')
     props = {}
     for line in config.splitlines():
