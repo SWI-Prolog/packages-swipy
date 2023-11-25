@@ -549,7 +549,7 @@ crash the process}.  Future versions may improve on that.
 
 \begin{description}
   \cfunction{dict}{janus.query_once}{query, bindings=\{{}\}, keep=False,
-			            truth=TruthVals.PLAIN_TRUTHVALS}
+			            truth_vals=TruthVals.PLAIN_TRUTHVALS}
 Call \arg{query} using \arg{bindings} as once/1, returning a dict with
 the resulting bindings. If \arg{bindings} is omitted, no variables are
 bound. The \arg{keep} parameter determines whether or not Prolog
@@ -586,7 +586,7 @@ queries (\cfuncref{janus.cmd}{}) or queries with leading ground
 arguments followed by a single output variable.
 
     \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
-			         truth=TruthVals.PLAIN_TRUTHVALS}
+			         truth_vals=TruthVals.PLAIN_TRUTHVALS}
     \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.
 
     \cfunction{Any}{janus.apply_once}{module, predicate, input ..., fail=obj}
@@ -847,7 +847,7 @@ to use a more human friendly notation.
 
 \begin{code}
 # Using NO_TRUTHVALS
->>> janus.query_once("russel:shaves(barber, X)", truth=janus.NO_TRUTHVALS)
+>>> janus.query_once("russel:shaves(barber, X)", truth_vals=janus.NO_TRUTHVALS)
 {'truth': True, 'X': 'barber'}
 
 # Using default PLAIN_TRUTHVALS (default)
@@ -855,11 +855,11 @@ to use a more human friendly notation.
 {'truth': Undefined, 'X': 'barber'}
 
 # Using default DELAY_LISTS
->>> janus.query_once("russel:shaves(barber, X)", truth=janus.DELAY_LISTS)
+>>> janus.query_once("russel:shaves(barber, X)", truth_vals=janus.DELAY_LISTS)
 {'truth': :(russel,shaves(barber,barber)), 'X': 'barber'}
 
 # Using default RESIDUAL_PROGRAM
->>> janus.query_once("russel:shaves(barber, X)", truth=janus.RESIDUAL_PROGRAM)
+>>> janus.query_once("russel:shaves(barber, X)", truth_vals=janus.RESIDUAL_PROGRAM)
 {'truth': [:-(:(russel,shaves(barber,barber)),tnot(:(russel,shaves(barber,barber))))], 'X': 'barber'}
 \end{code}
 

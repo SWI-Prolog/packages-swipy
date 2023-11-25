@@ -396,15 +396,15 @@ test(reload, [X1,X2] == [6,4]) :-
 
 :- begin_tests(xsb_call).
 
-test(reverse, X == -([py{a:py{b:c}}, -(mytuple), 3, 2, 1], 1)) :-
-    py_call(janus:qdet(lists, reverse,
-		       [1,2,3,-(mytuple),py{a:py{b:c}}]),
+test(reverse, X == [py{a:py{b:c}}, -(mytuple), 3, 2, 1]) :-
+    py_call(janus:apply_once(lists, reverse,
+                             [1,2,3,-(mytuple),py{a:py{b:c}}]),
 	    X).
 test(comp1, X == [-(1)-1,-(2)-1]) :-
     py_call(janus:comp(user, between, 1, 2), X).
 test(comp2, X == [-(1),-(2)]) :-
     py_call(janus:'NO_TRUTHVALS', NoThruthVals),
-    py_call(janus:comp(user, between, 1, 2, truth=NoThruthVals), X).
+    py_call(janus:comp(user, between, 1, 2, truth_vals=NoThruthVals), X).
 test(cmd, X == @(true)) :-
     py_call(janus:cmd(user, true), X).
 test(cmd, X == @(false)) :-

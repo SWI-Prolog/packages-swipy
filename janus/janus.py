@@ -167,15 +167,15 @@ class query:
     inputs: dict
         Bind variables of the goal on input with the converted
         Python data from this dict.
-    truth : (PLAIN_TRUTHVALS|DELAY_LISTS|RESIDUAL_PROGRAM)=PLAIN_TRUTHVALS
+    truth_vals : (PLAIN_TRUTHVALS|DELAY_LISTS|RESIDUAL_PROGRAM)=PLAIN_TRUTHVALS
         How to represent Undefined.  Using `PLAIN_TRUTHVALS` undefined
         results use `janus.undefined`.  Using `DELAY_LISTS` an instance
         of `janus.Undefined` is created from the delay condition.
 
     """
-    def __init__(self, query, inputs={}, truth=TruthVal.PLAIN_TRUTHVALS):
+    def __init__(self, query, inputs={}, truth_vals=TruthVal.PLAIN_TRUTHVALS):
         """Create from query and inputs as janus.query_once()"""
-        inputs['truth'] = truth
+        inputs['truth'] = truth_vals
         self.state = _swipl.open_query(query, inputs)
     def __iter__(self):
         """Implement iter protocol"""
@@ -201,7 +201,7 @@ class query:
         """Explicitly close the query."""
         _swipl.close_query(self.state)
 
-def query_once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
+def query_once(query, inputs={}, keep=False, truth_vals=TruthVal.PLAIN_TRUTHVALS):
     """
     Call a Prolog predicate as `query_once/1`
 
@@ -216,10 +216,10 @@ def query_once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
         It `True` (default `False`), do not _backtrack_.  May
         be used to preserve changes to global variables using
         `b_setval/2`.
-    truth: enum(TruthVal) = TruthVal.PLAIN_TRUTHVALS
+    truth_vals: enum(TruthVal) = TruthVal.PLAIN_TRUTHVALS
         How to deal with _Well Founded Semantics_ undefined results.
     """
-    inputs['truth'] = truth
+    inputs['truth'] = truth_vals
     return _swipl.call(query, inputs, keep)
 
 class Query(query):
@@ -228,7 +228,7 @@ class Query(query):
     """
     pass
 
-def once(query, inputs={}, keep=False, truth=TruthVal.PLAIN_TRUTHVALS):
+def once(query, inputs={}, keep=False, truth_vals=TruthVal.PLAIN_TRUTHVALS):
     """
     Deprecated.  Renamed to query_once().
     """
@@ -393,41 +393,7 @@ def import_module_from_string(name: str, source: str):
 
 cmd = _swipl.cmd
 
-def _xsb_tv(truth):
-    if truth == True:
-        return 1
-    elif truth == False:
-        return 0
-    else:
-        return 2
-
-def qdet(module, pred, *args):
-    """Run predicate as apply_once/1
-
-    The predicate is called with one more argument than provided in `args`.
-
-    Examples
-    --------
-    **Example 1**
-
-    >>> qdet("user", "current_prolog_flag", "version")
-    (90113, 1)
-
-    **Example 2**
-    >>> qdet("user", "current_prolog_flag", "no_such_flag")
-    (None, 0)
-
-    Returns
-    -------
-    result: (Return,Truth)
-        A tuple holding the converted value of the last argument of pred
-        and the success truth.  `0` means failure, `1`, success and `2`
-        _undefined_ (success with delays)
-    """
-    d = query_once("janus:px_call(Args,M,P,Ret)", {"M":module, "P":pred, "Args":args})
-    return (d["Ret"], _xsb_tv(d["truth"]))
-
-def comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TRUTHVALS):
+def comp(module, pred, *args, vars=1, set_collect=False, truth_vals=TruthVal.PLAIN_TRUTHVALS):
     """Call non-deterministic predicate
 
 
@@ -443,7 +409,7 @@ def comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TR
         Number of "output" variables that appear after `args`.
     set_collect : Bool=False
         When True, return a _set_ of answers rather than a _list_.
-    truth : (PLAIN_TRUTHVALS|DELAY_LISTS|NO_TRUTHVALS)=PLAIN_TRUTHVALS
+    truth_vals : (PLAIN_TRUTHVALS|DELAY_LISTS|NO_TRUTHVALS)=PLAIN_TRUTHVALS
         When `NO_TRUTHVALS`, answers are no tuples.  Otherwise each answer
         is a tuple `(Value,Truth)`.  Using `PLAIN_TRUTHVALS`, Truth is
         one of 1 or 2 (undefined).  Using `DELAY_LISTS`, the delay list
@@ -463,7 +429,7 @@ def comp(module, pred, *args, vars=1, set_collect=False, truth=TruthVal.PLAIN_TR
                "Args":args,
                "Vars":vars,
                "Set":set_collect,
-               "TV":truth
+               "TV":truth_vals
               })
     return d["Ret"]
 
