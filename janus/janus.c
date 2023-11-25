@@ -740,7 +740,49 @@ out:
 }
 
 static int
-py_unify_dict(term_t t, PyObject *obj, int flags)
+py_unify_portable_dict(term_t t, PyObject *obj, int flags)
+{ Py_ssize_t size = PyDict_Size(obj);
+  term_t pl_kv, pl_av, tail, tmp;
+  PyObject *py_key, *py_value;
+  Py_ssize_t i = 0;
+
+  if ( size == 0 )
+    return PL_unify_term(t, PL_FUNCTOR, FUNCTOR_py1, PL_ATOM, ATOM_curl);
+
+  if ( !(pl_kv=PL_new_term_ref()) ||
+       !(tail=PL_new_term_ref()) ||
+       !(pl_av=PL_new_term_refs(2)) )
+    return FALSE;
+  tmp = pl_av+0;
+
+  if ( !PL_unify_term(t, PL_FUNCTOR, FUNCTOR_curl1, PL_TERM, tail) )
+    return FALSE;
+
+  for( Py_ssize_t pli=1; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
+  { if ( !PL_put_variable(pl_av+0) ||
+	 !PL_put_variable(pl_av+1) ||
+	 !py_unify(pl_av+0, py_key, flags) ||
+	 !py_unify(pl_av+1, py_value, flags) ||
+	 !PL_cons_functor_v(pl_kv, FUNCTOR_key_value2, pl_av) )
+      return FALSE;		/* pl_kv is now Key:Value */
+    if ( pli < size )
+    { if ( !PL_put_variable(tmp) ||
+	   !PL_unify_term(tail, PL_FUNCTOR, FUNCTOR_comma2,
+			  PL_TERM, pl_kv, PL_TERM, tmp) ||
+	   !PL_put_term(tail, tmp) )
+	return FALSE;
+    } else
+    { return PL_unify(tail, pl_kv);
+    }
+  }
+
+  assert(0);
+  return FALSE;
+}
+
+
+static int
+py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
 { Py_ssize_t size = PyDict_Size(obj);
   term_t pl_dict = PL_new_term_ref();
   term_t pl_values;
@@ -749,6 +791,7 @@ py_unify_dict(term_t t, PyObject *obj, int flags)
   int rc = FALSE;
   Py_ssize_t i = 0;
   PyObject *py_key, *py_value;
+  int invalid_keys = FALSE;
 
   if ( size < 0 || size > INT_MAX )
     return PL_resource_error("stack");
@@ -778,11 +821,12 @@ py_unify_dict(term_t t, PyObject *obj, int flags)
       PyMem_Free(s);
     } else if ( PyLong_Check(py_key) )
     { if ( !(pl_keys[pli]=_PL_cons_small_int(PyLong_AsLongLong(py_key))) )
-      { PL_representation_error("py_dict_key");
+      { invalid_keys = TRUE;
 	goto out;
       }
     } else
-    { goto out;
+    { invalid_keys = TRUE;
+      goto out;
     }
     if ( !py_unify(pl_values+pli, py_value, flags) )
       goto out;
@@ -795,6 +839,15 @@ out:
   _PL_unregister_keys(size, pl_keys);
   if ( pl_keys != fast )
     free(pl_keys);
+
+  if ( invalid_keys )
+  { if ( fid )
+    { PL_rewind_foreign_frame(fid);
+      return py_unify_portable_dict(t, obj, flags);
+    } else
+    { rc = PL_representation_error("py_dict_key");
+    }
+  }
 
   return rc;
 }
@@ -841,7 +894,7 @@ py_unify(term_t t, PyObject *obj, int flags)
       else if ( PyTuple_Check(obj) )
 	rc = py_unify_tuple(t, obj, flags);
       else if ( PyDict_Check(obj) )
-	rc = py_unify_dict(t, obj, flags);
+	rc = py_unify_dict(t, obj, flags, fid);
       else if ( PyIter_Check(obj) )
 	rc = py_unify_iter(t, obj, flags);
       else if ( PySequence_Check(obj) )
