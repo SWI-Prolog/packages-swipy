@@ -91,6 +91,15 @@ developed for the WASM (Web Assembly) version.  That is
   \cfuncref{janus.query_once}{} and \cfuncref{janus.apply_once}{}.
 \end{itemize}
 
+The API of Janus is the result of discussions between the SWI-Prolog,
+XSB and Ciao lang teams.  It will be reflected in a PIP
+(\jargon{Prolog Improvement Proposal}).  Considering the large
+differences in design an opinions in Prolog implementation, the PIP
+does not cover all aspects of the API.  Many of the predicates and
+functions have a \jargon{Compatibility} note that explains the
+relation of the SWI-Prolog API and the PIP.  We summarize the
+differences in \secref{janus-vs-xsb}.
+
 
 \section{Data conversion}
 \label{sec:janus-data}
@@ -586,6 +595,10 @@ which provide a fast but more limited alternative for making ground
 queries (\cfuncref{janus.cmd}{}) or queries with leading ground
 arguments followed by a single output variable.
 
+\begin{tags}
+\tag{Compatibility} PIP.
+\end{tags}
+
     \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
 			         truth_vals=TruthVals.PLAIN_TRUTHVALS}
     \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.
@@ -608,6 +621,10 @@ arguments followed by a single output variable.
 >>> janus.apply_once("user", "current_prolog_flag", "home")
 '/home/janw/src/swipl-devel/build.pdf/home'
 \end{code}
+
+\begin{tags}
+\tag{Compatibility} PIP.
+\end{tags}
 
     \cfunction{Truth}{janus.cmd}{module, predicate, input ...}
     Similar to \cfuncref{janus.apply_once}{}, but no argument for the
@@ -634,6 +651,10 @@ janus.PrologError: '$c_call_prolog'/0: Unknown procedure: no_such_predicate/0
     The function \cfuncref{janus.query_once}{} is more flexible and
     provides all functionality of \cfuncref{janus.cmd}{}.  However,
     this function is faster and in some scenarios easier to use.
+
+\begin{tags}
+\tag{Compatibility} PIP.
+\end{tags}
 
     \cfunction{None}{janus.consult}{file, data=None, module='user'}
     Load Prolog text into the Prolog database.   By default, \arg{data}
@@ -662,6 +683,11 @@ janus.PrologError: '$c_call_prolog'/0: Unknown procedure: no_such_predicate/0
            janus.query("train(_From,_To),Tuple=_From-_To")])
     \end{code}
 
+\begin{tags}
+  \tag{Compatibility} PIP.   The \const{data} and \const{module} keyword
+  arguments are SWI-Prolog extensions.
+\end{tags}
+
     \cfunction{None}{janus.prolog}{}
     Start the interactive Prolog toplevel.  This is the Python equivalent
     of py_shell/0.
@@ -682,7 +708,11 @@ non-deterministic Prolog predicate.
    to \arg{query}.  Answers never have \const{truth} \const{False}.
    See discussion above.
 
-   \cfunction{Query}{janus.query}{query, bindings=\{{}\}, keep=False}
+\begin{tags}
+\tag{Compatibility} PIP.  The \const{keep} is a SWI-Prolog extension.
+\end{tags}
+
+   \cfunction{Query}{janus.Query}{query, bindings=\{{}\}, keep=False}
    \jargon{Deprecated}.  This class was renamed to \cfuncref{janus.query}.
 
    \cfunction{dict{|}None}{janus.query.next}{}
@@ -694,6 +724,10 @@ non-deterministic Prolog predicate.
    Close the query.  Closing a query is obligatory.  When used as
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
    care of closing the query.
+
+\begin{tags}
+\tag{Compatibility} PIP.
+\end{tags}
 \end{description}
 
 \subsection{Janus iterator apply}
@@ -715,6 +749,10 @@ a Python \jargon{iterator} that enumerates all answers.
 [1, 2, 3, 4, 5, 6]
 \end{code}
 
+\begin{tags}
+\tag{Compatibility} PIP.
+\end{tags}
+
    \cfunction{any{|}None}{janus.apply.next}{}
    Explicitly ask for the next solution of the iterator.  Normally,
    using the \ctype{apply} as an iterator is to be preferred.  See
@@ -726,6 +764,10 @@ a Python \jargon{iterator} that enumerates all answers.
    Close the query.  Closing a query is obligatory.  When used as
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
    care of closing the query.
+
+\begin{tags}
+\tag{Compatibility} PIP.
+\end{tags}
 \end{description}
 
 \subsection{Janus access to Python locals and globals}
@@ -1220,6 +1262,9 @@ known differences.
 \begin{itemize}
 \item SWI-Prolog represents Phyton dicts as Prolog dicts.  XSB uses
   a term py({k:v, ...}), where the \verb$py()$ wrapper is optional.
+  The predicate py_is_dict/1 may be used to test that a Prolog term
+  represents a Python dict.  The predicates values/3, keys/2, key/2
+  and items/2 can be used to access either representation.
 \item SWI-Prolog allows for \term{prolog}{Term} to be sent to
   Python, creating an instance of \cfuncref{janus.Term}{}.
 \item SWI-Prolog represents Python object references as a \jargon{blob}.
@@ -1259,7 +1304,7 @@ code.
 
 \begin{itemize}
 \item The design is stable
-\item Some naming details are still under debate
+\item Naming and functionality are almost stable.
 \item Testing is not exhaustive.
 \end{itemize}
 
