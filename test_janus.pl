@@ -45,6 +45,7 @@
 :- use_module(library(statistics), [time/1]).
 :- use_module('tests/russel', []).
 :- use_module(library(error), [must_be/2]).
+:- use_module(library(prolog_code), [comma_list/2]).
 
 :- encoding(utf8).
 
@@ -143,10 +144,15 @@ test(stringify_wc, R == 'f(A,_,A)') :-     % numbervars
     py_call(janus:echo(#f(X,_,X)), R).
 test(dict, R=py{a:1, 2:2}) :-
     py_call(demo:dict1(), R).
-test(dict, Class == dict) :-               % invalid key: return as ref
+test(dict) :-
+    py_call(demo:dict1(), R, [py_dict_as({})]),
+    assertion(py_same_dict(R, {a:1,2:2})).
+test(empty_dict, R == py({})) :-
+    py_call(demo:dict0(), R, [py_dict_as({})]).
+test(dict) :-                              % invalid key: return as {}
     py_call(demo:dict2(), Dict),
-    assertion(py_is_object(Dict)),
-    py_call(Dict:'__class__':'__name__', Class).
+    assertion(py_is_dict(Dict)),
+    assertion(py_same_dict(Dict, {a:1,2.3:2})).
 test(iterator, L == [1,2,3,4]) :-          % An iterator checks as a sequence
     py_call(range(1,5), L).
 test(set, Ordered == [1,2,3]) :-
@@ -157,6 +163,11 @@ test(set, Ordered == [1,2,3]) :-
     assertion(Set2 == py_set(Set)).
 
 :- end_tests(janus_data).
+
+py_same_dict({D1}, {D2}) :-
+    comma_list(D1, KV1),
+    comma_list(D2, KV2),
+    KV1 == KV2.
 
 :- begin_tests(janus_prolog_data).
 

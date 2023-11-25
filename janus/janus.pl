@@ -43,6 +43,7 @@
             py_setattr/3,               % +On, +Name, +Value
             py_free/1,			% +Obj
 	    py_is_object/1,		% @Term
+	    py_is_dict/1,		% @Term
 	    py_with_gil/1,		% :Goal
 	    py_gil_owner/1,		% -ThreadID
 
@@ -69,7 +70,6 @@
 
             py_initialize/3,            % +Program, +Argv, +Options
             py_lib_dirs/1,              % -Dirs
-            py_add_lib_dir/0,           % (directive)
             py_add_lib_dir/1,           % +Dir
             py_add_lib_dir/2,           % +Dir,+Where
 
@@ -232,10 +232,6 @@ py_version :-
 %
 %   Options processed:
 %
-%     - py_string_as(+Type)
-%       If Type is `atom` (default), translate a Python String into a
-%       Prolog atom.  If Type is `string`, translate into a Prolog string.
-%	Strings are more efficient if they are short lived.
 %     - py_object(Boolean)
 %       If `true` (default `false`), translate the return as a Python
 %       object reference. Some objects are _always_ translated to
@@ -244,6 +240,21 @@ py_version :-
 %       Python base classes `int`, `float`, `str` or `tuple`. Instances
 %       of sub classes of these base classes are controlled by this
 %       option.
+%     - py_string_as(+Type)
+%       If Type is `atom` (default), translate a Python String into a
+%       Prolog atom.  If Type is `string`, translate into a Prolog string.
+%	Strings are more efficient if they are short lived.
+%     - py_dict_as(+Type)
+%       One of `dict` (default) to map a Python dict to a SWI-Prolog
+%       dict if all keys can be represented.  If `{}` or not all keys
+%       can be represented, Return is unified to a term `{k:v, ...}`
+%       or `py({})` if the Python dict is empty.
+%
+%   @compat  PIP.  The  options  `py_string_as`   and  `py_dict_as`  are
+%   SWI-Prolog  specific,  where  SWI-Prolog   Janus  represents  Python
+%   strings as atoms as required by  the   PIP  and it represents Python
+%   dicts by default  as  SWI-Prolog   dicts.  The  predicates values/3,
+%   keys/2, etc. provide portable access to the data in the dict.
 
 %!  py_iter(+Iterator, -Value) is nondet.
 %!  py_iter(+Iterator, -Value, +Options) is nondet.
@@ -283,7 +294,10 @@ py_version :-
 %   ```
 %
 %   @arg Options is processed as with py_call/3.
-%   @bug Iterator may not depend on janus.query()
+%   @bug Iterator may not depend on janus.query(), i.e., it is not
+%   possible to iterate over a Python iterator that under the hoods
+%   relies on a Prolog non-deterministic predicate.
+%   @compat PIP.  The same remarks as for py_call/2 apply.
 
 %!  py_setattr(+Target, +Name, +Value) is det.
 %
@@ -295,6 +309,8 @@ py_version :-
 %       py_setattr(Target, Name, Value) :-
 %           py_call(Target, Obj, [py_object(true)]),
 %           py_call(setattr(Obj, Name, Value)).
+%
+%   @compat PIP
 
 %!  py_run(+String, +Globals, +Locals, -Result, +Options) is det.
 %
@@ -316,6 +332,28 @@ py_version :-
 %
 %   @error existence_error(py_object, Term) is raised of Term is a
 %   Python object, but it has been freed using py_free/1.
+%
+%   @compat PIP. The SWI-Prolog implementation is safe in the sense that
+%   an arbitrary term cannot be confused  with   a  Python  object and a
+%   reliable error is generated  if  the   references  has  been  freed.
+%   Portable applications can not rely on this.
+
+%!  py_is_dict(@Term) is semidet.
+%
+%   True if Term is a Prolog term that represents a Python dict.
+%
+%   @compat PIP. The SWI-Prolog version accepts   both a SWI-Prolog dict
+%   as the \{k:v,\ldots\} representation.  See   `py_dict_as`  option of
+%   py_call/2.
+
+py_is_dict(Dict), is_dict(Dict) => true.
+py_is_dict(py({})) => true.
+py_is_dict(py({KV})) => is_kv(KV).
+py_is_dict({KV}) => is_kv(KV).
+
+is_kv((K:V,T)) => ground(K), ground(V), is_kv(T).
+is_kv(K:V) => ground(K), ground(V).
+
 
 %!  py_free(+Obj) is det.
 %
@@ -328,6 +366,13 @@ py_version :-
 %
 %   Prolog references to Python objects  are   subject  to  atom garbage
 %   collection and thus normally do not need to be freed explicitly.
+%
+%   @compat PIP. The SWI-Prolog  implementation   is  safe  and normally
+%   reclaiming Python object can  be  left   to  the  garbage collector.
+%   Portable applications may not assume   garbage  collection of Python
+%   objects and must ensure to call py_free/1 exactly once on any Python
+%   object reference. Not calling  py_free/1   leaks  the Python object.
+%   Calling it twice may lead to undefined behavior.
 
 %!  py_with_gil(:Goal) is semidet.
 %
@@ -358,13 +403,14 @@ py_version :-
 %!  py_func(+Module, +Function, -Return) is det.
 %!  py_func(+Module, +Function, -Return, +Options) is det.
 %
-%   XSB  compatible  wrappers  for  py_call/2.  Note  that  the  wrapper
-%   supports more call patterns.  Options
+%   Call Python Function in  Module.   The  SWI-Prolog implementation is
+%   equivalent to py_call(Module:Function, Return).   See  py_call/2 for
+%   details.
 %
-%     - sizecheck(+Boolean)
-%       Used by XSB for memory management.  Ignored in SWI-Prolog.
-%     - py_object(+Boolean)
-%       Passed to py_call/3.
+%   @compat  PIP.  See  py_call/2  for  notes.    Note   that,  as  this
+%   implementation is based on  py_call/2,   Function  can use changing,
+%   e.g., py_func(sys, path:append(dir), Return)  is   accepted  by this
+%   implementation, but not portable.
 
 py_func(Module, Function, Return) :-
     py_call(Module:Function, Return).
@@ -374,9 +420,12 @@ py_func(Module, Function, Return, Options) :-
 %!  py_dot(+Module, +ObjRef, +MethAttr, -Ret) is det.
 %!  py_dot(+Module, +ObjRef, +MethAttr, -Ret, +Options) is det.
 %
-%   XSB compatible wrappers for py_call/2.
+%   Call a method or access  an  attribute   on  the  object ObjRef. The
+%   SWI-Prolog implementation is equivalent  to py_call(ObjRef:MethAttr,
+%   Return). See py_call/2 for details.
 %
 %   @arg Module is ignored (why do we need that if we have ObjRef?)
+%   @compat PIP.  See py_func/3 for details.
 
 py_dot(_Module, ObjRef, MethAttr, Ret) :-
     py_call(ObjRef:MethAttr, Ret).
@@ -392,6 +441,9 @@ py_dot(_Module, ObjRef, MethAttr, Ret, Options) :-
 %
 %   Get the value associated with Dict at  Path. Path is either a single
 %   key or a list of keys.
+%
+%   @compat PIP. Note that this predicate   handle  a SWI-Prolog dict, a
+%   {k:v, ...} term as well as py({k:v, ...}.
 
 values(Dict, Key, Val), is_dict(Dict), atom(Key) =>
     get_dict(Key, Dict, Val).
@@ -425,6 +477,9 @@ comma_value_path([H|T], Dict, Val) :-
 %!  keys(+Dict, ?Keys) is det.
 %
 %   True when Keys is a list of keys that appear in Dict.
+%
+%   @compat PIP. Note that this predicate   handle  a SWI-Prolog dict, a
+%   {k:v, ...} term as well as py({k:v, ...}.
 
 keys(Dict, Keys), is_dict(Dict) =>
     dict_keys(Dict, Keys).
@@ -443,6 +498,9 @@ comma_dict_keys(Key:_, Keys) =>
 %
 %   True when Key is a key in   Dict.  Backtracking enumerates all known
 %   keys.
+%
+%   @compat PIP. Note that this predicate   handle  a SWI-Prolog dict, a
+%   {k:v, ...} term as well as py({k:v, ...}.
 
 key(Dict, Key), is_dict(Dict) =>
     dict_pairs(Dict, _Tag, Pairs),
@@ -459,6 +517,9 @@ comma_dict_key((_,T), Key) :-
 %!  items(+Dict, ?Items) is det.
 %
 %   True when Items is a list of Key:Value that appear in Dict.
+%
+%   @compat PIP. Note that this predicate   handle  a SWI-Prolog dict, a
+%   {k:v, ...} term as well as py({k:v, ...}.
 
 items(Dict, Items), is_dict(Dict) =>
     dict_pairs(Dict, _, Pairs),
@@ -539,6 +600,8 @@ import_janus :-
 %            [underscore_numbers(true)]).
 %   {'a': 1, 'l': [1, 2, 3], 'size': 1_000_000}
 %   ```
+%
+%   @compat PIP
 
 py_pp(Term) :-
     py_pp(current_output, Term, []).
@@ -571,6 +634,8 @@ pair_kws(Name-Value, Name=Value).
 %   Examine attributes of an object.  The predicate py_obj_dir/2 fetches
 %   the names of all attributes, while   py_obj_dict/2  gets a dict with
 %   all attributes and their values.
+%
+%   @compat PIP
 
 py_obj_dir(ObjRef, List) :-
     py_call(ObjRef:'__dir__'(), List).
@@ -727,12 +792,13 @@ non_file_stream(Expect-Stream, Bool) :-
 %
 %   True when Dirs is a list of directories searched for Python modules.
 %   The elements of Dirs are in Prolog canonical notation.
+%
+%   @compat PIP
 
 py_lib_dirs(Dirs) :-
     py_call(sys:path, Dirs0),
     maplist(prolog_to_os_filename, Dirs, Dirs0).
 
-%!  py_add_lib_dir is det.
 %!  py_add_lib_dir(+Dir) is det.
 %!  py_add_lib_dir(+Dir, +Where) is det.
 %
@@ -750,12 +816,11 @@ py_lib_dirs(Dirs) :-
 %   py_add_lib_dir/2 are used in a directive  and the given directory is
 %   not absolute, it is  resolved  against   the  directory  holding the
 %   current Prolog source.
+%
+%   @compat PIP.  PIP only describes py_add_lib_dir/1.
 
 :- multifile system:term_expansion/2.
 
-system:term_expansion((:- py_add_lib_dir),
-                      (:- initialization(py_add_lib_dir(Dir, first), now))) :-
-    prolog_load_context(directory, Dir).
 system:term_expansion((:- py_add_lib_dir(Dir0)),
                       (:- initialization(py_add_lib_dir(Dir, first), now))) :-
     \+ is_absolute_file_name(Dir0),
@@ -767,9 +832,6 @@ system:term_expansion((:- py_add_lib_dir(Dir0, Where)),
     prolog_load_context(directory, CWD),
     absolute_file_name(Dir0, Dir, [relative_to(CWD)]),
     absolute_file_name(Dir0, Dir).
-
-py_add_lib_dir :-
-    throw(error(context_error(nodirective, py_add_lib_dir), _)).
 
 py_add_lib_dir(Dir) :-
     py_add_lib_dir(Dir, first).

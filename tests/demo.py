@@ -17,6 +17,9 @@ def isstr(s):
     else:
         return False
 
+def dict0():
+    return {}
+
 def dict1():
     return {"a":1, 2:2}
 

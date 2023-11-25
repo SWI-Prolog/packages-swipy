@@ -60,6 +60,7 @@ static atom_t ATOM_single;
 static atom_t ATOM_builtins;
 static atom_t ATOM_locals;
 static atom_t ATOM_globals;
+static atom_t ATOM_dict;
 
 static functor_t FUNCTOR_python_error3;
 static functor_t FUNCTOR_error2;
@@ -192,7 +193,8 @@ static pthread_mutex_t py_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define PYU_STRING 0x0001		/* Unify text as Prolog string */
 #define PYU_OBJ    0x0002		/* Unify as object */
-#define PYU_ERROR  0x0004		/* Inside check_error() */
+#define PYU_CURL   0x0004		/* Unify dict as {...} */
+#define PYU_ERROR  0x0008		/* Inside check_error() */
 
 #ifndef HAVE_PYGILSTATE_CHECK
 static _Thread_local int have_gil;
@@ -783,7 +785,10 @@ py_unify_portable_dict(term_t t, PyObject *obj, int flags)
 
 static int
 py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
-{ Py_ssize_t size = PyDict_Size(obj);
+{ if ( (flags&PYU_CURL) )
+    return py_unify_portable_dict(t, obj, flags);
+
+  Py_ssize_t size = PyDict_Size(obj);
   term_t pl_dict = PL_new_term_ref();
   term_t pl_values;
   atom_t fast[25];
@@ -1870,8 +1875,9 @@ atom_domain_error(const char *dom, atom_t a)
 
 
 static PL_option_t pycall_options[] =
-{ PL_OPTION("py_string_as",   OPT_ATOM),
-  PL_OPTION("py_object",      OPT_BOOL),
+{ PL_OPTION("py_string_as", OPT_ATOM),
+  PL_OPTION("py_dict_as",   OPT_ATOM),
+  PL_OPTION("py_object",    OPT_BOOL),
   PL_OPTIONS_END
 };
 
@@ -1880,10 +1886,11 @@ static int
 get_conversion_options(term_t options, int *flags)
 { if ( options )
   { atom_t string_as = 0;
+    atom_t dict_as = 0;
     int py_object    = -1;
 
     if ( !PL_scan_options(options, 0, "py_call_options", pycall_options,
-			  &string_as, &py_object) )
+			  &string_as, &dict_as, &py_object) )
       return FALSE;
     if ( py_object != -1 )
     { if ( py_object )
@@ -1899,6 +1906,15 @@ get_conversion_options(term_t options, int *flags)
       else
 	return atom_domain_error("py_string_as", string_as);
     }
+    if ( dict_as )
+    { if ( dict_as == ATOM_dict )
+	*flags &= ~PYU_CURL;
+      else if ( dict_as == ATOM_curl )
+	*flags |= PYU_CURL;
+      else
+	return atom_domain_error("py_dict_as", dict_as);
+    }
+
   }
 
   return TRUE;
@@ -2366,6 +2382,7 @@ install_janus(void)
   MKATOM(true);
   MKATOM(atom);
   MKATOM(string);
+  MKATOM(dict);
   MKATOM(file);
   MKATOM(eval);
   MKATOM(single);
