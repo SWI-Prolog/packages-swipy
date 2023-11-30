@@ -686,6 +686,7 @@ py_module(Module, Source) :-
 		 *******************************/
 
 :- dynamic py_venv/2 as volatile.
+:- dynamic py_is_initialized/0 as volatile.
 
 %   py_initialize is det.
 %
@@ -762,7 +763,9 @@ py_initialize(Program, Argv, Options) :-
 			   [ access(read) ]),
 	file_directory_name(Janus, PythonDir),
 	py_add_lib_dir(PythonDir, first),
-	py_connect_io
+	py_connect_io,
+        repl_add_cwd,
+        asserta(py_is_initialized)
     ;   true
     ).
 
@@ -848,6 +851,24 @@ py_add_lib_dir(Dir, Where) :-
     ->  py_call(sys:path:insert(0, OSDir), _)
     ;   must_be(oneof([first,last]), Where)
     ).
+
+repl_add_cwd :-
+    current_prolog_flag(break_level, Level),
+    Level >= 0,
+    (   py_call(sys:path:count(''), N),
+        N > 0
+    ->  true
+    ;   print_message(informational, janus(add_cwd)),
+        py_add_lib_dir('', first)
+    ).
+
+:- multifile
+    prolog:repl_loop_hook/2.
+
+prolog:repl_loop_hook(begin, Level) :-
+    Level >= 0,
+    py_is_initialized,
+    repl_add_cwd.
 
 
 		 /*******************************
@@ -1127,3 +1148,5 @@ message(py_shell(no_janus)) -->
     [ 'Janus: py_shell/0: Importing janus into the Python shell requires Python 3.10 or later.', nl,
       'Run "', ansi(code, 'from janus import *', []), '" in the Python shell to import janus.'
     ].
+message(add_cwd) -->
+    [ 'Interative session; added `.` to Python `sys.path`'-[] ].
