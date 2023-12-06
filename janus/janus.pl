@@ -807,20 +807,20 @@ py_lib_dirs(Dirs) :-
 %
 %   Add a directory to the Python  module   search  path.  In the second
 %   form, Where is one of `first`   or `last`. py_add_lib_dir/1 adds the
-%   directory as first. The property `sys:path`   is  not modified if it
+%   directory as `last`. The property `sys:path`   is not modified if it
 %   already contains Dir.
 %
 %   Dir is in Prolog notation. The added   directory  is converted to an
-%   absolute path using the OS notation.
+%   absolute path using the OS notation using prolog_to_os_filename/2.
 %
-%   The form py_add_lib_dir/0 may only be  used as a _directive_, adding
-%   the directory from which the current Prolog  source is loaded at the
-%   head  of  the   Python   search    path.   If   py_add_lib_dir/1  or
-%   py_add_lib_dir/2 are used in a directive  and the given directory is
-%   not absolute, it is  resolved  against   the  directory  holding the
-%   current Prolog source.
+%   If Dir is a _relative_ path, it   is taken relative to Prolog source
+%   file when used as a _directive_ and  relative to the process working
+%   directory when called as a predicate.
 %
-%   @compat PIP.  PIP only describes py_add_lib_dir/1.
+%   @compat PIP. Note  that  SWI-Prolog   uses  POSIX  file  conventions
+%   internally, mapping to OS  conventions   inside  the predicates that
+%   deal with files or explicitly   using prolog_to_os_filename/2. Other
+%   systems may use the native file conventions in Prolog.
 
 :- multifile system:term_expansion/2.
 
@@ -837,7 +837,7 @@ system:term_expansion((:- py_add_lib_dir(Dir0, Where)),
     absolute_file_name(Dir0, Dir).
 
 py_add_lib_dir(Dir) :-
-    py_add_lib_dir(Dir, first).
+    py_add_lib_dir(Dir, last).
 
 py_add_lib_dir(Dir, Where) :-
     absolute_file_name(Dir, AbsDir),
