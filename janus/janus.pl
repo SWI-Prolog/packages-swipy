@@ -408,7 +408,7 @@ is_kv(K:V) => ground(K), ground(V).
 %   details.
 %
 %   @compat  PIP.  See  py_call/2  for  notes.    Note   that,  as  this
-%   implementation is based on  py_call/2,   Function  can use changing,
+%   implementation is based on py_call/2,   Function can use _chaining_,
 %   e.g., py_func(sys, path:append(dir), Return)  is   accepted  by this
 %   implementation, but not portable.
 

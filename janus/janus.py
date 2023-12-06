@@ -68,6 +68,8 @@ except ModuleNotFoundError:     # Loading janus into Python
 if not hasattr(_swipl, 'call'):
     raise RuntimeError(f"Loaded wrong module '_swipl' from {_swipl.__file__}")
 
+version="1.0.0"
+
 import enum
 
 ################################################################
