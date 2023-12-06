@@ -1149,4 +1149,4 @@ message(py_shell(no_janus)) -->
       'Run "', ansi(code, 'from janus import *', []), '" in the Python shell to import janus.'
     ].
 message(add_cwd) -->
-    [ 'Interative session; added `.` to Python `sys.path`'-[] ].
+    [ 'Interactive session; added `.` to Python `sys.path`'-[] ].
