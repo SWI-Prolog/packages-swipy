@@ -172,7 +172,7 @@ __sync_bool_compare_and_swap(volatile void **addr, void *old, void *new)
 #if _WIN64
   return _InterlockedCompareExchange64((volatile __int64*)addr, (__int64)new, (__int64)old) == (__int64)old;
 #else
-  return _InterlockedCompareExchange64((volatile long*)addr, (long)new, (long)old) == (long)old;
+  return _InterlockedCompareExchange((volatile long*)addr, (long)new, (long)old) == (long)old;
 #endif
 }
 

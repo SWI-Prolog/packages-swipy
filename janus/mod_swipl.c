@@ -462,9 +462,9 @@ query_parms(PyObject *args, PyObject **tpp, fid_t *fid, qid_t *qid, term_t *av, 
        !Py_GetInt64Arg(2, tp, &tav[2]) ||
        !Py_GetInt64Arg(3, tp, &tav[3]) )
     return FALSE;
-  *fid  = tav[0];
+  *fid  = (fid_t)tav[0];
   *qid  = (qid_t)tav[1];
-  *av   = tav[2];
+  *av   = (term_t)tav[2];
   *keep = (int)tav[3];
 
   return TRUE;
