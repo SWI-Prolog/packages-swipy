@@ -24,7 +24,7 @@ elif ( sys.platform == 'win32' ):
     PLLIB="libswipl"
 
 setup(name='janus_swi',
-      version='0.9.5',
+      version='1.0.0',
       description="Janus library to call SWI-Prolog",
       author="Jan Wielemaker",
       author_email="jan@swi-prolog.org",

@@ -1,25 +1,17 @@
 # Janus: a bi-directional interface to Python
 
-> This is  _beta_ software.  This  work is based  on Janus for  XSB by
-> Theresa  Swift   and  Carl   Anderson.   The  current   API  differs
-> considerably from the original.  We reached agreement on the current
-> API and XSB will implement this.
->
-> Design  and overall  implementation  structure is  considered to  be
-> robust.   Several  issues  still   need  to  be  addressed,  notably
-> considering  installation  in   various  environments  and  graceful
-> handling of violating the limitations of open Prolog queries.
-
 This  code  implements  a  ready-to-use  bi-directional  interface  to
 Python.  As  motivated by Theresa  Swift, Python opens many  doors for
 accessing resources such as graphics, machine learning and many more.
 
-While this code is motivated by Janus, the current interface is rather
-different.  In part, that is due to the extended data types that allow
-SWI-Prolog to define  a cleaner interface.  In part, this  is based on
-experience  with e.g.,  our JavaScript  interface.  We  are discussing
-changes on both ends to make the interfaces as compatible as possible.
-Part of this discussion is already reflected in the current state.
+The  API defined  in this  interface has  been established  as a  PIP,
+_Prolog Improvement Proposal_.  When the PIP is finished and published
+we  will  properly  reference  it.  The  main  predicates  and  Python
+functions of this interface are compatible with the XSB Python package
+`janus_xsb`.   Both `janus_swi`  and `janus_xsb`  implement extensions
+upon  the   agreed  interface.   For  example,   `janus_swi`  supports
+SWI-Prolog dicts and defines thread synchronization between Prolog and
+Python.
 
 ## Installing as Prolog library
 
@@ -32,8 +24,8 @@ achieved using
 
     apt install python3 libpython3-dev
 
-If you need to build Python, the following command is suggested
-(assuming you wish to install it in `$HOME/.local/bin`). You may also
+If  you need  to  build  Python, the  following  command is  suggested
+(assuming you wish to install  it in `$HOME/.local/bin`). You may also
 need the option `--enable-shared`.
 
     CFLAGS='-fPIC' CCSHARED='-fPIC' ./configure --prefix=$HOME/.local --enable-optimizations
@@ -54,12 +46,12 @@ printing relevant information on the embedded Python system.
 
 ### Embedding Prolog into Python
 
-This repo my  be installed as a  Python package such that  you can run
+This repo may be  installed as a Python package such  that you can run
 e.g.,
 
     python
-	>>> from janus_swi import *
-	>>> query_once("writeln('Hello world!')")
+	>>> import janus_swi as janus
+	>>> janus.query_once("writeln('Hello world!')")
 	Hello world!
 	{'truth': True}
 	>>>
