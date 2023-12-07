@@ -603,7 +603,7 @@ arguments followed by a single output variable.
 			         truth_vals=TruthVals.PLAIN_TRUTHVALS}
     \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.
 
-    \cfunction{Any}{janus.apply_once}{module, predicate, input ..., fail=obj}
+    \cfunction{Any}{janus.apply_once}{module, predicate, *input, fail=obj}
     \jargon{Functional notation} style calling of a deterministic Prolog
     predicate.  This calls \term{module:predicate}{Input \ldots, Output}, where
     \arg{Input} are the Python \arg{input} arguments converted to
@@ -626,7 +626,7 @@ arguments followed by a single output variable.
 \tag{Compatibility} PIP.
 \end{tags}
 
-    \cfunction{Truth}{janus.cmd}{module, predicate, input ...}
+    \cfunction{Truth}{janus.cmd}{module, predicate, *input}
     Similar to \cfuncref{janus.apply_once}{}, but no argument for the
     return value is added.  This function returns the \jargon{truth
       value} using the same conventions as the \const{truth} key
@@ -738,7 +738,7 @@ calling a Prolog predicate using functional notation style.  It returns
 a Python \jargon{iterator} that enumerates all answers.
 
 \begin{description}
-  \cfunction{apply}{janus.apply}{module, predicate, input ...}
+  \cfunction{apply}{janus.apply}{module, predicate, *input}
   As \cfuncref{janus.apply_once}{}, returning an \jargon{iterator}
   that returns individual answers.  The example below uses Python
   \jargon{list comprehension} to create a list of integers from
@@ -916,7 +916,7 @@ to represent arbitrary Prolog data, typically with the intend to pass
 it back to Prolog.
 
 \begin{description}
-  \cfunction{Term}{janus.Term}{...}
+  \cfunction{Term}{janus.Term}{*args}
   Instances are never created explicitly by the user.   An instance is
   created by handling a term \term{prolog}{Term} to the data conversion
   process.   As a result, we can do
