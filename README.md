@@ -1,4 +1,4 @@
-# Janus: a bi-directional interface to Python
+# Janus-swi: a bi-directional interface between SWI-Prolog and Python
 
 This  code  implements  a  ready-to-use  bi-directional  interface  to
 Python.  As  motivated by Theresa  Swift, Python opens many  doors for
@@ -13,9 +13,56 @@ upon  the   agreed  interface.   For  example,   `janus_swi`  supports
 SWI-Prolog dicts and defines thread synchronization between Prolog and
 Python.
 
-## Installing as Prolog library
 
-This  is  normally a  GIT  sub  module  of  the SWI-Prolog  git  repo.
+## Bi-directional
+
+This  GIT repository  is a  GIT _submodule_  of the  SWI-Prolog source
+repository.  As part of the  SWI-Prolog source distribution it is used
+to build `library(janus)`, a Prolog  library that embeds Python.  This
+same  module can  be  used  stand-alone to  build  the Python  package
+`janus_swi` that embeds Prolog into  Python.  Loaded either way, Janus
+is the same and allows for mutually recursive calls between Prolog and
+Python.
+
+
+## Embedding Prolog into Python: the Python janus_swi package
+
+If  this  repository   is  used  to  build  the   Python  pip  package
+`janus_swi`, we can  load SWI-Prolog into Python  and call predicates.
+For example:
+
+    python
+	>>> import janus_swi as janus
+	>>> janus.query_once("writeln('Hello world!')")
+	Hello world!
+	{'truth': True}
+	>>>
+
+The    Python    package    is     available    from    __PyPi__    as
+[janus-swi](https://pypi.org/project/janus-swi/).      We    currently
+provide  a few  _wheels_ for  Windows.   The binaries  in the  Windows
+_wheel_ probably supports all Python and Prolog versions that are also
+supported by  the source.   The package can  be installed  using `pip`
+from source on any system with CPython 3.6 or later, SWI-Prolog 9.1.12
+or later and a  C compiler.  For compiling the C  code, GCC, Clang and
+VS2022 have been tested.  Thus,  normally the package can be installed
+using
+
+    pip install janus-swi
+
+SWI-Prolog is  selected by  finding `swipl`  on the  executable search
+path.   If `swipl.exe`  is not  in ``%PATH%``  on Windows  the Windows
+registry is examined to find SWI-Prolog.
+
+If  you installed  SWI-Prolog from  source, it  is advices  to install
+Janus from the  `packages/swipy` directory in the  Prolog source.  The
+package can be installed from within this directory using
+
+    pip install .
+
+
+## Embedding Python into Prolog: library(janus)
+
 Configuration and installation of `library(janus)` which embeds Python
 into Prolog is  handled by the normal  Prolog configuration.  Building
 the  interface  requires  the  libraries  and  C  headers  for  Python
@@ -44,45 +91,16 @@ printing relevant information on the embedded Python system.
     ?- py_version.
 	% Janus embeds Python 3.10.12 (main, Jun 11 2023, 05:26:28) [GCC 11.4.0
 
-### Embedding Prolog into Python
 
-This repo may be  installed as a Python package such  that you can run
-e.g.,
+## Using Conda
 
-    python
-	>>> import janus_swi as janus
-	>>> janus.query_once("writeln('Hello world!')")
-	Hello world!
-	{'truth': True}
-	>>>
+Ongoing work  to get SWI-Prolog  working under  Conda can be  found at
+https://github.com/SWI-Prolog/swi-prolog-feedstock.   Eventually, this
+work shall be merged with https://anaconda.org/conda-forge/swi-prolog
 
-To install  the package you  need `pip` with  a C compiler.   On Linux
-this is  probably provided by  default by installing `pip`.   On MacOS
-you need  to install Xcode.  On  Windows, it probably depends  how you
-installed    CPython.    Assuming    the   binary    installers   from
-https://www.python.org/downloads/windows/,   you   need   to   install
-Microsoft Visual C++.   If this is not installed, `pip`  will tell you
-and give a link from where to download Microsoft Visual C++.
-
-Next, you  need to  make sure  `swipl` can  be found.   The `setup.py`
-script first  tries to find  `swipl` (`swipl.exe` on Windows)  on your
-application search path.  You can  verify that by running `swipl` from
-a terminal.   If `swipl`  cannot be  found or it  is not  the expected
-version of  SWI-Prolog, adjust your ``PATH``.   On Windows, `setup.py`
-also checks the registry to find  SWI-Prolog as it is installed by the
-default installation.  If  this works, SWI-Prolog does not  need to be
-in ``%PATH%``.
-
-If this is all in place, you can download this repo and install it, as
-in
-
-    git clone https://github.com/SWI-Prolog/packages-swipy.git swipy
-	cd swipy
-	pip install .
-
-You can also do this using the one-liner below.
-
-    pip install git+https://github.com/SWI-Prolog/packages-swipy.git#egg=janus_swi
+As  is,  https://github.com/SWI-Prolog/swi-prolog-feedstock  has  been
+used  to build  the full  SWI-Prolog  system with  Janus interface  on
+Linux, MacOS and Windows.
 
 
 ## Documentation
