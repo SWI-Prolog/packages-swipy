@@ -1057,6 +1057,22 @@ $B$ holds $M$ and wishes to make a Python call and this tries to lock
 the GIL.  The predicate py_gil_owner/1 can be used to help diagnosing
 such issues.
 
+\subsection{Janus versions}
+\label{sec:janus-version}
+
+The current version as an integer can be accessed as
+\exam{janus.version}.  The integer uses the same conventions as the
+SWI-Prolog flag \const{version} and is defined as $10,000*Major +
+100*Minor + Patch$.  In addition, the module defines the following
+functions:
+
+\begin{description}
+  \cfunction{str}{janus.version_str}{}
+  Return the Janus version as a string \arg{Major.Minor.Patch}.
+  \cfunction{None}{janus.version}{}
+  Print information about Janus and SWI-Prolog version.
+\end{description}
+
 \section{Janus as a Python package}
 \label{sec:janus-python-package}
 

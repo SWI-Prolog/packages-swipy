@@ -68,7 +68,25 @@ except ModuleNotFoundError:     # Loading janus into Python
 if not hasattr(_swipl, 'call'):
     raise RuntimeError(f"Loaded wrong module '_swipl' from {_swipl.__file__}")
 
-version="1.0.0"
+################################################################
+# Versions
+
+# 10000*major + 100*minor + patch
+version_num=10000
+
+def version_str(num=version_num):
+    """
+    Return Janus version as major.minor.patch
+    """
+    return f"{num//10000}.{num%10000//100}.{num%100}"
+
+def version():
+    """
+    Print version information about Janus and the embedded SWI-Prolog system
+    """
+    global version
+    plv = version_str(apply_once("user", "current_prolog_flag", "version"))
+    print(f"Janus version {version_str()} embedding SWI-Prolog {plv}")
 
 import enum
 
