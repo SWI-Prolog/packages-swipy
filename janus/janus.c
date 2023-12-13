@@ -365,11 +365,11 @@ get_py_obj(term_t t, PyObject **objp, int error)
       *objp = obj;
       return TRUE;
     } else
-      return PL_existence_error("PyObject", t);
+      return PL_existence_error("py_object", t);
   }
 
   if ( error )
-    PL_type_error("PyObject", t);
+    PL_type_error("py_object", t);
 
   return FALSE;
 }
@@ -978,7 +978,7 @@ py_add_to_dict(term_t key, term_t value, void *closure)
 static int
 add_prolog_key_value_to_dict(PyObject *py_dict, term_t tuple,
 			     term_t key, term_t value)
-{ if ( PL_is_functor(tuple, FUNCTOR_key_value2) )
+{ if ( PL_is_functor(tuple, FUNCTOR_key_value2) ) /* Key:Value */
   { _PL_get_arg(1, tuple, key);
     _PL_get_arg(2, tuple, value);
     PyObject *py_key = NULL, *py_value = NULL;
@@ -1351,7 +1351,7 @@ py_from_prolog(term_t t, PyObject **obj)
     return TRUE;
 
 error:
-  return PL_domain_error("py_data", t),FALSE;
+  return PL_domain_error("py_term", t),FALSE;
 }
 
 
@@ -2280,12 +2280,12 @@ py_free(term_t t)
     (void)data;
     if ( type == &PY_OBJECT )
     { if ( size == 0 )
-	return PL_existence_error("PyObject", t);
+	return PL_existence_error("py_object", t);
       return PL_free_blob(blob);
     }
   }
 
-  return PL_type_error("py_obj", t);
+  return PL_type_error("py_object", t);
 }
 
 
