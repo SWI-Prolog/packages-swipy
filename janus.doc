@@ -325,6 +325,65 @@ by the Prolog flags \const{py_backtrace} (default \const{true}) and
 SWI-Prolog specific.
 \end{tags}
 
+\subsection{Calling and data translation errors}
+\label{sec:janus-data-errors}
+
+Errors may occur when converting Prolog terms to Python objects
+as defined in \secref{janus-data}.  These errors are reported as
+\const{instantiation_error}, \term{type_error}{Type, Culprit} or
+\term{domain_error}{Domain, Culprit}.
+
+Defined \textbf{domains} are:
+
+\begin{description}
+  \termitem{py_constant}{}
+  In a term \term{@}{Constant}, \arg{Constant} is not \const{true},
+  \const{false} or \const{none}.   For example, \exam{py_call(print(@error))}.
+  \termitem{py_keyword_arg}{}
+  In a call to Python, a non keyword argument follows a keyword
+  argument.   For example, \exam{py_call(m:f(1,x=2,3), R)}
+  \termitem{py_string_as}{}
+  The value for a \term{py_string_as}{As} option is invalid.  For
+  example, \exam{py_call(m:f(), R, [py_string_as(codes)])}
+  \termitem{py_dict_as}{}
+  The value for a \term{py_dict_as}{As} option is invalid.  For
+  example, \exam{py_call(m:f(), R, [py_dict_as(list)])}
+  \termitem{py_term}{}
+  A term being translated to Python is unsupported.  For example,
+  \exam{py_call(m:f(point(1,2), R)}.
+\end{description}
+
+Defined \textbf{types} are:
+
+\begin{description}
+  \termitem{py_object}{}
+  A Python object reference was expected.  For example,
+  \exam{py_free(42)}
+  \termitem{rational}{}
+  A Python \const{fraction} instance is converted to a Prolog rational
+  number, but the textual conversion does not produce a valid rational
+  number.  This can happen if the Python \const{fraction} is subclassed
+  and the \const{__str__()} method does not produce a correct string.
+  \termitem{py_key_value}{}
+  Inside a \exam{\{k:v, \ldots\}} representation for a dictionary we
+  find a term that is not a key-value pair.  For example,
+  \exam{py_call(m:f(\{a:1, x\}), R)}
+  \termitem{py_set}{}
+  Inside a \term{py_set}{Elements}, \arg{Elements} is not a list.
+  For example, \exam{py_call(m:f(py_set(42), R)}.
+  \termitem{py_target}{}
+  In \term{py_call}{Target:FuncOrAttrOrMethod}, \arg{Target} is not
+  a module (atom) or Python object reference.
+  For example, \exam{py_call(7:f(), R)}.
+  \termitem{py_callable}{}
+  In \term{py_call}{Target:FuncOrAttrOrMethod}, \arg{FuncOrAttrOrMethod}
+  is not an atom or compound.
+  For example, \exam{py_call(m:7, R)}.
+\end{description}
+
+
+
+
 \subsection{Janus and virtual environments (venv)}
 \label{sec:janus-venv}
 
