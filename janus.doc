@@ -298,14 +298,13 @@ Prolog exception of the shape below. The library defines a rule for
 print_message/2 to render these errors in a human readable way.
 
 \begin{quote}
-\term{error}{\term{python_error}{ErrorType, Value, Stack}, _}
+\term{error}{\term{python_error}{ErrorType, Value}, _}
 \end{quote}
 
 Here, \arg{ErrorType} is the name of the error type, as an atom, e.g.,
 \const{'TypeError'}. \arg{Value} is the exception object represented by
-a Python object reference. \arg{Stack} is either \const{@none} or an
-object that captures the Python stack. The \pllib{janus} defines the
-message formatting, which makes us end up with a message like below.
+a Python object reference. The \pllib{janus} defines the message
+formatting, which makes us end up with a message like below.
 
 \begin{code}
 ?- py_call(nomodule:noattr).
@@ -314,6 +313,17 @@ ERROR:   No module named 'nomodule'
 ERROR: In:
 ERROR:   [10] janus:py_call(nomodule:noattr)
 \end{code}
+
+The Python \jargon{stack trace} is handed embedded into the second
+argument of the \term{error}{Formal, ImplementationDefined}.  If
+an exception is printed, printing the Python backtrace, is controlled
+by the Prolog flags \const{py_backtrace} (default \const{true}) and
+\const{py_backtrace_depth} (default \const{4}).
+
+\begin{tags}
+\tag{Compatibility} PIP.  The embedding of the Python backtrace is
+SWI-Prolog specific.
+\end{tags}
 
 \subsection{Janus and virtual environments (venv)}
 \label{sec:janus-venv}

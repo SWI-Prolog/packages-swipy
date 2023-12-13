@@ -87,6 +87,7 @@
 :- autoload(library(prolog_code), [comma_list/2]).
 :- autoload(library(readutil), [read_line_to_string/2]).
 :- autoload(library(wfs), [call_delays/2, delays_residual_program/2]).
+:- autoload(library(dcg/high_order), [sequence//2, sequence//3]).
 
 :- if(\+current_predicate(py_call/1)).
 :- if(current_prolog_flag(windows, true)).
@@ -122,6 +123,9 @@ add_python_dll_dir :-
     py_call_string/3,
     py_write/2,
     py_readline/4.
+
+:- create_prolog_flag(py_backtrace,       true, [type(boolean), keep(true)]).
+:- create_prolog_flag(py_backtrace_depth, 4,    [type(integer), keep(true)]).
 
 /** <module> Call Python from Prolog
 
@@ -663,8 +667,7 @@ py_obj_dict(ObjRef, Dict) :-
 %   Source is a no-op. Called with  a   different  source  creates a new
 %   Python module that replaces the old in the global namespace.
 %
-%   @error python_error(Type, Data, Stack) is raised if Python raises an
-%   error.
+%   @error python_error(Type, Data) is raised if Python raises an error.
 
 :- dynamic py_dyn_module/2 as volatile.
 
@@ -1129,14 +1132,35 @@ py_consult(File, Data, Module) =>
 
 :- multifile
     prolog:error_message//1,
+    prolog:message_context//1,
     prolog:message//1.
 
-prolog:error_message(python_error(Class, Value, _Stack)) -->
+prolog:error_message(python_error(Class, Value)) -->
     { py_str(Value, Message)
     },
     [ 'Python ', ansi(code, "'~w'", [Class]), ':', nl,
       '  ~w'-[Message]
     ].
+
+prolog:message_context(context(_, PythonCtx)) -->
+    { nonvar(PythonCtx),
+      PythonCtx = python_stack(Stack),
+      current_prolog_flag(py_backtrace, true),
+      py_is_object(Stack),
+      !,
+      current_prolog_flag(py_backtrace_depth, Depth),
+      py_call(traceback:format_tb(Stack, Depth), Frames)
+    },
+    [ nl, 'Python stack:', nl ],
+    sequence(py_stack_frame, Frames).
+
+py_stack_frame(String) -->
+    { split_string(String, "\n", "", Lines)
+    },
+    sequence(msg_line, [nl], Lines).
+
+msg_line(Line) -->
+    [ '~s'-[Line] ].
 
 prolog:message(janus(Msg)) -->
     message(Msg).

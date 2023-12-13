@@ -335,13 +335,13 @@ test(apply, X == 1) :-
     py_call(janus:apply_once(user, between, 1, 2), X).
 test(apply, X == 0) :-
     py_call(janus:apply_once(user, between, 3, 2, fail=0), X).
-test(apply, error(python_error('PrologError',_,_))) :-
+test(apply, error(python_error('PrologError',_))) :-
     py_call(janus:apply_once(user, between, 3, 2), _).
-test(apply, error(python_error('PrologError',_,_))) :-
+test(apply, error(python_error('PrologError',_))) :-
     py_call(janus:apply_once(janus, no_such_predicate), _).
 test(apply, X == 1) :-
     py_call(janus:apply_once(user, =, 1), X).
-test(apply, error(python_error('PrologError',_,_))) :-
+test(apply, error(python_error('PrologError',_))) :-
     py_call(janus:apply_once(user, =, prolog(f(a))), _).
 
 :- end_tests(python_call_prolog).
@@ -427,7 +427,7 @@ test(cmd, X == @true) :-
     py_call(janus:cmd(test_janus, p, 42), X).
 test(cmd, X == @false) :-
     py_call(janus:cmd(test_janus, p, 1), X).
-test(cmd, error(python_error('PrologError', _, _))) :-
+test(cmd, error(python_error('PrologError', _))) :-
     py_call(janus:cmd(test_janus, no_such_pred), _).
 
 test_janus:p(42).

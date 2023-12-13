@@ -62,7 +62,9 @@ static atom_t ATOM_locals;
 static atom_t ATOM_globals;
 static atom_t ATOM_dict;
 
-static functor_t FUNCTOR_python_error3;
+static functor_t FUNCTOR_python_error2;
+static functor_t FUNCTOR_python_stack1;
+static functor_t FUNCTOR_context2;
 static functor_t FUNCTOR_error2;
 static functor_t FUNCTOR_module2;
 static functor_t FUNCTOR_eq2;
@@ -471,20 +473,26 @@ check_error(PyObject *obj)
 
   if ( ex )
   { PyObject *type = NULL, *tname = NULL, *value = NULL, *stack = NULL;
-    term_t t  = PL_new_term_ref();
-    term_t av = PL_new_term_refs(3);
+    term_t t   = PL_new_term_ref();
+    term_t av  = PL_new_term_refs(2);
+    term_t ctx = PL_new_term_ref();
 
     PyErr_Fetch(&type, &value, &stack);
+    if ( stack )
+    { if ( !py_unify(ctx, stack, PYU_ERROR) ||
+	   !PL_cons_functor_v(ctx, FUNCTOR_python_stack1, ctx) ||
+	   !PL_cons_functor(ctx, FUNCTOR_context2, t, ctx) )
+	return NULL;
+      PL_put_variable(t);
+    }
+
     if ( (tname=PyObject_GetAttrString(type, "__name__")) &&
          PL_unify_chars(av+0, PL_ATOM|REP_UTF8, (size_t)-1,
 			PyUnicode_AsUTF8AndSize(tname, NULL)) &&
 	 (value ? py_unify(av+1, value, PYU_ERROR)
 		: py_unify_constant(av+1, ATOM_none)) &&
-	 (stack ? py_unify(av+2, stack, PYU_ERROR)
-		: py_unify_constant(av+2, ATOM_none)) &&
-	 PL_cons_functor_v(t, FUNCTOR_python_error3, av) &&
-	 PL_put_variable(av+0) &&
-	 PL_cons_functor(t, FUNCTOR_error2, t, av+0) )
+	 PL_cons_functor_v(t, FUNCTOR_python_error2, av) &&
+	 PL_cons_functor(t, FUNCTOR_error2, t, ctx) )
       PL_raise_exception(t);
 
     Py_CLEAR(tname);
@@ -2393,9 +2401,11 @@ install_janus(void)
   ATOM_pydict = PL_new_atom("py");
   ATOM_curl   = PL_new_atom("{}");
 
-  MKFUNCTOR(python_error, 3);
+  MKFUNCTOR(python_error, 2);
+  MKFUNCTOR(python_stack, 1);
   MKFUNCTOR(error, 2);
   MKFUNCTOR(py, 1);
+  MKFUNCTOR(context, 2);
   FUNCTOR_module2    = PL_new_functor(PL_new_atom(":"), 2);
   FUNCTOR_eq2        = PL_new_functor(PL_new_atom("="), 2);
   FUNCTOR_hash1      = PL_new_functor(PL_new_atom("#"), 1);
