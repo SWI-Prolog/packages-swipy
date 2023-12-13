@@ -291,11 +291,11 @@ test(free, GCed == 1) :-
     py_call(demo:'GCAble'(), Obj),
     py_free(Obj),
     py_call(demo:gced, GCed).
-test(free, error(existence_error('PyObject', Obj))) :-
+test(free, error(existence_error('py_object', Obj))) :-
     py_call(demo:'GCAble'(), Obj),
     py_free(Obj),
     py_free(Obj).
-test(free, error(existence_error('PyObject', Obj))) :-
+test(free, error(existence_error('py_object', Obj))) :-
     py_call(demo:'GCAble'(), Obj),
     py_free(Obj),
     py_setattr(Obj, test, 1).
