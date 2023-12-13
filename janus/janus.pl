@@ -842,6 +842,9 @@ py_add_lib_dir(Dir) :-
 py_add_lib_dir(Dir, Where) :-
     absolute_file_name(Dir, AbsDir),
     prolog_to_os_filename(AbsDir, OSDir),
+    py_add_lib_dir_(OSDir, Where).
+
+py_add_lib_dir_(OSDir, Where) :-
     (   py_call(sys:path, Dirs0),
         memberchk(OSDir, Dirs0)
     ->  true
@@ -859,7 +862,7 @@ repl_add_cwd :-
         N > 0
     ->  true
     ;   print_message(informational, janus(add_cwd)),
-        py_add_lib_dir('', first)
+        py_add_lib_dir_('', first)
     ).
 
 :- multifile
