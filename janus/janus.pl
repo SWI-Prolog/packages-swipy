@@ -148,8 +148,9 @@ search path may be extended using py_add_lib_dir/1.
 %   active, indicate this with the location of this environment found.
 
 py_version :-
-    py_call(sys:version, X),
-    print_message(information, janus(version(X))),
+    py_call(sys:version, PythonVersion),
+    py_call(janus_swi:version_str(), JanusVersion),
+    print_message(information, janus(version(JanusVersion, PythonVersion))),
     (   py_venv(VEnvDir, EnvSiteDir)
     ->  print_message(information, janus(venv(VEnvDir, EnvSiteDir)))
     ;   true
@@ -1165,8 +1166,8 @@ msg_line(Line) -->
 prolog:message(janus(Msg)) -->
     message(Msg).
 
-message(version(V)) -->
-    [ 'Janus embeds Python ~w'-[V] ].
+message(version(Janus, Python)) -->
+    [ 'Janus ~w embeds Python ~w'-[Janus, Python] ].
 message(venv(Dir, _EnvSiteDir)) -->
     [ 'Janus: using venv from ~p'-[Dir] ].
 message(venv(no_site_package_dir(VEnvDir, Dir))) -->
