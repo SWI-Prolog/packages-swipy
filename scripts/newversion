@@ -71,7 +71,7 @@ if [ ! -z "$(git diff --stat)" ]; then
   fi
 fi
 
-gittag="V${vlong}"
+gittag="janus-${vlong}"
 
 if confirm "Tag the GIT repository with $gittag? "; then
   git tag -s -f -m "Janus release ${vlong}" $gittag
