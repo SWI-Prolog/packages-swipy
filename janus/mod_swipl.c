@@ -696,5 +696,6 @@ static struct PyModuleDef swipl_module =
 
 PyMODINIT_FUNC
 PyInit__swipl(void)
-{ return PyModule_Create(&swipl_module);
+{ py_module_initialize_done = TRUE;
+  return PyModule_Create(&swipl_module);
 }

@@ -79,6 +79,7 @@ static functor_t FUNCTOR_at1;
 static functor_t FUNCTOR_eval1;
 
 static int py_initialize_done = FALSE;
+static int py_module_initialize_done = FALSE;
 static int py_finalizing = FALSE;
 static int py_gil_thread = 0;	/* Prolog thread that owns the GIL */
 
@@ -2438,7 +2439,8 @@ install_janus(void)
   REGISTER("py_debug",		     1,	py_debug,		0);
   REGISTER("py_update_module_cache", 1,	py_update_module_cache,	0);
 
-  if ( PyImport_AppendInittab("_swipl", PyInit__swipl) == -1 )
+  if ( !py_module_initialize_done &&
+       PyImport_AppendInittab("_swipl", PyInit__swipl) == -1 )
     Sdprintf("Failed to add module swipl to Python");
 }
 

@@ -72,7 +72,7 @@ if not hasattr(_swipl, 'call'):
 # Versions
 
 # 10000*major + 100*minor + patch
-version_num=10100
+version_num=10101
 
 def version_str(num=version_num):
     """
