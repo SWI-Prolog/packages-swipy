@@ -1,0 +1,13 @@
+#!/bin/bash
+
+version=$(cat VERSION)
+python3 -m pip install --upgrade pip
+python3 -m pip install --upgrade build
+python3 -m build
+
+if [ -f dist/janus_swi-${version}.tar.gz ]; then
+  twine upload dist/janus_swi-${version}.tar.gz
+else
+  echo "ERROR: Failed to create dist/janus_swi-${version}.tar.gz"
+  exit 1
+fi
