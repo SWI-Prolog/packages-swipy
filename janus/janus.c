@@ -752,45 +752,66 @@ out:
 
 static int
 py_unify_portable_dict(term_t t, PyObject *obj, int flags)
-{ Py_ssize_t size = PyDict_Size(obj);
-  term_t pl_kv, pl_av, tail, tmp;
-  PyObject *py_key, *py_value;
+{ PyObject *py_key, *py_value;
   Py_ssize_t i = 0;
 
-  if ( size == 0 )
-    return PL_unify_term(t, PL_FUNCTOR, FUNCTOR_py1, PL_ATOM, ATOM_curl);
+  int rc = PyDict_Next(obj, &i, &py_key, &py_value);
+  if ( rc )
+  { term_t pl_kv, pl_av, tail, tmp;
 
-  if ( !(pl_kv=PL_new_term_ref()) ||
-       !(tail=PL_new_term_ref()) ||
-       !(pl_av=PL_new_term_refs(2)) )
-    return FALSE;
-  tmp = pl_av+0;
+    if ( !(pl_kv=PL_new_term_ref()) ||
+	 !(tail=PL_new_term_ref()) ||
+	 !(pl_av=PL_new_term_refs(2)) )
+      return FALSE;
+    tmp = pl_av+0;
 
-  if ( !PL_unify_term(t, PL_FUNCTOR, FUNCTOR_curl1, PL_TERM, tail) )
-    return FALSE;
+    if ( !PL_unify_term(t, PL_FUNCTOR, FUNCTOR_curl1, PL_TERM, tail) )
+      return FALSE;
 
-  for( Py_ssize_t pli=1; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
-  { if ( !PL_put_variable(pl_av+0) ||
-	 !PL_put_variable(pl_av+1) ||
-	 !py_unify(pl_av+0, py_key, flags) ||
-	 !py_unify(pl_av+1, py_value, flags) ||
-	 !PL_cons_functor_v(pl_kv, FUNCTOR_key_value2, pl_av) )
-      return FALSE;		/* pl_kv is now Key:Value */
-    if ( pli < size )
-    { if ( !PL_put_variable(tmp) ||
-	   !PL_unify_term(tail, PL_FUNCTOR, FUNCTOR_comma2,
-			  PL_TERM, pl_kv, PL_TERM, tmp) ||
-	   !PL_put_term(tail, tmp) )
-	return FALSE;
-    } else
-    { return PL_unify(tail, pl_kv);
+    while( rc  )
+    { if ( !PL_put_variable(pl_av+0) ||
+	   !PL_put_variable(pl_av+1) ||
+	   !py_unify(pl_av+0, py_key, flags) ||
+	   !py_unify(pl_av+1, py_value, flags) ||
+	   !PL_cons_functor_v(pl_kv, FUNCTOR_key_value2, pl_av) )
+	return FALSE;		/* pl_kv is now Key:Value */
+
+      rc = PyDict_Next(obj, &i, &py_key, &py_value);
+
+      if ( rc )
+      { if ( !PL_put_variable(tmp) ||
+	     !PL_unify_term(tail, PL_FUNCTOR, FUNCTOR_comma2,
+			    PL_TERM, pl_kv, PL_TERM, tmp) ||
+	     !PL_put_term(tail, tmp) )
+	  return FALSE;
+      } else
+      { return PL_unify(tail, pl_kv);
+      }
     }
+  } else
+  { return PL_unify_term(t, PL_FUNCTOR, FUNCTOR_py1, PL_ATOM, ATOM_curl);
   }
 
   assert(0);
   return FALSE;
 }
 
+
+#define DICT_FAST_KEYS 25
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Unify a Python dict.  If possible we do this as a SWI-Prolog dict.  If
+there are  invalid keys we  call py_unify_portable_dict() to  create a
+{k:v, ...} list.
+
+(*) It  turns out that PyDict_Next()  may return more elements  in the
+dict than PyDict_Size()  told us to be there.  Why?   Could it be that
+the functions  we call indirectly  extend the  dict?  In any  case, we
+cannot trust size and we must  extend the data structures to deal with
+the additional keys.   The test case is
+
+    ?- py_call(sys:modules, M).
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static int
 py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
@@ -800,19 +821,17 @@ py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
   Py_ssize_t size = PyDict_Size(obj);
   term_t pl_dict = PL_new_term_ref();
   term_t pl_values;
-  atom_t fast[25];
+  atom_t fast[DICT_FAST_KEYS];
   atom_t *pl_keys;
   int rc = FALSE;
   Py_ssize_t i = 0;
   PyObject *py_key, *py_value;
   int invalid_keys = FALSE;
 
-  if ( size < 0 || size > INT_MAX )
-    return PL_resource_error("stack");
+  if ( !(pl_values = PL_new_term_refs((size_t)size)) )
+    return FALSE;
 
-  pl_values = PL_new_term_refs((int)size);
-
-  if ( size < 25 )
+  if ( size <= DICT_FAST_KEYS )
     pl_keys = fast;
   else if ( !(pl_keys = malloc(size*sizeof(atom_t))) )
     return PL_resource_error("memory");
@@ -823,8 +842,42 @@ py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
     goto out;
   }
 
-  for( size_t pli=0; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
-  { if ( PyUnicode_Check(py_key) )
+  size_t pli;
+  for( pli=0; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
+  { if ( pli == size )		/* see (*) */
+    { size_t ext = size/2;
+      if ( ext == 0 )
+	ext = 1;
+
+      term_t nv = PL_new_term_refs(ext); /* This should give us the next chunk */
+      if ( !nv )			 /* if all py_unify() properly reset */
+	goto out;
+      assert(nv == pl_values+size);
+
+      if ( size+ext > DICT_FAST_KEYS )
+      { if ( pl_keys == fast )
+	{ atom_t *nkeys = malloc((size+ext)*sizeof(atom_t));
+	  if ( nkeys )
+	  { memcpy(nkeys, pl_keys, sizeof(atom_t)*size);
+	    pl_keys = nkeys;
+	  } else
+	  { PL_resource_error("memory");
+	    goto out;
+	  }
+	} else
+	{ atom_t *nkeys = realloc(pl_keys, (size+ext)*sizeof(atom_t));
+	  if ( nkeys )
+	  { pl_keys = nkeys;
+	  } else
+	  { PL_resource_error("memory");
+	    goto out;
+	  }
+	}
+      }
+      size += ext;
+    }
+
+    if ( PyUnicode_Check(py_key) )
     { ssize_t len;
       wchar_t *s;
 
@@ -846,11 +899,11 @@ py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
       goto out;
   }
 
-  rc = (PL_put_dict(pl_dict, ATOM_pydict, size, pl_keys, pl_values) &&
+  rc = (PL_put_dict(pl_dict, ATOM_pydict, pli, pl_keys, pl_values) &&
 	PL_unify(t, pl_dict));
 
 out:
-  _PL_unregister_keys(size, pl_keys);
+  _PL_unregister_keys(pli, pl_keys);
   if ( pl_keys != fast )
     free(pl_keys);
 
