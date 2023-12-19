@@ -842,7 +842,7 @@ py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
     goto out;
   }
 
-  size_t pli;
+  Py_ssize_t pli;
   for( pli=0; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
   { if ( pli == size )		/* see (*) */
     { size_t ext = size/2;
