@@ -40,7 +40,6 @@
 :- use_module(library(plunit)).
 :- use_module(library(debug)).
 :- use_module(library(apply_macros), []).
-:- use_module(library(filesex), [directory_file_path/3]).
 :- use_module(library(lists), [numlist/3]).
 :- use_module(library(statistics), [time/1]).
 :- use_module('tests/russel', []).
@@ -57,6 +56,7 @@ test_janus :-
                 janus_obj,
                 janus_py_object,
                 janus_params,
+                janus_reflect,
                 janus_gc,
 		python_call_prolog,
 		janus_iter,
@@ -256,6 +256,30 @@ test(arg, R == py{a:a,b:b,c:c}) :-
     py_call(demo:kwd_all(c=c,b=b,a=a), R).
 
 :- end_tests(janus_params).
+
+:- begin_tests(janus_reflect).
+
+test(hasattr) :-
+    py_hasattr(sys, Attr), Attr == path, !.
+test(hasattr) :-
+    py_hasattr(sys, path).
+test(type) :-
+    py_call(baseclasses:myint(42), X, [py_object(true)]),
+    py_isinstance(X, int).
+test(type) :-
+    py_call(dog:'Greyhound'('Speedy'), X),
+    py_isinstance(X, dog:'Dog').
+test(type, Type == 'Greyhound') :-
+    py_call(dog:'Greyhound'('Speedy'), X),
+    py_object_type(X, Type).
+test(type, Type == int) :-
+    py_object_type(42, Type).
+test(obj_has_attr) :-
+    py_call(dog:'Greyhound'('Speedy'), X),
+    py_hasattr(X, tricks).
+
+:- end_tests(janus_reflect).
+
 
 :- begin_tests(janus_gc).
 

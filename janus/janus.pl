@@ -63,8 +63,14 @@
             py_pp/2,                    % +Stream, +Term
             py_pp/3,                    % +Stream, +Term, +Options
 
-            py_obj_dir/2,               % +ObjRef,-List
-            py_obj_dict/2,              % obj_dict(+ObjRef, -Dict)
+            py_object_dir/2,            % +ObjRef, -List
+            py_object_dict/2,           % +ObjRef, -Dict
+            py_obj_dir/2,               % +ObjRef, -List (deprecated)
+            py_obj_dict/2,              % +ObjRef, -Dict (deprecated)
+            py_object_type/2,           % +ObjRef, -Type:atom
+            py_isinstance/2,            % +ObjRef, +Type
+            py_module_exists/1,         % +Module
+            py_hasattr/2,               % +Module, ?Symbol
 
             py_module/2,                % +Module:atom, +Source:string
 
@@ -110,12 +116,10 @@ add_python_dll_dir :-
                        py_string_as(oneof([string,atom]))
                      ]).
 :- predicate_options(py_func/4, 4,
-                     [ sizecheck(boolean),
-                       pass_to(py_call/3, 3)
+                     [ pass_to(py_call/3, 3)
                      ]).
 :- predicate_options(py_dot/5, 5,
-                     [ sizecheck(boolean),
-                       pass_to(py_call/3, 3)
+                     [ pass_to(py_call/3, 3)
                      ]).
 
 :- public
@@ -633,20 +637,98 @@ opts_kws(Options, Kws) :-
 pair_kws(Name-Value, Name=Value).
 
 
-%!  py_obj_dir(+ObjRef, -List) is det.
-%!  py_obj_dict(+ObjRef, -Dict) is det.
+%!  py_object_dir(+ObjRef, -List) is det.
+%!  py_object_dict(+ObjRef, -Dict) is det.
 %
-%   Examine attributes of an object.  The predicate py_obj_dir/2 fetches
-%   the names of all attributes, while   py_obj_dict/2  gets a dict with
-%   all attributes and their values.
+%   Examine attributes of  an  object.   The  predicate  py_object_dir/2
+%   fetches the names of all attributes,   while  py_object_dir/2 gets a
+%   dict with all attributes and their values.
 %
 %   @compat PIP
 
-py_obj_dir(ObjRef, List) :-
+py_object_dir(ObjRef, List) :-
     py_call(ObjRef:'__dir__'(), List).
 
-py_obj_dict(ObjRef, Dict) :-
+py_object_dict(ObjRef, Dict) :-
     py_call(ObjRef:'__dict__', Dict).
+
+%!  py_obj_dir(+ObjRef, -List) is det.
+%!  py_obj_dict(+ObjRef, -Dict) is det.
+%
+%   @deprecated Use py_object_dir/2 or py_object_dict/2.
+
+py_obj_dir(ObjRef, List) :-
+    py_object_dir(ObjRef, List).
+
+py_obj_dict(ObjRef, Dict) :-
+    py_object_dict(ObjRef, Dict).
+
+
+%!  py_object_type(+ObjRef, -Type:atom) is det.
+%
+%   True when Type is the name of the   type of ObjRef. This is the same
+%   as ``type(ObjRef).__name__`` in Python.
+%
+%   @compat PIP
+
+py_object_type(ObjRef, Type) :-
+    py_call(type(ObjRef):'__name__', Type).
+
+%!  py_isinstance(+ObjRef, +Type) is semidet.
+%
+%   True if ObjRef is an instance of Type   or an instance of one of the
+%   sub types of Type. This  is   the  same as ``isinstance(ObjRef)`` in
+%   Python.
+%
+%   @arg Type is either a term `Module:Type` or a plain atom to refer to
+%   a built-in type.
+%
+%   @compat PIP
+
+py_isinstance(Obj, Module:Type) =>
+    py_call(isinstance(Obj, eval(Module:Type)), @true).
+py_isinstance(Obj, Type) =>
+    py_call(isinstance(Obj, eval(sys:modules:'__getitem__'(builtins):Type)), @true).
+
+%!  py_module_exists(+Module) is semidet.
+%
+%   True if Module is a currently  loaded   Python  module  or it can be
+%   loaded.
+%
+%   @compat PIP
+
+py_module_exists(Module) :-
+    must_be(atom, Module),
+    py_call(sys:modules:'__contains__'(Module), @true),
+    !.
+py_module_exists(Module) :-
+    py_call(importlib:util:find_spec(Module), R),
+    R \== @none,
+    py_free(R).
+
+%!  py_hasattr(+ModuleOrObj, ?Name) is nondet.
+%
+%   True when Name is an attribute of   Module. The name is derived from
+%   the Python built-in hasattr(). If Name   is unbound, this enumerates
+%   the members of py_object_dir/2.
+%
+%   @arg ModuleOrObj If this is an atom it refers to a module, otherwise
+%   it must be a Python object reference.
+%
+%   @compat PIP
+
+py_hasattr(ModuleOrObj, Name) :-
+    var(Name),
+    !,
+    py_object_dir(ModuleOrObj, Names),
+    member(Name, Names).
+py_hasattr(ModuleOrObj, Name) :-
+    must_be(atom, Name),
+    (   atom(ModuleOrObj)
+    ->  py_call(ModuleOrObj:'__name__'), % force loading
+        py_call(hasattr(eval(sys:modules:'__getitem__'(ModuleOrObj)), Name), @true)
+    ;   py_call(hasattr(ModuleOrObj, Name), @true)
+    ).
 
 
 %!  py_module(+Module:atom, +Source:string) is det.

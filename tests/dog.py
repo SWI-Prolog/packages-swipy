@@ -9,3 +9,6 @@ class Dog:
 
     def self(self):
         return self
+
+class Greyhound(Dog):
+    pass
