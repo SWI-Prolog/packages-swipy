@@ -352,7 +352,7 @@ py_version :-
 %   True if Term is a Prolog term that represents a Python dict.
 %
 %   @compat PIP. The SWI-Prolog version accepts   both a SWI-Prolog dict
-%   as the \{k:v,\ldots\} representation.  See   `py_dict_as`  option of
+%   and the `{k:v,...}`  representation.  See   `py_dict_as`  option  of
 %   py_call/2.
 
 py_is_dict(Dict), is_dict(Dict) => true.

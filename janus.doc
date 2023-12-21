@@ -140,7 +140,7 @@ Float   & $\Longleftrightarrow$ & float    & \\
 @(true) & $\Longleftrightarrow$ & True     & \\
 @(false) & $\Longleftrightarrow$ & False    & \\
 Atom    & $\longleftarrow$      & \cfuncref{enum.Enum}{} & Name of Enum instance \\
-Atom    & $\longleftrightarrow$ & String   & \\
+Atom    & $\Longleftrightarrow$ & String   & \\
 String  & $\longrightarrow$     & String   & \\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
 prolog(Term) & $\longrightarrow$ & \cfuncref{janus.Term}{} & Represents any Prolog term \\
@@ -151,11 +151,12 @@ List    & $\longleftarrow$      & Iterator & Note that a Python \jargon{Generato
 py_set(List) & $\Longleftrightarrow$ & Set & \\
 -()     & $\Longleftrightarrow$ & ()  & Python empty Tuple \\
 -(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples.  Note that a Prolog \jargon{pair} \exam{A-B} maps to a Python (binary) tuple. \\
-Dict    & $\Longleftrightarrow$ & Dict     & \\
+Dict    & $\Longleftrightarrow$ & Dict     & Default for SWI-Prolog \\
 \{k:v,\ldots\} & $\Longleftrightarrow$ & Dict & Compatibility when using \exam{py_dict_as({{}})}\\
-\{k:v,\ldots\} & $\Longrightarrow$ & Dict    & Compatibility (see above) \\
-py(\{k:v,\ldots\}) & $\Longrightarrow$ & Dict & Compatibility (see above) \\
-eval(Term) & $\Longrightarrow$ & Object & Evaluate Term as first argument of py_call/2 \\
+py(\{\mbox{}\}) & $\longleftarrow$ & \{\mbox{}\} & Empty dict when using \exam{py_dict_as({{}})}\\
+\{k:v,\ldots\} & $\longrightarrow$ & Dict    & Compatibility (see above) \\
+py(\{k:v,\ldots\}) & $\longrightarrow$ & Dict & Compatibility (see above) \\
+eval(Term) & $\longrightarrow$ & Object & Evaluate Term as first argument of py_call/2 \\
 \const{py_obj} blob & $\Longleftrightarrow$ & Object & Used for any Python object not above \\
 Compound & $\longrightarrow$ & -        & for any term not above (type error) \\
 \hline
