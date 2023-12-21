@@ -825,6 +825,7 @@ py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
   atom_t *pl_keys;
   int rc = FALSE;
   Py_ssize_t i = 0;
+  Py_ssize_t pli = 0;
   PyObject *py_key, *py_value;
   int invalid_keys = FALSE;
 
@@ -832,18 +833,14 @@ py_unify_dict(term_t t, PyObject *obj, int flags, fid_t fid)
     return FALSE;
 
   if ( size <= DICT_FAST_KEYS )
-    pl_keys = fast;
-  else if ( !(pl_keys = malloc(size*sizeof(atom_t))) )
-    return PL_resource_error("memory");
-  memset(pl_keys, 0, size*sizeof(atom_t));
-
-  if ( !pl_keys )
+  { pl_keys = fast;
+  } else if ( !(pl_keys = malloc(size*sizeof(atom_t))) )
   { PL_resource_error("memory");
     goto out;
   }
+  memset(pl_keys, 0, size*sizeof(atom_t));
 
-  Py_ssize_t pli;
-  for( pli=0; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
+  for( ; PyDict_Next(obj, &i, &py_key, &py_value); pli++ )
   { if ( pli == size )		/* see (*) */
     { size_t ext = size/2;
       if ( ext == 0 )
