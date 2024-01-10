@@ -131,7 +131,7 @@ swipl_call(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  if ( PL_thread_attach_engine(NULL) < 0 )
+  if ( PL_thread_attach_engine(NULL) == -1 )
   { Py_SetPrologErrorFromChars("Cannot create thread");
     return NULL;
   }
@@ -398,7 +398,7 @@ swipl_open_query(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  if ( PL_thread_attach_engine(NULL) < 0 )
+  if ( PL_thread_attach_engine(NULL) == -1 )
   { Py_SetPrologErrorFromChars("Cannot create thread");
     return NULL;
   }
