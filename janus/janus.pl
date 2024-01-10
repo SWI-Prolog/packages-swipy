@@ -67,7 +67,7 @@
             py_object_dict/2,           % +ObjRef, -Dict
             py_obj_dir/2,               % +ObjRef, -List (deprecated)
             py_obj_dict/2,              % +ObjRef, -Dict (deprecated)
-            py_object_type/2,           % +ObjRef, -Type:atom
+            py_type/2,			% +ObjRef, -Type:atom
             py_isinstance/2,            % +ObjRef, +Type
             py_module_exists/1,         % +Module
             py_hasattr/2,               % +Module, ?Symbol
@@ -664,14 +664,14 @@ py_obj_dict(ObjRef, Dict) :-
     py_object_dict(ObjRef, Dict).
 
 
-%!  py_object_type(+ObjRef, -Type:atom) is det.
+%!  py_type(+ObjRef, -Type:atom) is det.
 %
 %   True when Type is the name of the   type of ObjRef. This is the same
 %   as ``type(ObjRef).__name__`` in Python.
 %
 %   @compat PIP
 
-py_object_type(ObjRef, Type) :-
+py_type(ObjRef, Type) :-
     py_call(type(ObjRef):'__name__', Type).
 
 %!  py_isinstance(+ObjRef, +Type) is semidet.

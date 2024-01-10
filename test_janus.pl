@@ -271,9 +271,9 @@ test(type) :-
     py_isinstance(X, dog:'Dog').
 test(type, Type == 'Greyhound') :-
     py_call(dog:'Greyhound'('Speedy'), X),
-    py_object_type(X, Type).
+    py_type(X, Type).
 test(type, Type == int) :-
-    py_object_type(42, Type).
+    py_type(42, Type).
 test(obj_has_attr) :-
     py_call(dog:'Greyhound'('Speedy'), X),
     py_hasattr(X, tricks).
