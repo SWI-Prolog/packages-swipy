@@ -130,6 +130,7 @@ add_python_dll_dir :-
 
 :- create_prolog_flag(py_backtrace,       true, [type(boolean), keep(true)]).
 :- create_prolog_flag(py_backtrace_depth, 4,    [type(integer), keep(true)]).
+:- create_prolog_flag(py_argv,		  [],   [type(term), keep(true)]).
 
 /** <module> Call Python from Prolog
 
@@ -785,12 +786,13 @@ py_initialize :-
     access_file(Cfg, read),
     !,
     current_prolog_flag(executable, Program),
-    py_initialize(Program, ['-I'], []),
+    current_prolog_flag(py_argv, Argv),
+    py_initialize(Program, ['-I'|Argv], []),
     py_call(sys:prefix = VEnv),
     venv_update_path(VEnvDir).
 py_initialize :-
     current_prolog_flag(executable, Program),
-    current_prolog_flag(argv, Argv),
+    current_prolog_flag(py_argv, Argv),
     py_initialize(Program, Argv, []).
 
 venv_update_path(VEnvDir) :-
@@ -826,8 +828,8 @@ no_env_dir('dist-packages').
 %   Initialize  and configure  the  embedded Python  system.  If  this
 %   predicate is  not called before any  other call to Python  such as
 %   py_call/2, it is called _lazily_, passing the Prolog executable as
-%   Program, the  non-Prolog arguments  as Argv  and an  empty Options
-%   list.
+%   Program, passing Argv from the  Prolog flag `py_argv` and an empty
+%   Options list.
 %
 %   Calling this predicate while the  Python is already initialized is
 %   a  no-op.  This  predicate is  thread-safe, where  the first  call
