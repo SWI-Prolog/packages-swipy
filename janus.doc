@@ -1347,7 +1347,7 @@ known differences.
 
 \begin{itemize}
 \item SWI-Prolog represents Phyton dicts as Prolog dicts.  XSB uses
-  a term py({k:v, ...}), where the \verb$py()$ wrapper is optional.
+  a term py(\{k:v, ...\}), where the \verb$py()$ wrapper is optional.
   The predicate py_is_dict/1 may be used to test that a Prolog term
   represents a Python dict.  The predicates values/3, keys/2, key/2
   and items/2 can be used to access either representation.
@@ -1359,10 +1359,7 @@ known differences.
   \emph{must} call py_free/1 when done with some object.  In SWI-Prolog,
   either py_free/1 may be used or the object may be left to the Prolog
   (atom) garbage collector.
-\item Exceptions are represented differently, both representing Python
-  exceptions in Prolog and Prolog exceptions in Python.  As a result,
-  acting on specific types of exceptions in a portable way is not
-  supported.
+\item Prolog exceptions passed to Python are represented differently.
 \item When calling Prolog from Python and relying on well founded
   semantics, only \jargon{plain truth values} (i.e., \const{janus.undefined}
   are supported in a portable way.  \jargon{Delay lists}, providing
