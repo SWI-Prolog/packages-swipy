@@ -49,8 +49,8 @@
 
             py_func/3,                  % +Module, +Func, -Return
             py_func/4,                  % +Module, +Func, -Return, +Options
-            py_dot/4,                   % +Module, +ObjRef, +Meth, ?Ret
-            py_dot/5,                   % +Module, +ObjRef, +Meth, -Ret, +Options
+            py_dot/3,                   % +ObjRef, +Meth, ?Ret
+            py_dot/4,                   % +ObjRef, +Meth, -Ret, +Options
 
             values/3,                   % +Dict, +Path, ?Val
             keys/2,                     % +Dict, ?Keys
@@ -427,19 +427,18 @@ py_func(Module, Function, Return) :-
 py_func(Module, Function, Return, Options) :-
     py_call(Module:Function, Return, Options).
 
-%!  py_dot(+Module, +ObjRef, +MethAttr, -Ret) is det.
-%!  py_dot(+Module, +ObjRef, +MethAttr, -Ret, +Options) is det.
+%!  py_dot(+ObjRef, +MethAttr, -Ret) is det.
+%!  py_dot(+ObjRef, +MethAttr, -Ret, +Options) is det.
 %
 %   Call a method or access  an  attribute   on  the  object ObjRef. The
 %   SWI-Prolog implementation is equivalent  to py_call(ObjRef:MethAttr,
 %   Return). See py_call/2 for details.
 %
-%   @arg Module is ignored (why do we need that if we have ObjRef?)
 %   @compat PIP.  See py_func/3 for details.
 
-py_dot(_Module, ObjRef, MethAttr, Ret) :-
+py_dot(ObjRef, MethAttr, Ret) :-
     py_call(ObjRef:MethAttr, Ret).
-py_dot(_Module, ObjRef, MethAttr, Ret, Options) :-
+py_dot(ObjRef, MethAttr, Ret, Options) :-
     py_call(ObjRef:MethAttr, Ret, Options).
 
 

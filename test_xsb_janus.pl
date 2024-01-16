@@ -189,13 +189,13 @@ meth_tests:-
 
 test_Person(Obj,Ret1,Ret2,Ret3,Ret4,Ret5,Msg2,Msg3):-
     py_func('Person','Person'(john,35),Obj),
-    py_dot('Person',Obj,func0(),Ret1),
-    py_dot('Person',Obj,func1(doofus),Ret2),
-    py_dot('Person',Obj,favorite_ice_cream,Ret3),
-    py_dot('Person',Obj,func2(real,doofus),Ret4),
-    py_dot('Person',Obj,func3(real,big,doofus),Ret5),
-    catch(py_dot('Person',1,favorite_ice_cream,_Ret4),E2,xsb_error_get_message(E2,Msg2)),
-    catch(py_dot('Person',Obj,1,_Ret5),E3,xsb_error_get_message(E3,Msg3)).
+    py_dot(Obj,func0(),Ret1),
+    py_dot(Obj,func1(doofus),Ret2),
+    py_dot(Obj,favorite_ice_cream,Ret3),
+    py_dot(Obj,func2(real,doofus),Ret4),
+    py_dot(Obj,func3(real,big,doofus),Ret5),
+    catch(py_dot(1,favorite_ice_cream,_Ret4),E2,xsb_error_get_message(E2,Msg2)),
+    catch(py_dot(Obj,1,_Ret5),E3,xsb_error_get_message(E3,Msg3)).
 
 variadic_tests:-
     testit(py_func(variadic,variadic_print('a','b','c'),A),A,'a|b|c|'),
