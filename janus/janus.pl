@@ -787,7 +787,7 @@ py_initialize :-
     current_prolog_flag(executable, Program),
     current_prolog_flag(py_argv, Argv),
     py_initialize(Program, ['-I'|Argv], []),
-    py_call(sys:prefix = VEnv),
+    py_setattr(sys, prefix, VEnv),
     venv_update_path(VEnvDir).
 py_initialize :-
     current_prolog_flag(executable, Program),
@@ -809,7 +809,7 @@ venv_update_path(VEnvDir) :-
     py_call(sys:path, Path0),
     exclude(is_site_dir, Path0, Path1),
     append(Path1, [PyEnvSiteDir], Path),
-    py_call(sys:path = Path),
+    py_setattr(sys, path, Path),
     print_message(silent, janus(venv(VEnvDir, EnvSiteDir))),
     asserta(py_venv(VEnvDir, EnvSiteDir)).
 
