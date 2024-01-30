@@ -942,15 +942,18 @@ py_add_lib_dir_(OSDir, Where) :-
     ;   must_be(oneof([first,last]), Where)
     ).
 
+:- det(repl_add_cwd/0).
 repl_add_cwd :-
     current_prolog_flag(break_level, Level),
     Level >= 0,
+    !,
     (   py_call(sys:path:count(''), N),
         N > 0
     ->  true
     ;   print_message(informational, janus(add_cwd)),
         py_add_lib_dir_('', first)
     ).
+repl_add_cwd.
 
 :- multifile
     prolog:repl_loop_hook/2.
