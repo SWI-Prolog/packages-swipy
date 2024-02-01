@@ -103,7 +103,10 @@
 % Just having the Python dir in PATH seems insufficient. We also need to
 % add the directory to the DLL search path.
 add_python_dll_dir :-
-    absolute_file_name(path('python3.dll'), DLL, [access(read)]),
+    (   current_prolog_flag(msys2, true)
+    ->  absolute_file_name(path('libpython3.dll'), DLL, [access(read)])
+    ;   absolute_file_name(path('python3.dll'), DLL, [access(read)])
+    ),
     file_directory_name(DLL, Dir),
     win_add_dll_directory(Dir).
 :- initialization(add_python_dll_dir, now).
