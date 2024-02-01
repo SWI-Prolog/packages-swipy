@@ -152,8 +152,8 @@ py_set(List) & $\Longleftrightarrow$ & Set & \\
 -()     & $\Longleftrightarrow$ & ()  & Python empty Tuple \\
 -(a,b,\ldots) & $\Longleftrightarrow$ & (a,b,\ldots) & Python Tuples.  Note that a Prolog \jargon{pair} \exam{A-B} maps to a Python (binary) tuple. \\
 Dict    & $\Longleftrightarrow$ & Dict     & Default for SWI-Prolog \\
-\{k:v,\ldots\} & $\Longleftrightarrow$ & Dict & Compatibility when using \exam{py_dict_as({{}})}\\
-py(\{\mbox{}\}) & $\longleftarrow$ & \{\mbox{}\} & Empty dict when using \exam{py_dict_as({{}})}\\
+\{k:v,\ldots\} & $\Longleftrightarrow$ & Dict & Compatibility when using \exam{py_dict_as(\Scurl)}\\
+py(\{\mbox{}\}) & $\longleftarrow$ & \{\mbox{}\} & Empty dict when using \exam{py_dict_as(\Scurl)}\\
 \{k:v,\ldots\} & $\longrightarrow$ & Dict    & Compatibility (see above) \\
 py(\{k:v,\ldots\}) & $\longrightarrow$ & Dict & Compatibility (see above) \\
 eval(Term) & $\longrightarrow$ & Object & Evaluate Term as first argument of py_call/2 \\
