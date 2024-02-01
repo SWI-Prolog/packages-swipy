@@ -3,7 +3,7 @@
     Author:        Jan Wielemaker
     E-mail:        jan@swi-prolog.org
     WWW:           http://www.swi-prolog.org
-    Copyright (c)  2023, SWI-Prolog Solutions b.v.
+    Copyright (c)  2023-2024, SWI-Prolog Solutions b.v.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -85,13 +85,14 @@
 :- meta_predicate py_with_gil(0).
 
 :- use_module(library(apply_macros), []).
-:- autoload(library(lists), [append/3, member/2]).
-:- autoload(library(apply), [maplist/2, exclude/3, maplist/3]).
+:- autoload(library(lists), [append/3, member/2, append/2]).
+:- autoload(library(apply),
+            [maplist/2, exclude/3, maplist/3, convlist/3, partition/4]).
 :- autoload(library(error), [must_be/2, domain_error/2]).
 :- autoload(library(dicts), [dict_keys/2]).
-:- autoload(library(option), [dict_options/2]).
+:- autoload(library(option), [dict_options/2, select_option/4, option/2]).
 :- autoload(library(prolog_code), [comma_list/2]).
-:- autoload(library(readutil), [read_line_to_string/2]).
+:- autoload(library(readutil), [read_line_to_string/2, read_file_to_string/3]).
 :- autoload(library(wfs), [call_delays/2, delays_residual_program/2]).
 :- autoload(library(dcg/high_order), [sequence//2, sequence//3]).
 
@@ -782,19 +783,39 @@ py_initialize :-
     getenv('VIRTUAL_ENV', VEnv),
     prolog_to_os_filename(VEnvDir, VEnv),
     atom_concat(VEnvDir, '/pyvenv.cfg', Cfg),
-    access_file(Cfg, read),
+    venv_config(Cfg, Config),
     !,
     current_prolog_flag(executable, Program),
     current_prolog_flag(py_argv, Argv),
     py_initialize(Program, ['-I'|Argv], []),
     py_setattr(sys, prefix, VEnv),
-    venv_update_path(VEnvDir).
+    venv_update_path(VEnvDir, Config).
 py_initialize :-
     current_prolog_flag(executable, Program),
     current_prolog_flag(py_argv, Argv),
     py_initialize(Program, Argv, []).
 
-venv_update_path(VEnvDir) :-
+venv_config(File, Config) :-
+    access_file(File, read),
+    read_file_to_string(File, String, []),
+    split_string(String, "\n", "\n\r", Lines),
+    convlist(venv_config_line, Lines, Config).
+
+venv_config_line(Line, Config) :-
+    sub_string(Line, B, _, A, "="),
+    !,
+    sub_string(Line, 0, B, _, NameS),
+    split_string(NameS, "", "\t\s", [NameS2]),
+    atom_string(Name, NameS2),
+    sub_string(Line, _, A, 0, ValueS),
+    split_string(ValueS, "", "\t\s", [ValueS2]),
+    (   number_string(Value, ValueS2)
+    ->  true
+    ;   atom_string(Value, ValueS2)
+    ),
+    Config =.. [Name,Value].
+
+venv_update_path(VEnvDir, Options) :-
     py_call(sys:version_info, Info),    % Tuple
     Info =.. [_,Major,Minor|_],
     format(string(EnvSiteDir),
@@ -807,8 +828,12 @@ venv_update_path(VEnvDir) :-
                       janus(venv(no_site_package_dir(VEnvDir, EnvSiteDir))))
     ),
     py_call(sys:path, Path0),
-    exclude(is_site_dir, Path0, Path1),
-    append(Path1, [PyEnvSiteDir], Path),
+    (   option('include-system-site-packages'(true), Options)
+    ->  partition(is_site_dir, Path0, PkgPath, SysPath),
+        append([SysPath,[PyEnvSiteDir], PkgPath], Path)
+    ;   exclude(is_site_dir, Path0, Path1),
+        append(Path1, [PyEnvSiteDir], Path)
+    ),
     py_setattr(sys, path, Path),
     print_message(silent, janus(venv(VEnvDir, EnvSiteDir))),
     asserta(py_venv(VEnvDir, EnvSiteDir)).
