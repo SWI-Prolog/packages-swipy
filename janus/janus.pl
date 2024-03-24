@@ -761,7 +761,7 @@ py_hasattr(ModuleOrObj, Name) :-
 %       ?- py_import('selenium.webdriver', []).
 %       ?- py_call(webdriver:'Chrome'(), Chrome).
 %
-%   Ny default, the imported module  is   associated  to an atom created
+%   By default, the imported module  is   associated  to an atom created
 %   from the last segment of the dotted   name. Below we use an explicit
 %   name.
 %
