@@ -392,32 +392,55 @@ get_py_name(term_t name, PyObject **obj, int flags)
 }
 
 static htable *py_module_table = NULL;
+static PL_option_t import_options[] =
+{ PL_OPTION("as", OPT_ATOM),
+  PL_OPTIONS_END
+};
+
 
 static int
-py_register_module(term_t name, PyObject **mod, int flags)
-{ PyObject *idobj;
-  atom_t id;
+py_register_module(term_t name, term_t options, PyObject **mod, int flags)
+{ PyObject *idobj = NULL;
+  int rc = FALSE;
 
   if ( !py_module_table )
     py_module_table = py_new_hashmap();
 
-  if ( get_py_name(name, &idobj, flags) &&
-       PL_get_atom(name, &id) )
-  { PyObject *m = check_error(PyImport_Import(idobj));
+  if ( get_py_name(name, &idobj, flags) )
+  { PyObject *m;
+    atom_t as = 0;
 
+    if ( options )
+    { if ( !PL_scan_options(options, 0, "py_import_options", import_options,
+			    &as) )
+	goto out;
+      if ( as && py_lookup_hashmap(py_module_table, as) )
+      { term_t as_term;
+	rc = ((as_term=PL_new_term_ref()) &&
+	      PL_put_atom(as_term, as) &&
+	      PL_permission_error("import_as", "py_module", as_term));
+	goto out;
+      }
+    }
+    if ( !as && !PL_get_atom_ex(name, &as) )
+      goto out;
+
+    m = check_error(PyImport_Import(idobj));
     Py_DECREF(idobj);
     if ( m )
     { PyObject *old = NULL;
       if ( mod )
 	*mod = m;
-      int rc = py_add_hashmap(py_module_table, id, m, &old);
+      rc = py_add_hashmap(py_module_table, as, m, &old);
       if ( old )
 	Py_DECREF(old);
       return rc;
     }
   }
 
-  return FALSE;
+out:
+  Py_CLEAR(idobj);
+  return rc;
 }
 
 
@@ -443,7 +466,7 @@ get_py_module(term_t name, PyObject **mod)
       *mod = obj;
       return TRUE;
     } else
-    { if ( py_register_module(name, mod, 0) )
+    { if ( py_register_module(name, 0, mod, 0) )
       { Py_INCREF(*mod);
 	return TRUE;
       }
@@ -461,7 +484,21 @@ py_update_module_cache(term_t name)
 
   if ( !py_gil_ensure(&state) )
     return FALSE;
-  rc = py_register_module(name, NULL, CVT_EXCEPTION);
+  rc = py_register_module(name, 0, NULL, CVT_EXCEPTION);
+  py_gil_release(state);
+
+  return rc;
+}
+
+
+static foreign_t
+py_import(term_t spec, term_t options)
+{ py_gil_state state;
+  int rc;
+
+  if ( !py_gil_ensure(&state) )
+    return FALSE;
+  rc = py_register_module(spec, options, NULL, CVT_EXCEPTION);
   py_gil_release(state);
 
   return rc;
@@ -2474,6 +2511,7 @@ install_janus(void)
 
   REGISTER("py_initialize_",	     3,	py_initialize_,		0);
   REGISTER("py_finalize",	     0,	py_finalize,		0);
+  REGISTER("py_import_",	     2, py_import,		0);
   REGISTER("py_call",		     1,	py_call1,		0);
   REGISTER("py_call",		     2,	py_call2,		0);
   REGISTER("py_call",		     3,	py_call3,		0);

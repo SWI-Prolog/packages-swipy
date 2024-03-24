@@ -72,6 +72,7 @@
             py_module_exists/1,         % +Module
             py_hasattr/2,               % +Module, ?Symbol
 
+            py_import/2,                % +Spec, +Options
             py_module/2,                % +Module:atom, +Source:string
 
             py_initialize/3,            % +Program, +Argv, +Options
@@ -85,7 +86,7 @@
 :- meta_predicate py_with_gil(0).
 
 :- use_module(library(apply_macros), []).
-:- autoload(library(lists), [append/3, member/2, append/2]).
+:- autoload(library(lists), [append/3, member/2, append/2, last/2]).
 :- autoload(library(apply),
             [maplist/2, exclude/3, maplist/3, convlist/3, partition/4]).
 :- autoload(library(error), [must_be/2, domain_error/2]).
@@ -735,6 +736,51 @@ py_hasattr(ModuleOrObj, Name) :-
     ).
 
 
+%!  py_import(+Spec, +Options) is det.
+%
+%   Import a Python module.  Janus   imports  modules automatically when
+%   referred in py_call/2 and  related   predicates.  Importing a module
+%   implies  the  module  is  loaded   using  Python's  ``__import__()``
+%   built-in and added to a table  that   maps  Prolog atoms to imported
+%   modules. This predicate explicitly imports a module and allows it to
+%   be associated with a different  name.   This  is  useful for loading
+%   _nested modules_, i.e., a specific module   from a Python package as
+%   well as for  avoiding  conflicts.  For   example,  with  the  Python
+%   `selenium` package installed, we can do in Python:
+%
+%       >>> from selenium import webdriver
+%       >>> browser = webdriver.Chrome()
+%
+%   Without this predicate, we can do
+%
+%       ?- py_call('selenium.webdriver':'Chrome'(), Chrome).
+%
+%   For a single call this is  fine,   but  for making multiple calls it
+%   gets cumbersome.  With this predicate we can write this.
+%
+%       ?- py_import('selenium.webdriver', []).
+%       ?- py_call(webdriver:'Chrome'(), Chrome).
+%
+%   Ny default, the imported module  is   associated  to an atom created
+%   from the last segment of the dotted   name. Below we use an explicit
+%   name.
+%
+%       ?- py_import('selenium.webdriver', [as(browser)]).
+%       ?- py_call(browser:'Chrome'(), Chrome).
+%
+%   @error  permission_error(import_as,  py_module,  As)   if  there  is
+%   already a module associated with As.
+
+py_import(Spec, Options) :-
+    option(as(_), Options),
+    !,
+    py_import_(Spec, Options).
+py_import(Spec, Options) :-
+    split_string(Spec, ".", "", Parts),
+    last(Parts, Last),
+    atom_string(As, Last),
+    py_import_(Spec, [as(As)|Options]).
+
 %!  py_module(+Module:atom, +Source:string) is det.
 %
 %   Load Source into the Python module Module.   This  is intended to be
@@ -1255,6 +1301,10 @@ prolog:error_message(python_error(Class, Value)) -->
     },
     [ 'Python ', ansi(code, "'~w'", [Class]), ':', nl,
       '  ~w'-[Message]
+    ].
+prolog:error_message(permission_error(import_as, py_module, As)) -->
+    [ 'Janus: No permission to import a module as ', ansi(code, '~q', As),
+      ': module exists.'
     ].
 
 prolog:message_context(context(_, PythonCtx)) -->
