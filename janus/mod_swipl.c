@@ -496,7 +496,14 @@ swipl_next_solution(PyObject *self, PyObject *args)
       done = TRUE;
       /*FALLTHROUGH*/
     case PL_S_TRUE:
-      py_from_prolog(av+2, &out);
+      if ( !py_from_prolog(av+2, &out) )
+      { term_t ex = PL_exception(0);
+
+	assert(ex);
+	ex = PL_copy_term_ref(ex);
+	PL_clear_exception();
+	Py_SetPrologError(ex);
+      }
       break;
     case PL_S_FALSE:
       out = PyBool_FromLong(0);
