@@ -426,7 +426,6 @@ py_register_module(term_t name, term_t options, PyObject **mod, int flags)
       goto out;
 
     m = check_error(PyImport_Import(idobj));
-    Py_DECREF(idobj);
     if ( m )
     { PyObject *old = NULL;
       if ( mod )
@@ -434,12 +433,11 @@ py_register_module(term_t name, term_t options, PyObject **mod, int flags)
       rc = py_add_hashmap(py_module_table, as, m, &old);
       if ( old )
 	Py_DECREF(old);
-      return rc;
     }
+out:
+    Py_DECREF(idobj);
   }
 
-out:
-  Py_CLEAR(idobj);
   return rc;
 }
 
