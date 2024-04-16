@@ -1036,29 +1036,34 @@ py_unify(term_t t, PyObject *obj, int flags)
 static int
 py_add_to_dict(term_t key, term_t value, void *closure)
 { PyObject *py_dict = closure;
-  PyObject *py_value;
+  PyObject *py_value = NULL;
+  PyObject *py_key = NULL;
   char *s;
   int rc;
 
-  if ( !py_from_prolog(value, &py_value) )
-    return 1;				/* error */
+  if ( py_from_prolog(value, &py_value) )
+  { if ( PL_get_chars(key, &s, CVT_ATOM) )
+    { rc = PyDict_SetItemString(py_dict, s, py_value);
+    } else
+    { if ( py_from_prolog(key, &py_key) )
+      { rc = PyDict_SetItem(py_dict, py_key, py_value);
+      } else
+      { rc = 1;
+	goto out;		/* not a Python error */
+      }
+    }
 
-  if ( PL_get_chars(key, &s, CVT_ATOM) )
-  { rc = PyDict_SetItemString(py_dict, s, py_value);
+    if ( rc != 0 )
+      check_error(py_value);
   } else
-  { PyObject *py_key;
-
-    if ( !py_from_prolog(key, &py_key) )
-      return 1;
-    rc = PyDict_SetItem(py_dict, py_key, py_value);
+  { rc = 1;
   }
 
-  if ( rc != 0 )
-  { check_error(py_value);
-    return 1;
-  }
+out:
+  Py_CLEAR(py_value);
+  Py_CLEAR(py_key);
 
-  return 0;
+  return rc;
 }
 
 
