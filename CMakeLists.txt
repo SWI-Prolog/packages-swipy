@@ -5,6 +5,7 @@ include("../cmake/PrologPackage.cmake")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Sanitize")
   message("Trying to find debug version of Python")
+  set(PYTHON_PREFER_DEBUG ON)
   set(Python_FIND_ABI "ON" "ANY" "ANY")
 endif()
 
@@ -19,6 +20,14 @@ endif()
 find_package(Python ${CPYTHON_VERSION} COMPONENTS Interpreter Development)
 if(CMAKE_VERSION VERSION_LESS 3.18 AND Python_Development_FOUND)
   set(Python_Development.Embed_FOUND ON)
+endif()
+
+if(NOT Python_Development.Embed_FOUND AND PYTHON_PREFER_DEBUG)
+  set(Python_FIND_ABI "ANY" "ANY" "ANY")
+  find_package(Python ${CPYTHON_VERSION} COMPONENTS Interpreter Development)
+  if(CMAKE_VERSION VERSION_LESS 3.18 AND Python_Development_FOUND)
+    set(Python_Development.Embed_FOUND ON)
+  endif()
 endif()
 
 if(Python_Development.Embed_FOUND)
