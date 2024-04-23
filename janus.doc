@@ -628,7 +628,7 @@ crash the process}.  Future versions may improve on that.
 
 
 \begin{description}
-  \cfunction{dict}{janus.query_once}{query, bindings=\{{}\}, keep=False,
+  \cfunction{dict}{janus.query_once}{query, inputs=\{{}\}, keep=False,
 			            truth_vals=TruthVals.PLAIN_TRUTHVALS}
 Call \arg{query} using \arg{bindings} as once/1, returning a dict with
 the resulting bindings. If \arg{bindings} is omitted, no variables are
@@ -669,7 +669,7 @@ arguments followed by a single output variable.
 \tag{Compatibility} PIP.
 \end{tags}
 
-    \cfunction{dict}{janus.once}{query, bindings=\{{}\}, keep=False,
+    \cfunction{dict}{janus.once}{query, inputs=\{{}\}, keep=False,
 			         truth_vals=TruthVals.PLAIN_TRUTHVALS}
     \jargon{Deprecated}.  Renamed to \cfuncref{janus.query_once}{}.
 
@@ -772,7 +772,7 @@ Class \cfuncref{janus.query}{} is similar to the
 non-deterministic Prolog predicate.
 
 \begin{description}
-   \cfunction{query}{janus.query}{query, bindings=\{{}\}, keep=False}
+   \cfunction{query}{janus.query}{query, inputs=\{{}\}, keep=False}
    As \cfuncref{janus.query_once}{}, returning an \jargon{iterator} that
    provides an answer dict as \cfuncref{janus.query_once}{} for each answer
    to \arg{query}.  Answers never have \const{truth} \const{False}.
@@ -782,7 +782,7 @@ non-deterministic Prolog predicate.
 \tag{Compatibility} PIP.  The \const{keep} is a SWI-Prolog extension.
 \end{tags}
 
-   \cfunction{Query}{janus.Query}{query, bindings=\{{}\}, keep=False}
+   \cfunction{Query}{janus.Query}{query, inputs=\{{}\}, keep=False}
    \jargon{Deprecated}.  This class was renamed to \cfuncref{janus.query}.
 
    \cfunction{dict{|}None}{janus.query.next}{}
