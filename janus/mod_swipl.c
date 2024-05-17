@@ -32,14 +32,6 @@
     POSSIBILITY OF SUCH DAMAGE.
 */
 
-static PyObject *PyExcProlog_store = NULL;
-static PyObject *
-PyExcProlog(void)
-{ if ( !PyExcProlog_store )
-    PyExcProlog_store = PyErr_NewException("janus.PrologError", NULL, NULL);
-  return PyExcProlog_store;
-}
-
 static PyObject *
 mod_janus(void)
 { static PyObject *janus = NULL;
@@ -70,7 +62,7 @@ Py_SetPrologErrorFromObject(PyObject *obj)
     PyTuple_SetItem(argv, 0, obj);
     PyObject *ex = PyObject_CallObject(constructor, argv);
     if ( ex )
-    { PyErr_SetObject(PyExcProlog(), ex);
+    { PyErr_SetObject(constructor, ex);
       Py_DECREF(ex);
     }
   }

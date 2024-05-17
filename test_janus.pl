@@ -3,7 +3,7 @@
     Author:        Jan Wielemaker
     E-mail:        jan@swi-prolog.org
     WWW:           http://www.swi-prolog.org
-    Copyright (c)  2023, SWI-Prolog Solutions b.v.
+    Copyright (c)  2023-2024, SWI-Prolog Solutions b.v.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -390,6 +390,9 @@ test(ex) :-
     py_call(demo:call_except(foo), Ex),
     py_call(Ex:'__str__'(), Str),
     assertion(sub_string(Str,_,_,_,'Unknown procedure: foo/0')).
+test(catch) :-
+    py_call(demo:try_catch(), Result),
+    assertion(Result == @true).         % Otherwise, the exception
 
 :- end_tests(janus_errors).
 

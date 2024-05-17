@@ -189,6 +189,13 @@ def call_try(n, query, input={}):
             count = count+1
     return count
 
+def try_catch():
+    try:
+        query_once("A is 1 / 0")
+    except PrologError as e:
+        return True
+    except Exception as e:
+        return e
 
 # Test locals() and globals()
 
@@ -209,3 +216,4 @@ def with_vars(a1):
         """py_call(locals(), Locals),
            py_call(globals(), Globals)
         """)
+
