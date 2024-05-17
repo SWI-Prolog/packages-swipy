@@ -2383,10 +2383,15 @@ py_free(term_t t)
 
 static foreign_t
 py_is_object(term_t t)
-{ PyObject *obj = NULL;
-  int rc = get_py_obj(t, &obj, FALSE);
+{ py_gil_state state;
+  PyObject *obj = NULL;
 
+  if ( !py_gil_ensure(&state) )
+    return FALSE;
+
+  int rc = get_py_obj(t, &obj, FALSE);
   Py_CLEAR(obj);
+  py_gil_release(state);
 
   return rc;
 }
