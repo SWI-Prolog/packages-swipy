@@ -2348,7 +2348,7 @@ py_str(term_t t, term_t str)
     Py_DECREF(obj);
 
     if ( s )
-    { rc = py_unify(str, s, 0);
+    { rc = py_unify(str, s, PYU_STRING);
       Py_DECREF(s);
     } else
       rc = FALSE;

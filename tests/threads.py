@@ -7,7 +7,7 @@ def one():
     print("Starting one")
     plone()
 
-def plone():    
+def plone():
     x = janus.query_once("""
     thread_self(_Me),
     thread_property(_Me, id(Me)),

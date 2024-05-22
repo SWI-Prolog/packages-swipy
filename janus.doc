@@ -94,7 +94,7 @@ developed for the WASM (Web Assembly) version.  That is
 The API of Janus is the result of discussions between the SWI-Prolog,
 XSB and Ciao lang teams.  It will be reflected in a PIP
 (\jargon{Prolog Improvement Proposal}).  Considering the large
-differences in design an opinions in Prolog implementation, the PIP
+differences in designs and opinions in Prolog implementation, the PIP
 does not cover all aspects of the API.  Many of the predicates and
 functions have a \jargon{Compatibility} note that explains the
 relation of the SWI-Prolog API and the PIP.  We summarize the
@@ -194,7 +194,7 @@ settled with compound terms using the \const{-} as functor to make
 the common binary tuple map to a Prolog \jargon{pair}.
 
 
-\section{Janus by example}
+\section{Janus by example - Prolog calling Python}
 \label{sec:janus-examples}
 
 This section introduces Janus calling Python from Prolog with examples.
@@ -351,7 +351,7 @@ Defined \textbf{domains} are:
   example, \exam{py_call(m:f(), R, [py_dict_as(list)])}
   \termitem{py_term}{}
   A term being translated to Python is unsupported.  For example,
-  \exam{py_call(m:f(point(1,2), R)}.
+  \exam{py_call(m:f(point(1,2)), R)}.
 \end{description}
 
 Defined \textbf{types} are:
@@ -371,7 +371,7 @@ Defined \textbf{types} are:
   \exam{py_call(m:f(\{a:1, x\}), R)}
   \termitem{py_set}{}
   Inside a \term{py_set}{Elements}, \arg{Elements} is not a list.
-  For example, \exam{py_call(m:f(py_set(42), R)}.
+  For example, \exam{py_call(m:f(py_set(42)), R)}.
   \termitem{py_target}{}
   In \term{py_call}{Target:FuncOrAttrOrMethod}, \arg{Target} is not
   a module (atom) or Python object reference.
@@ -431,7 +431,7 @@ Loading janus into Python is realized using the Python package
 \const{janus-swi}, which defines the module \const{janus_swi}.  We do
 not call this simply \const{janus} to allow coexistence of Janus for
 multiple Prolog implementations.  Unless you plan to interact with
-multiple Prolog systems in the same session, we advice to import janus
+multiple Prolog systems in the same session, we advise importing janus
 for SWI-Prolog as below.
 
 \begin{code}
@@ -564,9 +564,25 @@ though and thus is either \const{True} or an instance of the class
 \begin{code}
 import janus_swi as janus
 
-def printRange(from, to):
-    for d in janus.query("between(F,T,X)", {"F":from, "T":to})
+def printRange(fr, to):
+    for d in janus.query("between(F,T,X)", {"F":fr, "T":to}):
         print(d["X"])
+\end{code}
+
+The call to janus.query() returns an object that implements
+both the iterator protocol and the context manager protocol. A
+context manager ensures that the query is cleaned up as soon as it
+goes out of scope - Python typically does this with for loops, but
+there is no guarantee of when cleanup happens, especially if there
+is an error. (You can think of a \const{with} statement as similar
+to Prolog's setup_call_cleanup/3.)
+Using a context manager, we can write
+
+\begin{code}
+def printRange(fr, to):
+    with janus.query("between(F,T,X)", {"F":fr, "T":to}) as d_q:
+        for d in d_q:
+            print(d["X"])
 \end{code}
 
 Iterators may be nested.  For example,  we can create a list of tuples
@@ -578,6 +594,19 @@ def double_iter(w,h):
     for yd in janus.query("between(1,M,Y)", {"M":h}):
         for xd in janus.query("between(1,M,X)", {"M":w}):
             tuples.append((xd['X'],yd['Y']))
+    return tuples
+\end{code}
+
+or, using context managers:
+
+\begin{code}
+def doc_double_iter(w,h):
+    tuples=[]
+    with janus.query("between(1,M,Y)", {"M":h}) as yd_q:
+        for yd in yd_q:
+            with janus.query("between(1,M,X)", {"M":w}) as xd_q:
+                for xd in xd_q:
+                    tuples.append((xd['X'],yd['Y']))
     return tuples
 \end{code}
 
@@ -598,6 +627,26 @@ This allows for e.g.
     while ( s := q.next() ):
         print(s['X'])
     q.close()
+\end{code}
+
+or
+
+\begin{code}
+  try:
+      q = query("between(1,3,X)")
+      while ( s := q.next() ):
+          print(s['X'])
+  finally:
+      q.close()
+\end{code}
+
+The close() is called by the context manager, so the following
+is equivalent:
+
+\begin{code}
+    with query("between(1,3,X)") as q:
+        while ( s := q.next() ):
+            print(s['X'])
 \end{code}
 
 
@@ -625,6 +674,9 @@ swipl.Error: swipl.next_solution(): not inner query
 \textbf{Failure to close a query typically leaves SWI-Prolog in an
 inconsistent state and further interaction with Prolog is likely to
 crash the process}.  Future versions may improve on that.
+To avoid this, it is recommended that you use the query
+with a context manager, that is using the Python const{with}
+statement.
 
 
 \begin{description}
@@ -771,6 +823,9 @@ Class \cfuncref{janus.query}{} is similar to the
 \jargon{iterator} that allows for iterating over the answers to a
 non-deterministic Prolog predicate.
 
+The iterator also implements the Python context manaager protocol
+(for the Python \const{with} statement).
+
 \begin{description}
    \cfunction{query}{janus.query}{query, inputs=\{{}\}, keep=False}
    As \cfuncref{janus.query_once}{}, returning an \jargon{iterator} that
@@ -788,12 +843,18 @@ non-deterministic Prolog predicate.
    \cfunction{dict{|}None}{janus.query.next}{}
    Explicitly ask for the next solution of the iterator.  Normally,
    using the \ctype{query} as an iterator is to be preferred.  See
-   discussion above.
+   discussion above. \exam{q.next()} is equivalent to \exam{next(q)}
+   except it returns \const{None} if there are no more values instead
+   of raising the \const{StopIteration} exception.
 
    \cfunction{None}{janus.query.close}{}
    Close the query.  Closing a query is obligatory.  When used as
    an iterator, the Python destructor (\cfuncref{__del__}{}) takes
-   care of closing the query.
+   care of closing the query. However, Python does not guarantee
+   when the destructor will be called, so it is recommended that
+   the context manager protocol is used (with the Python \const{with}
+   statement), which closes the query when the query goes out of scope
+   or when an error happens.
 
 \begin{tags}
 \tag{Compatibility} PIP.
@@ -815,7 +876,7 @@ a Python \jargon{iterator} that enumerates all answers.
   the Prolog built-in between/3.
 
 \begin{code}
->>> [*janus.apply("user", "between", 1, 6)]
+>>> list(janus.apply("user", "between", 1, 6))
 [1, 2, 3, 4, 5, 6]
 \end{code}
 
@@ -1132,9 +1193,9 @@ such issues.
 
 The current version as an integer can be accessed as
 \exam{janus.version}.  The integer uses the same conventions as the
-SWI-Prolog flag \const{version} and is defined as $10,000*Major +
-100*Minor + Patch$.  In addition, the module defines the following
-functions:
+SWI-Prolog flag \const{version} and is defined as
+$10,000*Major + 100*Minor + Patch$.
+In addition, the module defines the following functions:
 
 \begin{description}
   \cfunction{str}{janus.version_str}{}
@@ -1361,7 +1422,7 @@ known differences.
   (atom) garbage collector.
 \item Prolog exceptions passed to Python are represented differently.
 \item When calling Prolog from Python and relying on well founded
-  semantics, only \jargon{plain truth values} (i.e., \const{janus.undefined}
+  semantics, only \jargon{plain truth values} (i.e., \const{janus.undefined})
   are supported in a portable way.  \jargon{Delay lists}, providing
   details on why the result is undefined, are represented differently.
 \end{itemize}
