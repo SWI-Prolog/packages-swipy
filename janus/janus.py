@@ -202,21 +202,23 @@ class query:
         return self
     def __next__(self):
         """Implement iter protocol.  Returns a dict as janus.query_once()"""
-        rc = _swipl.next_solution(self.state)
-        if rc == False or rc["truth"] == False:
+        rc = self.next()
+        if rc is None:
             raise StopIteration()
-        else:
-            return rc
+        return rc
+    def __enter__(self):
+        """Implement context manager protocol"""
+        return self
+    def __exit__(self, type, value, tb):
+        """Implement context manager protocol"""
+        self.close()
     def __del__(self):
         """Close the Prolog query"""
-        _swipl.close_query(self.state)
+        self.close()
     def next(self):
         """Allow for explicit enumeration,  Returns None or a dict"""
         rc = _swipl.next_solution(self.state)
-        if rc == False or rc["truth"] == False:
-            return None
-        else:
-            return rc
+        return None if rc == False or rc["truth"] == False else rc
     def close(self):
         """Explicitly close the query."""
         _swipl.close_query(self.state)
@@ -253,7 +255,7 @@ def once(query, inputs={}, keep=False, truth_vals=TruthVal.PLAIN_TRUTHVALS):
     Deprecated.  Renamed to query_once().
     """
     return query_once(query, inputs, keep, truth)
-    
+
 ################################################################
 # Functional style interface
 
@@ -464,7 +466,7 @@ class Term:
     in Python.  Instances are created if data is passed to Python as
     `prolog(Term)`.  Upon transforming the data back to Prolog, the
     interface recovers a copy of the original Prolog terms.
-    
+
     The user should never create instances of this explicitly.
     """
 

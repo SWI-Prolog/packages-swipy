@@ -63,7 +63,8 @@ test_janus :-
 		janus_errors,
 		janus_unicode,
                 janus_load,
-		xsb_call
+		xsb_call,
+                demo
               ]).
 
 :- py_add_lib_dir(tests).
@@ -347,9 +348,17 @@ test(py_double, Tuples == [1-1,2-1,3-1,
                            1-3,2-3,3-3,
                            1-4,2-4,3-4]) :-
     py_call(demo:double_iter(3,4), Tuples).
-test(invalid_nesting, X == @true) :-
+test(invalid_nesting, X == @false) :-
     py_call(demo:test_invalid_nesting(), X).
 :- if((py_call(sys:hexversion, V), V >= 0x03080000)).
+test(invalid_nesting2, [BlobType, BlobStr] ==
+                       ['PyObject',               % PrologError is tested for in demo.py
+                        "swipl.next_solution(): not inner query"]) :-
+    py_call(demo:test_invalid_nesting2(), Blob),
+    janus:py_str(Blob, BlobStr), % TODO: re-export py_str from module janus?
+    blob(Blob, BlobType).
+test(invalid_nesting3, error(python_error('PrologError',_))) :-
+    py_call(demo:test_invalid_nesting3(), _).
 test(while, X == [1,2,3]) :-
     py_call(while:test_while(), X).
 :- endif.
@@ -460,6 +469,45 @@ test(cmd, error(python_error('PrologError', _))) :-
 test_janus:p(42).
 
 :- end_tests(xsb_call).
+
+:- begin_tests(demo).
+
+test(doc_sqrt, R == py{'truth': @(true), 'Y': 1.4142135623730951}) :-
+    py_call(demo:doc_sqrt(), R).
+
+test(doc_user_plus, R == 3) :-
+    py_call(demo:doc_user_plus(), R).
+
+test(doc_findall_parent, [blocked('need to define parent/2 predicate'), R == [ 'Kees', 'Jan' ]]) :-
+    py_call(demo:doc_findall_parent(), R).
+
+test(doc_has_big_integers, R == @(TrueFalse)) :-
+    py_call(demo:doc_has_big_integers(), R),
+    (   current_prolog_flag(bounded,false)
+    ->  TrueFalse = true
+    ;   TrueFalse = false
+    ).
+
+test(doc_getRange, R == [3,4,5]) :-
+    py_call(demo:doc_getRange(3,5), R).
+test(doc_getRange, R == [3,4,5]) :-
+    py_call(demo:doc_getRange2(3,5), R).
+
+test(doc_double_iter, R == [1-1, 2-1, 1-2, 2-2, 1-3, 2-3]) :-
+    py_call(demo:doc_double_iter(2,3), R).
+test(doc_double_iter, R == [1-1, 2-1, 1-2, 2-2, 1-3, 2-3]) :-
+    py_call(demo:doc_double_iter2(2,3), R).
+
+test(doc_get_between, R == [1,2,3]) :-
+    py_call(demo:doc_get_between(), R).
+
+test(doc_apply_between, R == [1, 2, 3, 4, 5, 6]) :-
+    py_call(demo:doc_apply_between(), R).
+
+test(doc_between_1_6, R == [1, 2, 3, 4, 5, 6]) :-
+    py_call(demo:doc_between_1_6(), R).
+
+:- end_tests(demo).
 
 bench_janus :-
     bench_python(concat_list(100 000)).

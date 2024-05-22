@@ -1,6 +1,7 @@
 # This Python module defines some functions that support our tests
 
-from janus import *
+from janus_swi import query, query_once, PLAIN_TRUTHVALS, PrologError
+import janus_swi as janus
 
 # Simple data exchange
 
@@ -73,30 +74,54 @@ def kwd_all(a=1, b=2, c=3):
 
 def abort_iter(n):
     sum=0
-    for d in query("between(1,M,X)", {"M":n}):
-        sum += d["X"]
-        if sum > 10000:
-            break;
+    with query("between(1,M,X)", {"M":n}) as d_q:
+        for d in d_q:
+            sum += d["X"]
+            if sum > 10000:
+                break;
     return sum;
 
 def double_iter(w,h):
     tuples=[]
-    for yd in query("between(1,M,Y)", {"M":h}):
-        for xd in query("between(1,M,X)", {"M":w}):
-            tuples.append((xd['X'],yd['Y']))
+    with query("between(1,M,Y)", {"M":h}) as yd_q:
+        for yd in yd_q:
+            with query("between(1,M,X)", {"M":w}) as xd_q:
+                for xd in xd_q:
+                    tuples.append((xd['X'],yd['Y']))
     return tuples
 
 def test_invalid_nesting():
+    rc = True
     q1 = query("between(1,3,X)")
     q2 = query("between(1,3,Y)")
-    q2.next()
+    next(q2)
     try:
-        q1.next()
-    except:
+        rc = next(q1)
+    except PrologError:
         q2.close()
-    q1.next()
+        rc = False
+    next(q1)
     q1.close()
-    return True
+    return rc
+
+def test_invalid_nesting2():
+    with (query("between(1,3,X)") as q1,
+          query("between(1,3,Y)") as q2):
+        next(q2)
+        try:
+            return next(q1)
+        except Exception as exc:
+            if not isinstance(exc, PrologError):
+                return "Not instance of PrologError: " + repr(exc)
+            return exc
+    return False  # Shouldn't get here
+
+def test_invalid_nesting3():
+    with (query("between(1,3,X)") as q1,
+          query("between(1,3,Y)") as q2):
+        next(q2)
+        return next(q1)
+
 
 # Test using generators as custom iterators.
 
@@ -217,3 +242,85 @@ def with_vars(a1):
            py_call(globals(), Globals)
         """)
 
+# Some examples from the documentation
+
+def doc_sqrt():  # returns: {'truth': True, 'Y': 1.4142135623730951}
+    return janus.query_once("Y is sqrt(X)", {'X':2})
+
+def doc_user_plus():  # returns: 3
+    return janus.apply_once("user", "plus", 1, 2)
+
+def doc_y_is_x_plus_1():  # returns: {'Y': 2, 'truth': True}
+    return janus.query_once("Y is X+1", {"X":1})
+
+# TODO: this needs a definition of parent/2:
+def doc_findall_parent():  # returns: [ 'Kees', 'Jan' ]
+    return janus.query_once(
+        "findall(_GP, parent(Me, _P), parent(_P, _GP), GPs)""",
+         {'Me':'Jan'})["GPs"]
+
+def doc_has_big_integers():
+    return janus.query_once("current_prolog_flag(bounded,false)")['truth']
+
+# doc_printRange() isn't tested; doc_getRange() is similar, returning a list
+def doc_printRange(fr, to):
+    for d in janus.query("between(F,T,X)", {"F":fr, "T":to}):
+        print(d["X"])
+
+def doc_printRange2(fr, to):
+    with janus.query("between(F,T,X)", {"F":fr, "T":to}) as d_q:
+        for d in d_q:
+            print(d["X"])
+
+def doc_getRange(fr, to):
+    return [d["X"] for d in janus.query("between(F,T,X)", {"F":fr, "T":to})]
+
+def doc_getRange2(fr, to):
+    result = []
+    with janus.query("between(F,T,X)", {"F":fr, "T":to}) as d_q:
+        for d in d_q:
+            result.append(d["X"])
+    return result
+
+def doc_double_iter(w,h):  # double_iter(2,3) => [(1, 1), (2, 1), (1, 2), (2, 2), (1, 3), (2, 3)]
+                           #          in Prolog: [1-1, 2-1, 1-2, 2-2, 1-3, 2-3)]
+    tuples=[]
+    for yd in janus.query("between(1,M,Y)", {"M":h}):
+        for xd in janus.query("between(1,M,X)", {"M":w}):
+            tuples.append((xd['X'],yd['Y']))
+    return tuples
+
+def doc_double_iter2(w,h):  # double_iter(2,3) => [(1, 1), (2, 1), (1, 2), (2, 2), (1, 3), (2, 3)]
+                            #          in Prolog: [1-1, 2-1, 1-2, 2-2, 1-3, 2-3)]
+    tuples=[]
+    with janus.query("between(1,M,Y)", {"M":h}) as yd_q:
+        for yd in yd_q:
+            with janus.query("between(1,M,X)", {"M":w}) as xd_q:
+                for xd in xd_q:
+                    tuples.append((xd['X'],yd['Y']))
+    return tuples
+
+# doc_print_between() isn't tested; doc_get_between() is similar, returning a list
+def doc_print_between():
+    try:
+        q = query("between(1,3,X)")
+        while ( s := q.next() ):
+            print(s['X'])
+    finally:
+        q.close()
+
+def doc_get_between():
+    result = []
+    try:
+        q = query("between(1,3,X)")
+        while ( s := q.next() ):
+            result.append(s['X'])
+    finally:
+        q.close()
+    return result
+
+def doc_apply_between():  # returns: [1, 2, 3, 4, 5, 6]
+    return list(janus.apply("user", "between", 1, 6))
+
+def doc_between_1_6():  # returns: [1, 2, 3, 4, 5, 6]
+    return [a["D"] for a in query("between(1,6,D)")]
