@@ -13,6 +13,9 @@ upon  the   agreed  interface.   For  example,   `janus_swi`  supports
 SWI-Prolog dicts and defines thread synchronization between Prolog and
 Python.
 
+## Documentation
+
+See [SWI-Prolog manual](https://www.swi-prolog.org/pldoc/package/janus)
 
 ## Bi-directional
 
@@ -66,10 +69,11 @@ package can be installed from within this directory using
 Configuration and installation of `library(janus)` which embeds Python
 into Prolog is  handled by the normal  Prolog configuration.  Building
 the  interface  requires  the  libraries  and  C  headers  for  Python
-embedding to be installed.  On __Debian__ based Linux systems, this is
-achieved using
+embedding to be installed.   Below are the commands for installing the
+embedded Python engine for Ubuntu and Fedora Linux.
 
-    apt install python3 libpython3-dev
+    apt install python3 libpython3-dev		# Ubuntu
+	dnf install python3-devel				# Fedora
 
 If  you need  to  build  Python, the  following  command is  suggested
 (assuming you wish to install  it in `$HOME/.local/bin`). You may also
@@ -101,11 +105,6 @@ work shall be merged with https://anaconda.org/conda-forge/swi-prolog
 As  is,  https://github.com/SWI-Prolog/swi-prolog-feedstock  has  been
 used  to build  the full  SWI-Prolog  system with  Janus interface  on
 Linux, MacOS and Windows.
-
-
-## Documentation
-
-See [SWI-Prolog manual](https://www.swi-prolog.org/pldoc/package/janus)
 
 
 ## Alternatives
