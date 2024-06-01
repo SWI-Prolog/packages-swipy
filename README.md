@@ -72,8 +72,8 @@ the  interface  requires  the  libraries  and  C  headers  for  Python
 embedding to be installed.   Below are the commands for installing the
 embedded Python engine for Ubuntu and Fedora Linux.
 
-    apt install python3 libpython3-dev		# Ubuntu
-	dnf install python3-devel				# Fedora
+    apt install python3 libpython3-dev   # Ubuntu
+    dnf install python3-devel            # Fedora
 
 If  you need  to  build  Python, the  following  command is  suggested
 (assuming you wish to install  it in `$HOME/.local/bin`). You may also
