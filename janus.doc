@@ -125,7 +125,9 @@ but, because we do not know which strings act as identifier and which
 as just text, this is not possible.  The second is to improve
 compatibility with Prolog systems that do not support strings.  Note
 that py_call/3 and py_iter/3 provide the option
-\term{py_string_as}{string} to obtain a string if this is desirable.
+\term{py_string_as}{Type} to obtain strings in an alternative format,
+where \arg{Type} is one of \const{atom}, \const{string}, \const{codes}
+or \const{chars}.
 
 \begin{center}
 \begin{tabular}{|l|c|l|p{3in}|}
@@ -140,8 +142,9 @@ Float   & $\Longleftrightarrow$ & float    & \\
 @(true) & $\Longleftrightarrow$ & True     & \\
 @(false) & $\Longleftrightarrow$ & False    & \\
 Atom    & $\longleftarrow$      & \cfuncref{enum.Enum}{} & Name of Enum instance \\
-Atom    & $\Longleftrightarrow$ & String   & \\
+Atom    & $\Longleftrightarrow$ & String   & Depending on \const{py_string_as} option \\
 String  & $\longrightarrow$     & String   & \\
+string(Text) & $\longrightarrow$ & String  & \arg{Text} is an atom, string, code- or char list\\
 \#(Term) & $\longrightarrow$    & String   & \jargon{stringify} using write_canonical/1 if not atomic \\
 prolog(Term) & $\longrightarrow$ & \cfuncref{janus.Term}{} & Represents any Prolog term \\
 Term    & $\longleftarrow$      & \cfuncref{janus.Term}{} & \\
@@ -345,7 +348,7 @@ Defined \textbf{domains} are:
   argument.   For example, \exam{py_call(m:f(1,x=2,3), R)}
   \termitem{py_string_as}{}
   The value for a \term{py_string_as}{As} option is invalid.  For
-  example, \exam{py_call(m:f(), R, [py_string_as(codes)])}
+  example, \exam{py_call(m:f(), R, [py_string_as(float)])}
   \termitem{py_dict_as}{}
   The value for a \term{py_dict_as}{As} option is invalid.  For
   example, \exam{py_call(m:f(), R, [py_dict_as(list)])}

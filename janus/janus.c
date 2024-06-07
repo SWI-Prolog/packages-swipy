@@ -3,7 +3,7 @@
     Author:        Jan Wielemaker
     E-mail:        jan@swi-prolog.org
     WWW:           http://www.swi-prolog.org
-    Copyright (c)  2023, SWI-Prolog Solutions b.v.
+    Copyright (c)  2023-2024, SWI-Prolog Solutions b.v.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,8 @@ static atom_t ATOM_tuple;
 static atom_t ATOM_curl;
 static atom_t ATOM_atom;
 static atom_t ATOM_string;
+static atom_t ATOM_codes;
+static atom_t ATOM_chars;
 static atom_t ATOM_file;
 static atom_t ATOM_eval;
 static atom_t ATOM_single;
@@ -77,6 +79,7 @@ static functor_t FUNCTOR_py_set1;
 static functor_t FUNCTOR_prolog1;
 static functor_t FUNCTOR_at1;
 static functor_t FUNCTOR_eval1;
+static functor_t FUNCTOR_string1;
 
 static int py_initialize_done = FALSE;
 static int py_module_initialize_done = FALSE;
@@ -194,10 +197,14 @@ static pthread_mutex_t py_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define UNLOCK()
 #endif /*_REENTRANT*/
 
+#define PYU_SMASK  0x0003		/* Mask for types */
+#define PYU_ATOM   0x0000		/* Unify text as Prolog atom */
 #define PYU_STRING 0x0001		/* Unify text as Prolog string */
-#define PYU_OBJ    0x0002		/* Unify as object */
-#define PYU_CURL   0x0004		/* Unify dict as {...} */
-#define PYU_ERROR  0x0008		/* Inside check_error() */
+#define PYU_CODES  0x0002		/* Unify text as Prolog code list */
+#define PYU_CHARS  0x0003		/* Unify text as Prolog char list */
+#define PYU_OBJ    0x0004		/* Unify as object */
+#define PYU_CURL   0x0008		/* Unify dict as {...} */
+#define PYU_ERROR  0x0010		/* Inside check_error() */
 
 #ifndef HAVE_PYGILSTATE_CHECK
 static _Thread_local int have_gil;
@@ -681,16 +688,25 @@ static int
 py_unify_unicode(term_t t, PyObject *obj, int flags)
 { ssize_t len;
   const char *s;
-  int rc;
+  int rc = TRUE;
   int uflags = REP_UTF8;
+  static int tflags[] = {PL_ATOM, PL_STRING, PL_CODE_LIST, PL_CHAR_LIST};
 
-  uflags |= (flags&PYU_STRING) ? PL_STRING : PL_ATOM;
+  uflags |= tflags[flags&PYU_SMASK];
 
   s = PyUnicode_AsUTF8AndSize(obj, &len);
   if ( !check_error((void*)s) )
     return FALSE;
   PL_STRINGS_MARK();
-  rc = PL_unify_chars(t, uflags, len, s);
+  term_t a = 0;
+  if ( (flags&PYU_CODES) )	/* codes or chars */
+    rc = ((a=PL_new_term_ref()) &&
+	  PL_unify_functor(t, FUNCTOR_string1) &&
+	  PL_get_arg(1, t, a) &&
+	  (t = a));
+  rc = rc && PL_unify_chars(t, uflags, len, s);
+  if ( a )
+    PL_reset_term_refs(a);
   PL_STRINGS_RELEASE();
   return rc;
 }
@@ -1307,6 +1323,25 @@ py_from_prolog(term_t t, PyObject **obj)
   if ( PL_get_functor(t, &funct) )
   { if ( funct == FUNCTOR_at1 )
       return py_from_prolog_at1(t, obj);
+
+    if ( funct == FUNCTOR_string1 )
+    { term_t a;
+      int rc;
+      char *s;
+
+      PL_STRINGS_MARK();
+      rc = ( (a=PL_new_term_ref()) &&
+	     PL_get_arg(1, t, a) &&
+	     PL_get_nchars(t, &len, &s,
+			   REP_UTF8|CVT_ATOM|CVT_STRING|
+			   CVT_LIST|CVT_EXCEPTION) );
+      if ( a )
+	PL_reset_term_refs(a);
+      if ( rc )
+	*obj = check_error(PyUnicode_FromStringAndSize(s, len));
+      PL_STRINGS_RELEASE();
+      return rc && *obj;
+    }
 
     if ( funct == FUNCTOR_py_set1 )
     { term_t tail = PL_new_term_ref();
@@ -1986,7 +2021,7 @@ static int
 get_conversion_options(term_t options, int *flags)
 { if ( options )
   { atom_t string_as = 0;
-    atom_t dict_as = 0;
+    atom_t dict_as   = 0;
     int py_object    = -1;
 
     if ( !PL_scan_options(options, 0, "py_call_options", pycall_options,
@@ -1999,12 +2034,19 @@ get_conversion_options(term_t options, int *flags)
 	*flags &= ~PYU_OBJ;
     }
     if ( string_as )
-    { if ( string_as == ATOM_atom )
-	*flags &= ~PYU_STRING;
+    { int f = *flags & ~PYU_SMASK;
+      if ( string_as == ATOM_atom )
+	f |= PYU_ATOM;
       else if ( string_as == ATOM_string )
-	*flags |= PYU_STRING;
+	f |= PYU_STRING;
+      else if ( string_as == ATOM_codes )
+	f |= PYU_CODES;
+      else if ( string_as == ATOM_chars )
+	f |= PYU_CHARS;
       else
 	return atom_domain_error("py_string_as", string_as);
+
+      *flags = f;
     }
     if ( dict_as )
     { if ( dict_as == ATOM_dict )
@@ -2487,6 +2529,8 @@ install_janus(void)
   MKATOM(true);
   MKATOM(atom);
   MKATOM(string);
+  MKATOM(codes);
+  MKATOM(chars);
   MKATOM(dict);
   MKATOM(file);
   MKATOM(eval);
@@ -2511,6 +2555,7 @@ install_janus(void)
   FUNCTOR_py_set1    = PL_new_functor(PL_new_atom("py_set"), 1);
   FUNCTOR_at1        = PL_new_functor(PL_new_atom("@"), 1);
   FUNCTOR_eval1      = PL_new_functor(PL_new_atom("eval"), 1);
+  FUNCTOR_string1    = PL_new_functor(PL_new_atom("string"), 1);
   FUNCTOR_key_value2 = FUNCTOR_module2;
   MKFUNCTOR(prolog, 1);
 
