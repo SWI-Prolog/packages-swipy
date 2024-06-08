@@ -51,6 +51,7 @@
 test_janus :-
     run_tests([ janus_data,
                 janus_prolog_data,
+                janus_string_as,
                 janus_eval,
                 janus_py_builtin,
                 janus_obj,
@@ -182,6 +183,27 @@ test(echo, Term =@= Copy) :-
     term_string(Copy, Str).
 
 :- end_tests(janus_prolog_data).
+
+:- begin_tests(janus_string_as).
+
+test(atom, Str == hello) :-
+    py_call(janus:echo(string(hello)), Str).
+test(string, Str == hello) :-
+    py_call(janus:echo(string("hello")), Str).
+test(codes, Str == hello) :-
+    py_call(janus:echo(string([104,101,108,108,111])), Str).
+test(chars, Str == hello) :-
+    py_call(janus:echo(string([h,e,l,l,o])), Str).
+test(atom, Str == hello) :-
+    py_call(janus:echo(hello), Str, [py_string_as(atom)]).
+test(string, Str == "hello") :-
+    py_call(janus:echo(hello), Str, [py_string_as(string)]).
+test(codes, Str == string([104,101,108,108,111])) :-
+    py_call(janus:echo(hello), Str, [py_string_as(codes)]).
+test(chars, Str == string([h,e,l,l,o])) :-
+    py_call(janus:echo(hello), Str, [py_string_as(chars)]).
+
+:- end_tests(janus_string_as).
 
 :- begin_tests(janus_eval).
 

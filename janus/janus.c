@@ -1332,7 +1332,7 @@ py_from_prolog(term_t t, PyObject **obj)
       PL_STRINGS_MARK();
       rc = ( (a=PL_new_term_ref()) &&
 	     PL_get_arg(1, t, a) &&
-	     PL_get_nchars(t, &len, &s,
+	     PL_get_nchars(a, &len, &s,
 			   REP_UTF8|CVT_ATOM|CVT_STRING|
 			   CVT_LIST|CVT_EXCEPTION) );
       if ( a )
