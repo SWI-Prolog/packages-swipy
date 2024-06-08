@@ -57,7 +57,7 @@ SWI-Prolog is  selected by  finding `swipl`  on the  executable search
 path.   If `swipl.exe`  is not  in ``%PATH%``  on Windows  the Windows
 registry is examined to find SWI-Prolog.
 
-If  you installed  SWI-Prolog from  source, it  is advices  to install
+If  you installed  SWI-Prolog from  source, it  is advised  to install
 Janus from the  `packages/swipy` directory in the  Prolog source.  The
 package can be installed from within this directory using
 
@@ -74,14 +74,6 @@ embedded Python engine for Ubuntu and Fedora Linux.
 
     apt install python3 libpython3-dev   # Ubuntu
     dnf install python3-devel            # Fedora
-
-If  you need  to  build  Python, the  following  command is  suggested
-(assuming you wish to install  it in `$HOME/.local/bin`). You may also
-need the option `--enable-shared`.
-
-    CFLAGS='-fPIC' CCSHARED='-fPIC' ./configure --prefix=$HOME/.local --enable-optimizations
-    make -j8   # change "8" to the number of CPUs on your machine
-    make install
 
 On __MacOS__,  these files are  included in the Homebrew  and Macports
 versions of Python
