@@ -985,23 +985,32 @@ py_lib_dirs(Dirs) :-
 
 :- multifile system:term_expansion/2.
 
-system:term_expansion((:- py_add_lib_dir(Dir0)),
-                      (:- initialization(py_add_lib_dir(Dir, first), now))) :-
-    \+ is_absolute_file_name(Dir0),
-    prolog_load_context(directory, CWD),
-    absolute_file_name(Dir0, Dir, [relative_to(CWD)]).
+system:term_expansion((:- py_add_lib_dir(Dir0)), Directive) :-
+    system:term_expansion((:- py_add_lib_dir(Dir0, last)), Directive).
 system:term_expansion((:- py_add_lib_dir(Dir0, Where)),
                       (:- initialization(py_add_lib_dir(Dir, Where), now))) :-
-    \+ is_absolute_file_name(Dir0),
+    \+ (atomic(Dir0), is_absolute_file_name(Dir0)),
     prolog_load_context(directory, CWD),
-    absolute_file_name(Dir0, Dir, [relative_to(CWD)]),
-    absolute_file_name(Dir0, Dir).
+    absolute_file_name(Dir0, Dir,
+                       [ relative_to(CWD),
+                         file_type(directory),
+                         access(read)
+                       ]).
 
 py_add_lib_dir(Dir) :-
     py_add_lib_dir(Dir, last).
 
 py_add_lib_dir(Dir, Where) :-
+    atomic(Dir),
+    !,
     absolute_file_name(Dir, AbsDir),
+    prolog_to_os_filename(AbsDir, OSDir),
+    py_add_lib_dir_(OSDir, Where).
+py_add_lib_dir(Alias, Where) :-
+    absolute_file_name(Alias, AbsDir,
+                       [ file_type(directory),
+                         access(read)
+                       ]),
     prolog_to_os_filename(AbsDir, OSDir),
     py_add_lib_dir_(OSDir, Where).
 
