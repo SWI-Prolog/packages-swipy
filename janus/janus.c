@@ -1505,7 +1505,7 @@ py_record(term_t t)
 { record_t rec = PL_record(t);
 
   if ( rec )
-  { PyObject *r = PyLong_FromLongLong((long long)rec);
+  { PyObject *r = PyLong_FromLongLong((uintptr_t)rec);
     PyObject *argv = NULL;
     PyObject *con;
     PyObject *term = NULL;
@@ -1538,7 +1538,7 @@ py_unify_record(term_t t, PyObject *rec)
 
     rc = ( (v=PyLong_AsLongLong(r)) &&
 	   (tmp=PL_new_term_ref()) &&
-	   PL_recorded((record_t)v, tmp) &&
+	   PL_recorded((record_t)(uintptr_t)v, tmp) &&
 	   PL_unify(t, tmp) );
     Py_DECREF(r);
   }
@@ -1555,7 +1555,7 @@ py_free_record(PyObject *rec)
   { long long v = PyLong_AsLongLong(rec);
 
     if ( v )
-      PL_erase((record_t)v);
+      PL_erase((record_t)(uintptr_t)v);
     rc = TRUE;
   }
 

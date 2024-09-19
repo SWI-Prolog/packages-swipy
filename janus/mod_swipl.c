@@ -3,7 +3,7 @@
     Author:        Jan Wielemaker
     E-mail:        jan@swi-prolog.org
     WWW:           http://www.swi-prolog.org
-    Copyright (c)  2023, SWI-Prolog Solutions b.v.
+    Copyright (c)  2023-2024, SWI-Prolog Solutions b.v.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -409,7 +409,7 @@ swipl_open_query(PyObject *self, PyObject *args)
 
       out = PyList_New(STATE_LIST_LENGTH);
       tuple_set_int(0, out, fid);
-      tuple_set_int(1, out, (int64_t)qid);
+      tuple_set_int(1, out, (int64_t)(uintptr_t)qid);
       tuple_set_int(2, out, av);
       tuple_set_int(3, out, keep_bindings(args));
 
@@ -455,7 +455,7 @@ query_parms(PyObject *args, PyObject **tpp, fid_t *fid, qid_t *qid, term_t *av, 
        !Py_GetInt64Arg(3, tp, &tav[3]) )
     return FALSE;
   *fid  = (fid_t)tav[0];
-  *qid  = (qid_t)tav[1];
+  *qid  = (qid_t)(uintptr_t)tav[1];
   *av   = (term_t)tav[2];
   *keep = (int)tav[3];
 
