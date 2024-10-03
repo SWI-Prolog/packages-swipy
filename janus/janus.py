@@ -3,7 +3,7 @@
 # Author:        Jan Wielemaker
 # E-mail:        jan@swi-prolog.org
 # WWW:           http://www.swi-prolog.org
-# Copyright (c)  2023, SWI-Prolog Solutions b.v.
+# Copyright (c)  2023-2024, SWI-Prolog Solutions b.v.
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -584,3 +584,32 @@ def connect_io(stdin=True, stdout=True, stderr=True):
         sys.stdout = PrologIO("user_output", io.BytesIO(), line_buffering=True)
     if ( stderr ):
         sys.stderr = PrologIO("user_error",  io.BytesIO(), write_through=True)
+
+
+################################################################
+# Deal with interrupts
+
+def heartbeat_tick():
+    i = 1
+
+def heartbeat(n=10000):
+    """
+    Make Prolog call Python every `N` inferences.  This may be required
+    to allow Python processing signals such as a keyboard interrupt while
+    Prolog is running.  As Python only processes signals in the main thread,
+    it is enough to call this once from the main thread.
+
+    A higher number keeps signals queued for longer, while a lower number
+    harms the Prolog performance.  Note that _inferences_ can take really
+    long of Prolog is calling foreign code.
+
+    Parameters
+    ----------
+    n: int
+        Number of inferences.  Defaults to 10,000.
+    """
+    consult("py_heartbeat", """
+prolog:heartbeat :-
+    py_call(janus_swi:heartbeat_tick()).
+""")
+    query_once("set_prolog_flag(heartbeat, N)", {"N":n})
