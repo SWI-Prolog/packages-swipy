@@ -89,6 +89,7 @@ static int py_gil_thread = 0;	/* Prolog thread that owns the GIL */
 #ifdef PL_Q_EXCEPT_HALT
 static functor_t FUNCTOR_unwind1;
 static functor_t FUNCTOR_halt1;
+static atom_t ATOM_keyboard_interrupt;
 #else
 static atom_t ATOM_aborted;
 static int exit_requested = INT_MIN;
@@ -529,6 +530,22 @@ propagate_sys_exit(int code)
 #endif
 }
 
+static bool
+propagate_keyboard_interrupt(void)
+{
+#ifdef PL_Q_EXCEPT_HALT
+  term_t ex;
+  if ( (ex=PL_new_term_ref()) &&
+       PL_unify_term(ex, PL_FUNCTOR, FUNCTOR_unwind1,
+		     PL_ATOM, ATOM_keyboard_interrupt) )
+  { PL_raise_exception(ex);
+    return true;
+  }
+#endif
+  return false;
+}
+
+
 static PyObject *
 check_error(PyObject *obj)
 { PyObject *ex = PyErr_Occurred();
@@ -543,13 +560,19 @@ check_error(PyObject *obj)
 
     PyObject *exit_code;
     long long code;
-    if ( error_type &&
-	 strcmp(error_type, "SystemExit") == 0 &&
-	 (exit_code=PyObject_GetAttrString(value, "code")) &&
-	 (code=PyLong_AsLongLong(exit_code)) )
-    { propagate_sys_exit((int)code);
-      Py_CLEAR(tname);
-      return NULL;
+    if ( error_type )
+    { if ( strcmp(error_type, "SystemExit") == 0 &&
+	   (exit_code=PyObject_GetAttrString(value, "code")) &&
+	   (code=PyLong_AsLongLong(exit_code)) )
+      { propagate_sys_exit((int)code);
+	Py_CLEAR(tname);
+	return NULL;
+      }
+
+      if ( strcmp(error_type, "KeyboardInterrupt") == 0 )
+      { if ( propagate_keyboard_interrupt() )
+	  return NULL;
+      }
     }
 
     term_t t   = PL_new_term_ref();
@@ -2578,6 +2601,7 @@ install_janus(void)
 #ifdef PL_Q_EXCEPT_HALT
   MKFUNCTOR(unwind, 1);
   MKFUNCTOR(halt, 1);
+  MKATOM(keyboard_interrupt);
 #else
   ATOM_aborted = PL_new_atom("$aborted");
 #endif

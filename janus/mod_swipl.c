@@ -71,39 +71,55 @@ Py_SetPrologErrorFromObject(PyObject *obj)
   Py_CLEAR(argv);
 }
 
-
-static bool
-is_halt_exception(term_t ex, int *code)
-{
-#ifdef PL_Q_EXCEPT_HALT
-  term_t a;
-  int i;
+static term_t
+is_unwind_exception(term_t ex)
+{ term_t a;
 
   if ( PL_is_functor(ex, FUNCTOR_unwind1) &&
        (a=PL_new_term_ref()) &&
-       PL_get_arg(1, ex, a) &&
-       PL_is_functor(a, FUNCTOR_halt1) &&
+       PL_get_arg(1, ex, a) )
+    return a;
+
+  return 0;
+}
+
+#ifdef PL_Q_EXCEPT_HALT
+static bool
+is_halt_exception(term_t a, int *code)
+{ int i;
+
+  if ( PL_is_functor(a, FUNCTOR_halt1) &&
        PL_get_arg(1, a, a) &&
        PL_get_integer(a, &i) )
   { *code = i;
     return true;
   }
-#else
-  if ( exit_requested != INT_MIN &&
-       PL_get_atom(ex, &a) && a == ATOM_aborted )
-  { *code = exit_requested;
-    return true;
-  }
-#endif
+
   return false;
 }
-
+#endif
 
 static void
 Py_SetPrologError(term_t ex)
-{ int code;
+{ int code = INT_MIN;
+  atom_t a;
 
-  if ( is_halt_exception(ex, &code) )
+#ifdef PL_Q_EXCEPT_HALT
+  term_t exa;
+  if ( (exa=is_unwind_exception(ex)) )
+  { if ( PL_get_atom(exa, &a) && a == ATOM_keyboard_interrupt )
+    { PyErr_SetObject(PyExc_KeyboardInterrupt, NULL);
+      return;
+    }
+    is_halt_exception(exa, &code);
+  }
+#else
+  if ( exit_requested != INT_MIN &&
+       PL_get_atom(ex, &a) && a == ATOM_aborted )
+    code = exit_requested;
+#endif
+
+  if ( code != INT_MIN )
   { PyObject *exit_code = PyLong_FromLongLong(code);
     PyErr_SetObject(PyExc_SystemExit, exit_code);
   } else
