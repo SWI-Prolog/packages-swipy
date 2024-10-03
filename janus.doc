@@ -1191,7 +1191,50 @@ $B$ holds $M$ and wishes to make a Python call and this tries to lock
 the GIL.  The predicate py_gil_owner/1 can be used to help diagnosing
 such issues.
 
-\subsection{Janus versions}
+\section{Janus and signals}
+\label{sec:janus-signals}
+
+If Prolog is embedded into Python, SWI-Prolog is started with the
+\cmdlineoption{--no-signals}, i.e., SWI-Prolog does not install any
+signal handlers.  This implies that signals are handled by Python.
+Python handles signals synchronously (as SWI-Prolog) when executing
+byte code.  As Prolog execution does not involve Prolog execution,
+running a program like below cannot be in interrupted
+
+\begin{code}
+import janus_swi as janus
+janus.query_once("repeat,fail")
+\end{code}
+
+If your program makes possibly slow Prolog queries and you want signal
+handling, you can enable a \jargon{heartbeat}.
+
+\begin{description}
+  \cfunction{None}{janus.heartbeat}{count=10000}
+Ask Prolog to call a dummy function every \arg{count}
+\jargon{inferences}. This allows Python to handle signals. Lower numbers
+for \arg{count} improve responsiveness at the cost of slowing down
+Prolog.  Note that Prolog calls to \jargon{foreign code} count as one
+inference.  Signal handling is completely blocked if Prolog is blocked
+in foreign code.
+\end{description}
+
+To complete the picture, some Python exceptions are propagated through
+Prolog by mapping them into a Prolog exception and back again.  This
+notably concerns
+
+\begin{description}
+    \termitem{SystemExit}{code}
+This Python exception is mapped to the Prolog exception
+\term{unwind}{\term{halt}{code}} and back again when Prolog returns
+control back to Python.
+    \termitem{KeyboardInterrupt}{}
+This Python exception is mapped to the Prolog exception
+\term{unwind}{keyboard_interrupt}
+\end{description}
+
+
+\section{Janus versions}
 \label{sec:janus-version}
 
 The current version as an integer can be accessed as
