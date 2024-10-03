@@ -86,6 +86,14 @@ static int py_module_initialize_done = FALSE;
 static int py_finalizing = FALSE;
 static int py_gil_thread = 0;	/* Prolog thread that owns the GIL */
 
+#ifdef PL_Q_EXCEPT_HALT
+static functor_t FUNCTOR_unwind1;
+static functor_t FUNCTOR_halt1;
+#else
+static atom_t ATOM_aborted;
+static int exit_requested = INT_MIN;
+#endif
+
 typedef struct
 { PyGILState_STATE gil;
   int use_gil;
@@ -510,6 +518,16 @@ py_import(term_t spec, term_t options)
   return rc;
 }
 
+static void
+propagate_sys_exit(int code)
+{
+#ifdef PL_Q_EXCEPT_HALT
+  PL_halt(code|PL_HALT_WITH_EXCEPTION);
+#else
+  exit_requested = code;
+  PL_action(PL_ACTION_ABORT);
+#endif
+}
 
 static PyObject *
 check_error(PyObject *obj)
@@ -517,11 +535,27 @@ check_error(PyObject *obj)
 
   if ( ex )
   { PyObject *type = NULL, *tname = NULL, *value = NULL, *stack = NULL;
+    const char *error_type = NULL;
+
+    PyErr_Fetch(&type, &value, &stack);
+    if ( (tname=PyObject_GetAttrString(type, "__name__")) )
+      error_type = PyUnicode_AsUTF8AndSize(tname, NULL);
+
+    PyObject *exit_code;
+    long long code;
+    if ( error_type &&
+	 strcmp(error_type, "SystemExit") == 0 &&
+	 (exit_code=PyObject_GetAttrString(value, "code")) &&
+	 (code=PyLong_AsLongLong(exit_code)) )
+    { propagate_sys_exit((int)code);
+      Py_CLEAR(tname);
+      return NULL;
+    }
+
     term_t t   = PL_new_term_ref();
     term_t av  = PL_new_term_refs(2);
     term_t ctx = PL_new_term_ref();
 
-    PyErr_Fetch(&type, &value, &stack);
     if ( stack )
     { if ( !py_unify(ctx, stack, PYU_ERROR) ||
 	   !PL_cons_functor_v(ctx, FUNCTOR_python_stack1, ctx) ||
@@ -530,9 +564,8 @@ check_error(PyObject *obj)
       PL_put_variable(t);
     }
 
-    if ( (tname=PyObject_GetAttrString(type, "__name__")) &&
-         PL_unify_chars(av+0, PL_ATOM|REP_UTF8, (size_t)-1,
-			PyUnicode_AsUTF8AndSize(tname, NULL)) &&
+    if ( error_type &&
+         PL_unify_chars(av+0, PL_ATOM|REP_UTF8, (size_t)-1, error_type) &&
 	 (value ? py_unify(av+1, value, PYU_ERROR)
 		: py_unify_constant(av+1, ATOM_none)) &&
 	 PL_cons_functor_v(t, FUNCTOR_python_error2, av) &&
@@ -2538,9 +2571,16 @@ install_janus(void)
   MKATOM(builtins);
   MKATOM(locals);
   MKATOM(globals);
-  ATOM_tuple  = PL_new_atom("-");
-  ATOM_pydict = PL_new_atom("py");
-  ATOM_curl   = PL_new_atom("{}");
+  ATOM_tuple   = PL_new_atom("-");
+  ATOM_pydict  = PL_new_atom("py");
+  ATOM_curl    = PL_new_atom("{}");
+
+#ifdef PL_Q_EXCEPT_HALT
+  MKFUNCTOR(unwind, 1);
+  MKFUNCTOR(halt, 1);
+#else
+  ATOM_aborted = PL_new_atom("$aborted");
+#endif
 
   MKFUNCTOR(python_error, 2);
   MKFUNCTOR(python_stack, 1);

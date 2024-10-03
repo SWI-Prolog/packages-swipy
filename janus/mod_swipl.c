@@ -72,11 +72,45 @@ Py_SetPrologErrorFromObject(PyObject *obj)
 }
 
 
+static bool
+is_halt_exception(term_t ex, int *code)
+{
+#ifdef PL_Q_EXCEPT_HALT
+  term_t a;
+  int i;
+
+  if ( PL_is_functor(ex, FUNCTOR_unwind1) &&
+       (a=PL_new_term_ref()) &&
+       PL_get_arg(1, ex, a) &&
+       PL_is_functor(a, FUNCTOR_halt1) &&
+       PL_get_arg(1, a, a) &&
+       PL_get_integer(a, &i) )
+  { *code = i;
+    return true;
+  }
+#else
+  if ( exit_requested != INT_MIN &&
+       PL_get_atom(ex, &a) && a == ATOM_aborted )
+  { *code = exit_requested;
+    return true;
+  }
+#endif
+  return false;
+}
+
+
 static void
 Py_SetPrologError(term_t ex)
-{ PyObject *obj = py_record(ex);
-  Py_SetPrologErrorFromObject(obj);
-  Py_CLEAR(obj);
+{ int code;
+
+  if ( is_halt_exception(ex, &code) )
+  { PyObject *exit_code = PyLong_FromLongLong(code);
+    PyErr_SetObject(PyExc_SystemExit, exit_code);
+  } else
+  { PyObject *obj = py_record(ex);
+    Py_SetPrologErrorFromObject(obj);
+    Py_CLEAR(obj);
+  }
 }
 
 static void
