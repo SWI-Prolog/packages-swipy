@@ -71,6 +71,7 @@ Py_SetPrologErrorFromObject(PyObject *obj)
   Py_CLEAR(argv);
 }
 
+#ifdef PL_Q_EXCEPT_HALT
 static term_t
 is_unwind_exception(term_t ex)
 { term_t a;
@@ -83,7 +84,6 @@ is_unwind_exception(term_t ex)
   return 0;
 }
 
-#ifdef PL_Q_EXCEPT_HALT
 static bool
 is_halt_exception(term_t a, int *code)
 { int i;

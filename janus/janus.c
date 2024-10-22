@@ -45,6 +45,7 @@
 #include <frameobject.h>	/* Limited API */
 #endif
 #include <assert.h>
+#include <stdbool.h>
 
 static atom_t ATOM_none;
 static atom_t ATOM_false;
