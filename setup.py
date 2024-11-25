@@ -1,6 +1,8 @@
 # Build janus as a Python package
 
-SWIPL="swipl"
+import os
+
+SWIPL=os.getenv("SWIPL") or "swipl"
 PLLIB="swipl"
 
 from setuptools import setup, Extension
@@ -8,7 +10,7 @@ import sys
 sys.path.append("janus")
 from _find_swipl import swipl_properties
 
-props=swipl_properties()
+props=swipl_properties(SWIPL)
 
 if ( not props ):
     raise RuntimeError("Failed to find SWI-Prolog components")

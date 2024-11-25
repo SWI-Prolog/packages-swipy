@@ -53,9 +53,11 @@ using
 
     pip install janus-swi
 
-SWI-Prolog is  selected by  finding `swipl`  on the  executable search
-path.   If `swipl.exe`  is not  in ``%PATH%``  on Windows  the Windows
-registry is examined to find SWI-Prolog.
+SWI-Prolog is  selected from  the environment  variable `SWIPL`  or by
+finding `swipl` on the executable search path.  On Windows, if neither
+of  the above  work,  the Windows  registry is  examined  to find  the
+installed     SWI-Prolog     system    (by     default     `C:\Program
+Files\swipl\bin\swipl.exe`).
 
 If  you installed  SWI-Prolog from  source, it  is advised  to install
 Janus from the  `packages/swipy` directory in the  Prolog source.  The
