@@ -17,10 +17,5 @@ import janus_swi._swipl
 
 _swipl.initialize("swipl",
                   "-g", "true",
+                  "-p", "library="+os.path.dirname(__file__),
                   "--no-signals")
-
-# Get library(janus) for calling Python from Prolog.  If this library is
-# already part of Prolog, use it, else add this directory to the library
-# search path.
-_swipl.call("(exists_source(library(janus))->true;asserta(user:file_search_path(library, Here)))",
-            {"Here":os.path.dirname(__file__)})
