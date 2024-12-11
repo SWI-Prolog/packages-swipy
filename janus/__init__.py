@@ -15,7 +15,14 @@ if ( sys.platform == "win32" ):
 from janus_swi.janus import *
 import janus_swi._swipl
 
-_swipl.initialize("swipl",
-                  "-g", "true",
-                  "-p", "library="+os.path.dirname(__file__),
-                  "--no-signals")
+# This module is also loaded when we use py_call(janus:...) from Prolog
+# while Janus is initially loaded from Python.
+# TODO: If you know a more elegant solution, please share!
+
+try:
+    _swipl.initialize("swipl",
+                      "-g", "true",
+                      "-p", "library="+os.path.dirname(__file__),
+                      "--no-signals")
+except NameError:
+    pass
