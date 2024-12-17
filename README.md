@@ -89,6 +89,10 @@ printing relevant information on the embedded Python system.
     ?- py_version.
 	% Janus embeds Python 3.10.12 (main, Jun 11 2023, 05:26:28) [GCC 11.4.0
 
+See the [documentation][janus-doc].
+
+[janus-doc]: https://www.swi-prolog.org/pldoc/doc_for?object=section(%27packages/janus.html%27)
+
 
 ## Using Conda
 
