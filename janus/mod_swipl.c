@@ -3,7 +3,7 @@
     Author:        Jan Wielemaker
     E-mail:        jan@swi-prolog.org
     WWW:           http://www.swi-prolog.org
-    Copyright (c)  2023-2024, SWI-Prolog Solutions b.v.
+    Copyright (c)  2023-2025, SWI-Prolog Solutions b.v.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -692,7 +692,16 @@ swipl_initialize(PyObject *self, PyObject *args)
     PL_discard_foreign_frame(fid);
   }
 
-  if ( !rc )
+  if ( rc )
+  { term_t t;
+
+    if ( !( (t=PL_new_term_ref()) &&
+	    PL_put_term_from_chars(t, 0, (size_t)-1,
+				   "py_import('janus_swi.janus', [])") &&
+	    PL_call(t, NULL) ) )
+    { Py_SetPrologErrorFromChars("import janus_swi as janus");
+    }
+  } else
   { Py_SetPrologErrorFromChars("Failed to load library(janus) into Prolog");
     return NULL;
   }
