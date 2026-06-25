@@ -653,34 +653,48 @@ func_Fraction(void)
 }
 
 
-static int
+#define FAST_BUF 1024
+
+static bool
 py_unify_fraction(term_t t, PyObject *obj)
 { PyObject *str = check_error(PyObject_Str(obj));
 
   if ( str )
   { const char *s;
     ssize_t len;
-    int rc;
+    bool rc = true;
 
     if ( (s=PyUnicode_AsUTF8AndSize(str, &len)) )
-    { term_t tmp;
-      int rc2=TRUE;
+    { char buf[FAST_BUF];
+      char *s2 = buf;
 
-      char *sep = strchr(s, '/');
-      if ( sep )
-	*sep = 'r';
-      rc = ((tmp = PL_new_term_ref()) &&
-	    PL_put_term_from_chars(tmp, REP_UTF8|CVT_EXCEPTION, len, s) &&
-	    (rc2=PL_is_rational(tmp)) &&
-	    PL_unify(t, tmp));
-      if ( sep )
-	*sep = '/';
+      if ( len < FAST_BUF-1 )
+      { memcpy(buf, s, len+1);
+      } else if ( (s2 = malloc(len+1)) )
+      {	memcpy(s2, s, len+1);
+      } else
+      { rc = PL_resource_error("memory");
+      }
 
-      if ( tmp )
-	PL_reset_term_refs(tmp);
-      if ( !rc2 )
-	rc = PL_type_error("rational", tmp);
+      if ( rc )
+      { term_t tmp;
+	bool rc2 = true;
 
+	char *sep = strchr(s2, '/');
+	if ( sep )
+	  *sep = 'r';
+	rc = ((tmp = PL_new_term_ref()) &&
+	      PL_put_term_from_chars(tmp, REP_UTF8|CVT_EXCEPTION, len, s2) &&
+	      (rc2=PL_is_rational(tmp)) &&
+	      PL_unify(t, tmp));
+
+	if ( tmp )
+	  PL_reset_term_refs(tmp);
+	if ( !rc2 )
+	  rc = PL_type_error("rational", tmp);
+	if ( buf != s2 )
+	  free(s2);
+      }
     } else
     { rc = !!check_error((void*)0);
     }
@@ -690,7 +704,7 @@ py_unify_fraction(term_t t, PyObject *obj)
     return rc;
   }
 
-  return FALSE;
+  return false;
 }
 
 
