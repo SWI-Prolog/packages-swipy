@@ -390,7 +390,7 @@ test(invalid_nesting, X == @false) :-
     py_call(demo:test_invalid_nesting(), X).
 :- if((py_call(sys:hexversion, V), V >= 0x03080000)).
 test(invalid_nesting2, [BlobType, BlobStr] ==
-                       ['PyObject',               % PrologError is tested for in demo.py
+                       [py,                       % PrologError is tested for in demo.py
                         "swipl.next_solution(): not inner query"]) :-
     py_call(demo:test_invalid_nesting2(), Blob),
     janus:py_str(Blob, BlobStr), % TODO: re-export py_str from module janus?

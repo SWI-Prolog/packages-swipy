@@ -360,7 +360,7 @@ def echo(v):
     from a translated term.
 
         ?- py_call(janus:echo(py{a:1, l:[1,2,3]}), Obj, [py_object]).
-        Obj = <py_dict>(0x7f939bd3e800).
+        Obj = <py>(0x7f939bd3e800,dict).
     """
     return v
 

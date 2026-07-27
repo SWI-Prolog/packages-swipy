@@ -227,10 +227,10 @@ english(NLP) :-
 \end{code}
 
 Calling \term{english}{X} results in \arg{X} =
-\verb$<py_English>(0x7f703c24f430)$, a \jargon{blob} that references a
-Python object.  \textit{English} is the name of the Python class to
-which the object belongs and \textit{0x7f703c24f430} is the address of
-the object.  The returned object implements the Python
+\verb$<py>(0x7f703c24f430,'English')$, a \jargon{blob} that references a
+Python object.  \textit{0x7f703c24f430} is the address of the object and
+\textit{English} is the name of the Python class to which it belongs.
+The returned object implements the Python
 \jargon{callable} protocol, i.e., it behaves as a function with
 additional properties and methods.  Calling the model with a string
 results in a parsed document.  We can use this from Prolog using the
@@ -239,10 +239,10 @@ built-in \const{__call__} method:
 \begin{code}
 ?- english(NLP),
    py_call(NLP:'__call__'("This is a sentence."), Doc).
-NLP = <py_English>(0x7f703851b8e0),
-Doc = [<py_Token>(0x7f70375be9d0), <py_Token>(0x7f70375be930),
-       <py_Token>(0x7f70387f8860), <py_Token>(0x7f70376dde40),
-       <py_Token>(0x7f70376de200)
+NLP = <py>(0x7f703851b8e0,'English'),
+Doc = [<py>(0x7f70375be9d0,'Token'), <py>(0x7f70375be930,'Token'),
+       <py>(0x7f70387f8860,'Token'), <py>(0x7f70376dde40,'Token'),
+       <py>(0x7f70376de200,'Token')
       ].
 \end{code}
 
@@ -1058,10 +1058,10 @@ it back to Prolog.
 \begin{code}
 ?- py_call(janus:echo(prolog(hello(world))), Obj,
            [py_object(true)]).
-Obj = <py_Term>(0x7f7a14512050).
+Obj = <py>(0x7f7a14512050,'Term').
 ?- py_call(print($Obj)).
 hello(world)
-Obj = <py_Term>(0x7f7a14512050).
+Obj = <py>(0x7f7a14512050,'Term').
 \end{code}
 
   \cfunction{Term}{janus.Term.__str__}{}

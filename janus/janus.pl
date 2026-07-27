@@ -209,7 +209,7 @@ py_version :-
 %
 %       % reference a Python builtin (class or function)
 %       ?- py_call(builtins:list, L, [py_object(true)]).
-%       L = <py_type>(...).
+%       L = <py>(...,type).
 %
 %   Given a class in a file `dog.py`  such as the following example from
 %   the Python documentation
@@ -230,13 +230,13 @@ py_version :-
 %   variable `Dog`.
 %
 %       ?- py_call(dog:'Dog'("Fido"), Dog).
-%       Dog = <py_Dog>(0x7f095c9d02e0).
+%       Dog = <py>(0x7f095c9d02e0,'Dog').
 %
 %       ?- py_call($Dog:add_trick("roll_over")).
-%       Dog = <py_Dog>(0x7f095c9d02e0).
+%       Dog = <py>(0x7f095c9d02e0,'Dog').
 %
 %       ?- py_call($Dog:tricks, Tricks).
-%       Dog = <py_Dog>(0x7f095c9d02e0),
+%       Dog = <py>(0x7f095c9d02e0,'Dog'),
 %       Tricks = ["roll_over"]
 %
 %   If the principal term of the   first  argument is not `Target:Func`,
@@ -245,9 +245,9 @@ py_version :-
 %
 %       ?- py_call(dog:'Dog'("Fido"), Dog),
 %          py_call(Dog, X).
-%          Dog = X, X = <py_Dog>(0x7fa8cbd12050).
+%          Dog = X, X = <py>(0x7fa8cbd12050,'Dog').
 %       ?- py_call(sys, S).
-%          S = <py_module>(0x7fa8cd582390).
+%          S = <py>(0x7fa8cd582390,module).
 %
 %   Options processed:
 %

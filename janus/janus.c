@@ -305,9 +305,13 @@ compare_python_object(atom_t a, atom_t b)
 	 );
 }
 
-/* Write a Python  object reference as <py_<Class>>(Ref).   To get the
- * class however, we need the  GIL.  Unfortunately, this may deadlock.
- * Assume
+/* Write a Python object reference  as  <py>(Ref,Class).  The first two
+ * characters must be the name of  our  blob type: that is what allows
+ * read_term/2,3  to  find  the  object    back    using   the  option
+ * blob(resolve).  The class is written as a quoted atom.
+ *
+ * To get the class however, we need the GIL.  Unfortunately, this may
+ * deadlock.  Assume
  *
  *   - We printing an object ref to stream S.  We hold stream S and
  *     try to get the GIL.
@@ -334,16 +338,16 @@ write_python_object(IOSTREAM *s, atom_t symbol, int flags)
       else
 	name = "noclass";
 
-      SfprintfX(s, "<py_%Us>(%p)", name, obj);
+      SfprintfX(s, "<py>(%p,%UAs)", obj, name);
 
       Py_CLEAR(cls);
       Py_CLEAR(cname);
       py_gil_release(state);
     } else
-    { SfprintfX(s, "<py_obj(no-GIL)>(%p)", obj);
+    { SfprintfX(s, "<py>(%p,no_gil)", obj);
     }
   } else
-  { Sfprintf(s, "<py_FREED>(0x0)");
+  { Sfprintf(s, "<py>(0x0,freed)");
   }
 
   return TRUE;
@@ -358,7 +362,7 @@ acquire_python_object(atom_t symbol)
 static PL_blob_t PY_OBJECT = {
   PL_BLOB_MAGIC,
   PL_BLOB_UNIQUE|PL_BLOB_NOCOPY,
-  "PyObject",
+  "py",
   release_python_object,
   compare_python_object,
   write_python_object,
