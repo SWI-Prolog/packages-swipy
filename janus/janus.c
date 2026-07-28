@@ -2604,7 +2604,8 @@ py_finalize(void)
 
 install_t
 install_janus(void)
-{ MKATOM(none);
+{ PL_register_blob_type(&PY_OBJECT);
+  MKATOM(none);
   MKATOM(false);
   MKATOM(true);
   MKATOM(atom);
