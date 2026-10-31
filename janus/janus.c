@@ -264,21 +264,25 @@ delayed_decref(void *ptr)
   return 0;
 }
 
-static void
-MyPy_DECREF(PyObject *o)
-{ if ( PyGILState_Check() )
-  { Py_DECREF(o);
-  } else
-  { py_delayed *d = malloc(sizeof(*d));
-    py_delayed *old;
+/* Queue a Py_DECREF() for delayed_decref(), which py_gil_ensure() calls.
+ * We never call Py_DECREF() directly from the release hook, also not if
+ * we hold the GIL: the hook runs in atom garbage collection, which may
+ * be the sweep of a thread that runs Prolog inside py_with_gil/1, and
+ * possibly with the atom table locked.  Py_DECREF() can run arbitrary
+ * Python code (__del__), which may call Prolog.
+ */
 
-    if ( d )
-    { d->obj = o;
-      do
-      { old = delayed;
-	d->next = old;
-      } while ( !__sync_bool_compare_and_swap(&delayed, old, d) );
-    }
+static void
+delay_decref(PyObject *o)
+{ py_delayed *d = malloc(sizeof(*d));
+  py_delayed *old;
+
+  if ( d )				/* if not, we leak the object */
+  { d->obj = o;
+    do
+    { old = delayed;
+      d->next = old;
+    } while ( !__sync_bool_compare_and_swap(&delayed, old, d) );
   }
 }
 
@@ -292,7 +296,7 @@ release_python_object(atom_t symbol)
 { PyObject *obj = PL_blob_data(symbol, NULL, NULL );
 
   if ( obj )
-    MyPy_DECREF(obj);
+    delay_decref(obj);
   return TRUE;
 }
 
@@ -359,9 +363,21 @@ acquire_python_object(atom_t symbol)
   Py_INCREF(obj);
 }
 
+/* PL_BLOB_LOCAL: a reference starts as a local atom of the Prolog thread
+ * that creates it, which reclaims it in a sweep of its own as soon as it
+ * is unreachable, rather than at the next global atom garbage
+ * collection.  It becomes an ordinary atom if it may be reachable from
+ * another thread, e.g., if it is recorded as part of a janus.Term or if
+ * another thread gets a reference to the same Python object.
+ */
+
+#ifndef PL_BLOB_LOCAL			/* SWI-Prolog without local blobs */
+#define PL_BLOB_LOCAL 0
+#endif
+
 static PL_blob_t PY_OBJECT = {
   PL_BLOB_MAGIC,
-  PL_BLOB_UNIQUE|PL_BLOB_NOCOPY,
+  PL_BLOB_UNIQUE|PL_BLOB_NOCOPY|PL_BLOB_LOCAL,
   "py",
   release_python_object,
   compare_python_object,

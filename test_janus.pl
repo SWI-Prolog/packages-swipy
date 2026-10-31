@@ -363,6 +363,29 @@ test(free, error(existence_error('py_object', Obj))) :-
     py_free(Obj),
     py_setattr(Obj, test, 1).
 
+%  Object references are thread-local blobs (PL_BLOB_LOCAL): the thread
+%  reclaims them in its own sweep when it created enough of them,
+%  without global atom garbage collection.  We churn in a new thread,
+%  which does not call garbage_collect_atoms/0.  The Py_DECREF() calls
+%  are delayed until the thread next calls Python.
+
+test(local_reference, Local == true) :-
+    py_call(demo:'GCAble'(), Obj),
+    (   '$local_atom'(Obj)
+    ->  Local = true
+    ;   Local = false
+    ).
+test(local_sweep, true(GCed >= 4 000)) :-
+    py_setattr(demo, gced, 0),
+    thread_create(local_churn(5 000), Id),
+    thread_join(Id),
+    py_call(demo:gced, GCed).
+
+local_churn(N) :-
+    forall(between(1, N, _),
+           py_call(demo:'GCAble'(), _)),
+    py_call(demo:gced, _).              % runs the delayed decrefs
+
 :- end_tests(janus_gc).
 
 :- begin_tests(python_call_prolog).
