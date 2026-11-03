@@ -375,7 +375,9 @@ test(local_reference, Local == true) :-
     ->  Local = true
     ;   Local = false
     ).
-test(local_sweep, true(GCed >= 4 000)) :-
+test(local_sweep, [ condition(current_prolog_flag(threads, true)),
+                    true(GCed >= 4 000)
+                  ]) :-
     py_setattr(demo, gced, 0),
     thread_create(local_churn(5 000), Id),
     thread_join(Id),
